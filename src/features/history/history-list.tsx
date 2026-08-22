@@ -1,11 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
 import { SectionList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { listSessions } from '@/api/sessions';
-import { queryKeys } from '@/api/query-keys';
+import { useSessions } from '@/api/sessions.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,10 +13,9 @@ import { groupSessionsByDay } from '@/lib/date-grouping';
 import { MaxContentWidth, Spacing } from '@/theme/tokens';
 
 export function HistoryList() {
-  const { data, isPending, isError, refetch } = useQuery({
-    queryKey: queryKeys.sessions,
-    queryFn: listSessions,
-  });
+  const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useSessions();
+  const sessions = data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
     <ThemedView style={styles.container}>
@@ -30,11 +28,11 @@ export function HistoryList() {
           <Skeleton height={80} />
         ) : isError ? (
           <ErrorPanel title="Couldn't load your history" onRetry={refetch} />
-        ) : data.length === 0 ? (
+        ) : sessions.length === 0 ? (
           <EmptyState title="No sessions yet" message="Finish a practice session to see it here." />
         ) : (
           <SectionList
-            sections={groupSessionsByDay(data).map((group) => ({
+            sections={groupSessionsByDay(sessions).map((group) => ({
               title: group.date,
               data: group.sessions,
             }))}
@@ -46,6 +44,17 @@ export function HistoryList() {
               </ThemedText>
             )}
             contentContainerStyle={styles.list}
+            ListFooterComponent={
+              hasNextPage ? (
+                <Button
+                  variant="secondary"
+                  loading={isFetchingNextPage}
+                  onPress={() => fetchNextPage()}
+                >
+                  Load older sessions
+                </Button>
+              ) : null
+            }
           />
         )}
       </SafeAreaView>

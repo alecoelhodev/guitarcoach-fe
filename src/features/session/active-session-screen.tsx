@@ -1,12 +1,10 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { createSession } from '@/api/sessions';
-import { queryKeys } from '@/api/query-keys';
+import { useCreateSession } from '@/api/sessions.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
@@ -15,6 +13,7 @@ import { ChecklistRow } from '@/components/ui/checklist-row';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Stepper } from '@/components/ui/stepper';
 import { useActiveSessionStore } from '@/features/session/session-store';
+import { useToastStore } from '@/stores/toast-store';
 import { Spacing } from '@/theme/tokens';
 
 function useStopwatch() {
@@ -29,32 +28,27 @@ function useStopwatch() {
 
 export function ActiveSessionScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { routineId, title, tasks, setTaskMinutes, toggleTaskCompleted, reset } =
     useActiveSessionStore();
   const elapsed = useStopwatch();
   const [confirmExit, setConfirmExit] = useState(false);
-  const [finishing, setFinishing] = useState(false);
   const [startedWithNoTasks] = useState(() => tasks.length === 0);
+  const createSessionMutation = useCreateSession();
+  const showToast = useToastStore((state) => state.show);
 
   async function handleFinish() {
-    setFinishing(true);
-    try {
-      await createSession({
-        routineId,
-        title,
-        tasks: tasks.map((t) => ({
-          taskId: t.taskId,
-          durationMinutes: t.durationMinutes,
-          completed: t.completed,
-        })),
-      });
-      queryClient.invalidateQueries({ queryKey: queryKeys.sessions });
-      reset();
-      router.back();
-    } finally {
-      setFinishing(false);
-    }
+    await createSessionMutation.mutateAsync({
+      routineId,
+      title,
+      tasks: tasks.map((t) => ({
+        taskId: t.taskId,
+        durationMinutes: t.durationMinutes,
+        completed: t.completed,
+      })),
+    });
+    reset();
+    router.back();
+    showToast('Session saved', 'success');
   }
 
   function handleExit() {
@@ -105,7 +99,7 @@ export function ActiveSessionScreen() {
           ))}
         </ScrollView>
 
-        <Button block loading={finishing} onPress={handleFinish}>
+        <Button block loading={createSessionMutation.isPending} onPress={handleFinish}>
           Finish
         </Button>
       </SafeAreaView>

@@ -1,4 +1,5 @@
 import { request } from '@/api/client';
+import type { Paginated } from '@/types/pagination';
 import type { PracticeSession } from '@/types/session';
 
 /**
@@ -14,8 +15,8 @@ export function createSession(input: {
   return request<PracticeSession>('/practice-sessions', { method: 'POST', body: input });
 }
 
-export function listSessions() {
-  return request<PracticeSession[]>('/practice-sessions');
+export function listSessions(query: { page?: number; limit?: number } = {}) {
+  return request<Paginated<PracticeSession>>('/practice-sessions', { query });
 }
 
 export function getSession(sessionId: string) {

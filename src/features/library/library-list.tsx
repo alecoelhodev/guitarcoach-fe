@@ -1,11 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
 import { FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { listTasks } from '@/api/tasks';
-import { queryKeys } from '@/api/query-keys';
+import { useTasks } from '@/api/tasks.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,10 +12,9 @@ import { TaskCard } from '@/features/library/task-card';
 import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
 
 export function LibraryList() {
-  const { data, isPending, isError, refetch } = useQuery({
-    queryKey: queryKeys.tasks(),
-    queryFn: () => listTasks(),
-  });
+  const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useTasks();
+  const tasks = data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
     <ThemedView style={styles.container}>
@@ -29,14 +27,25 @@ export function LibraryList() {
           <Skeleton height={80} />
         ) : isError ? (
           <ErrorPanel title="Couldn't load the library" onRetry={refetch} />
-        ) : data.data.length === 0 ? (
+        ) : tasks.length === 0 ? (
           <EmptyState title="No tasks yet" />
         ) : (
           <FlatList
-            data={data.data}
+            data={tasks}
             keyExtractor={(task) => task.id}
             renderItem={({ item }) => <TaskCard task={item} />}
             contentContainerStyle={styles.list}
+            ListFooterComponent={
+              hasNextPage ? (
+                <Button
+                  variant="secondary"
+                  loading={isFetchingNextPage}
+                  onPress={() => fetchNextPage()}
+                >
+                  Load more
+                </Button>
+              ) : null
+            }
           />
         )}
       </SafeAreaView>

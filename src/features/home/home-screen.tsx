@@ -1,24 +1,32 @@
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { listSessions } from '@/api/sessions';
+import { useSessionsSummary } from '@/api/sessions.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSessionStore } from '@/features/auth/session-store';
+import { useActiveSessionStore } from '@/features/session/session-store';
+import { useSessionStore } from '@/stores/session-store';
 import { filterThisWeek } from '@/lib/date-grouping';
 import { formatMinutes, sumSessionMinutes } from '@/lib/duration';
 import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
 
 export function HomeScreen() {
+  const router = useRouter();
   const user = useSessionStore((state) => state.user);
-  const { data: sessions, isPending } = useQuery({ queryKey: ['sessions'], queryFn: listSessions });
+  const { data, isPending } = useSessionsSummary();
 
-  const thisWeek = sessions ? filterThisWeek(sessions) : [];
+  const activeSessionTasks = useActiveSessionStore((state) => state.tasks);
+  const resetActiveSession = useActiveSessionStore((state) => state.reset);
+  const [showResumePrompt, setShowResumePrompt] = useState(() => activeSessionTasks.length > 0);
+
+  const sessions = data?.data ?? [];
+  const thisWeek = filterThisWeek(sessions);
   const totalMinutes = thisWeek.reduce((sum, session) => sum + sumSessionMinutes(session), 0);
 
   return (
@@ -54,6 +62,22 @@ export function HomeScreen() {
           </Link>
         </ScrollView>
       </SafeAreaView>
+
+      <ConfirmDialog
+        visible={showResumePrompt}
+        title="Resume practice session?"
+        message="You have a practice session in progress from earlier."
+        confirmLabel="Resume"
+        cancelLabel="Discard"
+        onConfirm={() => {
+          setShowResumePrompt(false);
+          router.push('/session/active');
+        }}
+        onCancel={() => {
+          setShowResumePrompt(false);
+          resetActiveSession();
+        }}
+      />
     </ThemedView>
   );
 }

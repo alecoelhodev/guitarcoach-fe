@@ -1,7 +1,9 @@
 import { Redirect, Stack } from 'expo-router';
 
-import AppShell from '@/components/nav/app-shell';
-import { useSessionStore } from '@/features/auth/session-store';
+import { ErrorBoundaryFallback } from '@/components/error-boundary-fallback';
+import { useSessionStore } from '@/stores/session-store';
+
+export { ErrorBoundaryFallback as ErrorBoundary };
 
 export default function AppLayout() {
   const status = useSessionStore((state) => state.status);
@@ -9,15 +11,9 @@ export default function AppLayout() {
   if (status === 'unauthenticated') return <Redirect href="/(auth)/sign-in" />;
 
   return (
-    <AppShell>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="routines/[id]" />
-        <Stack.Screen name="library/[id]" />
-        <Stack.Screen name="history/index" />
-        <Stack.Screen name="history/[id]" />
-        <Stack.Screen name="coach" />
-      </Stack>
-    </AppShell>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(main)" />
+      <Stack.Screen name="session/active" options={{ presentation: 'fullScreenModal' }} />
+    </Stack>
   );
 }

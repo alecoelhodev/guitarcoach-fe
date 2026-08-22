@@ -3,7 +3,11 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { instantCreateRoutine, requestPracticePlan, resolvePracticePlan } from '@/api/coach';
+import {
+  useInstantCreateRoutine,
+  useRequestPracticePlan,
+  useResolvePracticePlan,
+} from '@/api/coach.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
@@ -19,48 +23,46 @@ export function CoachScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('draft');
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
   const [draft, setDraft] =
     useState<Extract<DraftPlanResponse, { status: 'awaiting_confirmation' }>>();
   const [message, setMessage] = useState<string>();
 
+  const requestPlanMutation = useRequestPracticePlan();
+  const resolvePlanMutation = useResolvePracticePlan();
+  const instantCreateMutation = useInstantCreateRoutine();
+  const loading =
+    requestPlanMutation.isPending || resolvePlanMutation.isPending || instantCreateMutation.isPending;
+
   async function handleSubmit() {
     if (!input.trim()) return;
-    setLoading(true);
     setMessage(undefined);
-    try {
-      if (mode === 'draft') {
-        const response = await requestPracticePlan(input.trim());
-        if (response.status === 'awaiting_confirmation') {
-          setDraft(response);
-        } else if (response.status === 'created') {
-          setMessage(`Routine "${response.routine.title}" created.`);
-          setInput('');
-        }
-      } else {
-        const response = await instantCreateRoutine(input.trim());
-        setMessage(response.message);
-        if (response.routineId) setInput('');
+    if (mode === 'draft') {
+      const response = await requestPlanMutation.mutateAsync(input.trim());
+      if (response.status === 'awaiting_confirmation') {
+        setDraft(response);
+      } else if (response.status === 'created') {
+        setMessage(`Routine "${response.routine.title}" created.`);
+        setInput('');
       }
-    } finally {
-      setLoading(false);
+    } else {
+      const response = await instantCreateMutation.mutateAsync(input.trim());
+      setMessage(response.message);
+      if (response.routineId) setInput('');
     }
   }
 
   async function handleConfirm(confirmation: boolean) {
     if (!draft) return;
-    setLoading(true);
-    try {
-      const response = await resolvePracticePlan(draft.previousResponseId, confirmation);
-      setDraft(undefined);
-      if (response.status === 'created') {
-        setMessage(`Routine "${response.routine.title}" created.`);
-        setInput('');
-      } else {
-        setMessage('Plan declined.');
-      }
-    } finally {
-      setLoading(false);
+    const response = await resolvePlanMutation.mutateAsync({
+      previousResponseId: draft.previousResponseId,
+      confirmation,
+    });
+    setDraft(undefined);
+    if (response.status === 'created') {
+      setMessage(`Routine "${response.routine.title}" created.`);
+      setInput('');
+    } else {
+      setMessage('Plan declined.');
     }
   }
 

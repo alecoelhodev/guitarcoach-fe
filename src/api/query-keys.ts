@@ -9,7 +9,7 @@ export const queryKeys = {
   routine: (id: string) => ['routines', id] as const,
   routineTasks: (routineId: string) => ['routines', routineId, 'tasks'] as const,
 
-  sessions: ['sessions'] as const,
+  sessions: (query?: Record<string, unknown>) => ['sessions', query] as const,
   session: (id: string) => ['sessions', id] as const,
 
   recordings: (sessionId: string) => ['sessions', sessionId, 'recordings'] as const,

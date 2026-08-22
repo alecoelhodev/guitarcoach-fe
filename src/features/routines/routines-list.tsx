@@ -1,11 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
 import { FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { listRoutines } from '@/api/routines';
-import { queryKeys } from '@/api/query-keys';
+import { useRoutines } from '@/api/routines.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,10 +12,9 @@ import { RoutineCard } from '@/features/routines/routine-card';
 import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
 
 export function RoutinesList() {
-  const { data, isPending, isError, refetch } = useQuery({
-    queryKey: queryKeys.routines(),
-    queryFn: () => listRoutines(),
-  });
+  const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useRoutines();
+  const routines = data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
     <ThemedView style={styles.container}>
@@ -29,14 +27,25 @@ export function RoutinesList() {
           <Skeleton height={80} />
         ) : isError ? (
           <ErrorPanel title="Couldn't load routines" onRetry={refetch} />
-        ) : data.data.length === 0 ? (
+        ) : routines.length === 0 ? (
           <EmptyState title="No routines yet" message="Ask the AI Coach to build your first one." />
         ) : (
           <FlatList
-            data={data.data}
+            data={routines}
             keyExtractor={(routine) => routine.id}
             renderItem={({ item }) => <RoutineCard routine={item} />}
             contentContainerStyle={styles.list}
+            ListFooterComponent={
+              hasNextPage ? (
+                <Button
+                  variant="secondary"
+                  loading={isFetchingNextPage}
+                  onPress={() => fetchNextPage()}
+                >
+                  Load more
+                </Button>
+              ) : null
+            }
           />
         )}
       </SafeAreaView>

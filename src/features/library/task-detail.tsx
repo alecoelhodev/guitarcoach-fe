@@ -1,9 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getTask } from '@/api/tasks';
-import { queryKeys } from '@/api/query-keys';
+import { useTask } from '@/api/tasks.queries';
 import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -13,15 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MaxContentWidth, Spacing } from '@/theme/tokens';
 
 export function TaskDetail({ taskId }: { taskId: string }) {
-  const {
-    data: task,
-    isPending,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: queryKeys.task(taskId),
-    queryFn: () => getTask(taskId),
-  });
+  const { data: task, isPending, isError, refetch } = useTask(taskId);
 
   return (
     <ThemedView style={styles.container}>

@@ -1,11 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { listRecordings } from '@/api/recordings';
-import { getSession as getPracticeSession } from '@/api/sessions';
-import { getTask } from '@/api/tasks';
-import { queryKeys } from '@/api/query-keys';
+import { useRecordings } from '@/api/recordings.queries';
+import { useSession } from '@/api/sessions.queries';
+import { useTask } from '@/api/tasks.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/card';
@@ -17,10 +15,7 @@ import { MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { PracticeSessionTask } from '@/types/session';
 
 function SessionTaskRow({ task }: { task: PracticeSessionTask }) {
-  const { data } = useQuery({
-    queryKey: queryKeys.task(task.taskId),
-    queryFn: () => getTask(task.taskId),
-  });
+  const { data } = useTask(task.taskId);
 
   return (
     <Card style={styles.taskRow}>
@@ -38,14 +33,8 @@ function SessionTaskRow({ task }: { task: PracticeSessionTask }) {
 }
 
 export function SessionDetail({ sessionId }: { sessionId: string }) {
-  const sessionQuery = useQuery({
-    queryKey: queryKeys.session(sessionId),
-    queryFn: () => getPracticeSession(sessionId),
-  });
-  const recordingsQuery = useQuery({
-    queryKey: queryKeys.recordings(sessionId),
-    queryFn: () => listRecordings(sessionId),
-  });
+  const sessionQuery = useSession(sessionId);
+  const recordingsQuery = useRecordings(sessionId);
 
   if (sessionQuery.isPending) return <Skeleton height={200} />;
   if (sessionQuery.isError) {

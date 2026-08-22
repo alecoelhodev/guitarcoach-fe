@@ -5,14 +5,17 @@ import {
   Figtree_600SemiBold,
 } from '@expo-google-fonts/figtree';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack, ThemeProvider, type Theme } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { useSessionStore } from '@/features/auth/session-store';
+import { queryClient } from '@/api/query-client';
+import { ErrorBoundaryFallback } from '@/components/error-boundary-fallback';
+import { ToastHost } from '@/components/toast-host';
+import { useSessionStore } from '@/stores/session-store';
 import { Colors } from '@/theme/tokens';
 
 import '@/global.css';
@@ -37,7 +40,7 @@ const navigationTheme: Theme = {
   },
 };
 
-const queryClient = new QueryClient();
+export { ErrorBoundaryFallback as ErrorBoundary };
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -66,8 +69,8 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(auth)" />
               <Stack.Screen name="(app)" />
-              <Stack.Screen name="session/active" options={{ presentation: 'fullScreenModal' }} />
             </Stack>
+            <ToastHost />
           </ThemeProvider>
         </BottomSheetModalProvider>
       </QueryClientProvider>

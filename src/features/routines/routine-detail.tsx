@@ -1,11 +1,9 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getRoutine, listRoutineTasks, reorderRoutineTasks } from '@/api/routines';
-import { queryKeys } from '@/api/query-keys';
+import { useReorderRoutineTasks, useRoutine, useRoutineTasks } from '@/api/routines.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
@@ -18,17 +16,11 @@ import type { RoutineTaskWithTask } from '@/types/routine';
 
 export function RoutineDetail({ routineId }: { routineId: string }) {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const startSession = useActiveSessionStore((state) => state.start);
 
-  const routineQuery = useQuery({
-    queryKey: queryKeys.routine(routineId),
-    queryFn: () => getRoutine(routineId),
-  });
-  const tasksQuery = useQuery({
-    queryKey: queryKeys.routineTasks(routineId),
-    queryFn: () => listRoutineTasks(routineId),
-  });
+  const routineQuery = useRoutine(routineId);
+  const tasksQuery = useRoutineTasks(routineId);
+  const reorderMutation = useReorderRoutineTasks(routineId);
 
   if (routineQuery.isPending || tasksQuery.isPending) return <Skeleton height={200} />;
   if (routineQuery.isError || tasksQuery.isError) {
@@ -46,16 +38,12 @@ export function RoutineDetail({ routineId }: { routineId: string }) {
   const routine = routineQuery.data;
   const tasks = tasksQuery.data;
 
-  async function move(index: number, direction: -1 | 1) {
+  function move(index: number, direction: -1 | 1) {
     const target = index + direction;
     if (target < 0 || target >= tasks.length) return;
     const reordered = [...tasks];
     [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
-    await reorderRoutineTasks(
-      routineId,
-      reordered.map((t) => t.taskId),
-    );
-    queryClient.invalidateQueries({ queryKey: queryKeys.routineTasks(routineId) });
+    reorderMutation.mutate(reordered.map((t) => t.taskId));
   }
 
   function handleStartPractice() {

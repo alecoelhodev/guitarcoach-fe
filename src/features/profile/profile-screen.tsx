@@ -6,7 +6,7 @@ import { signOut } from '@/api/auth';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
-import { useSessionStore } from '@/features/auth/session-store';
+import { useSessionStore } from '@/stores/session-store';
 import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
 
 export function ProfileScreen() {

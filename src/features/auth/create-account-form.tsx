@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { FieldLabel } from '@/components/ui/field-label';
 import { Input } from '@/components/ui/input';
 import { ValidationMessage } from '@/components/ui/validation-message';
-import { useSessionStore } from '@/features/auth/session-store';
+import { useSessionStore } from '@/stores/session-store';
 import { Spacing } from '@/theme/tokens';
 
 const schema = z.object({
