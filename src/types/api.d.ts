@@ -4,1491 +4,1494 @@
  */
 
 export interface paths {
-    "/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AppController_getHello"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  '/': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/health/live": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["HealthController_liveness"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['AppController_getHello'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/health/live': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/health/ready": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["HealthController_readiness"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['HealthController_liveness'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/health/ready': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/users/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["UsersController_me"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['HealthController_readiness'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/users/me': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["UsersController_findAll"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['UsersController_me'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/users': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/users/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["UsersController_findOne"];
-        put?: never;
-        post?: never;
-        delete: operations["UsersController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["UsersController_update"];
-        trace?: never;
+    get: operations['UsersController_findAll'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/users/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/tasks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["TasksController_findAll"];
-        put?: never;
-        post: operations["TasksController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['UsersController_findOne'];
+    put?: never;
+    post?: never;
+    delete: operations['UsersController_remove'];
+    options?: never;
+    head?: never;
+    patch: operations['UsersController_update'];
+    trace?: never;
+  };
+  '/tasks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/tasks/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["TasksController_findOne"];
-        put?: never;
-        post?: never;
-        delete: operations["TasksController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["TasksController_update"];
-        trace?: never;
+    get: operations['TasksController_findAll'];
+    put?: never;
+    post: operations['TasksController_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/tasks/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/routines": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["RoutinesController_findAll"];
-        put?: never;
-        post: operations["RoutinesController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['TasksController_findOne'];
+    put?: never;
+    post?: never;
+    delete: operations['TasksController_remove'];
+    options?: never;
+    head?: never;
+    patch: operations['TasksController_update'];
+    trace?: never;
+  };
+  '/routines': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/routines/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["RoutinesController_findOne"];
-        put?: never;
-        post?: never;
-        delete: operations["RoutinesController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["RoutinesController_update"];
-        trace?: never;
+    get: operations['RoutinesController_findAll'];
+    put?: never;
+    post: operations['RoutinesController_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/routines/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/routines/{routineId}/tasks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["RoutinesController_findTasks"];
-        put?: never;
-        post: operations["RoutinesController_addTask"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['RoutinesController_findOne'];
+    put?: never;
+    post?: never;
+    delete: operations['RoutinesController_remove'];
+    options?: never;
+    head?: never;
+    patch: operations['RoutinesController_update'];
+    trace?: never;
+  };
+  '/routines/{routineId}/tasks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/routines/{routineId}/tasks/reorder": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["RoutinesController_reorderTasks"];
-        trace?: never;
+    get: operations['RoutinesController_findTasks'];
+    put?: never;
+    post: operations['RoutinesController_addTask'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/routines/{routineId}/tasks/reorder': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/routines/{routineId}/tasks/{taskId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["RoutinesController_removeTask"];
-        options?: never;
-        head?: never;
-        patch: operations["RoutinesController_updateTask"];
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['RoutinesController_reorderTasks'];
+    trace?: never;
+  };
+  '/routines/{routineId}/tasks/{taskId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/practice-sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["PracticeSessionsController_findAll"];
-        put?: never;
-        post: operations["PracticeSessionsController_create"];
-        delete: operations["PracticeSessionsController_deleteByTitle"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations['RoutinesController_removeTask'];
+    options?: never;
+    head?: never;
+    patch: operations['RoutinesController_updateTask'];
+    trace?: never;
+  };
+  '/practice-sessions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/practice-sessions/{sessionId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["PracticeSessionsController_findOne"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['PracticeSessionsController_findAll'];
+    put?: never;
+    post: operations['PracticeSessionsController_create'];
+    delete: operations['PracticeSessionsController_deleteByTitle'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/practice-sessions/{sessionId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/practice-sessions/{sessionId}/recordings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["PracticeSessionsController_findRecordings"];
-        put?: never;
-        post: operations["PracticeSessionsController_uploadRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['PracticeSessionsController_findOne'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/practice-sessions/{sessionId}/recordings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/recordings/{recordingId}/download-url": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["RecordingsController_getDownloadUrl"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['PracticeSessionsController_findRecordings'];
+    put?: never;
+    post: operations['PracticeSessionsController_uploadRecording'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/recordings/{recordingId}/download-url': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/recordings/{recordingId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["RecordingsController_remove"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations['RecordingsController_getDownloadUrl'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/recordings/{recordingId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/ai/practice-planner": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AiPracticePlannerController_handle"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations['RecordingsController_remove'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/ai/practice-planner': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/ai/routine-coach": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AiRoutineCoachController_handle"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations['AiPracticePlannerController_handle'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/ai/routine-coach': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get?: never;
+    put?: never;
+    post: operations['AiRoutineCoachController_handle'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        MeResponseDto: {
-            image?: string | null;
-            role?: string;
-            id: string;
-            email: string;
-            emailVerified: boolean;
-            name: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        UserResponseDto: {
-            displayName?: string | null;
-            image?: string | null;
-            banReason?: string | null;
-            /** Format: date-time */
-            banExpires?: string | null;
-            id: string;
-            email: string;
-            emailVerified: boolean;
-            role: string;
-            banned: boolean;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        UpdateUserDto: {
-            /** Format: email */
-            email?: string;
-            displayName?: string;
-        };
-        CreateTaskDto: {
-            title: string;
-            /** @enum {string} */
-            category?: "technique" | "theory" | "repertoire";
-            /** @enum {string} */
-            difficulty?: "easy" | "medium" | "hard";
-            /** Format: uri */
-            referenceLink?: string;
-            description?: string;
-        };
-        TaskResponseDto: {
-            /** @enum {string|null} */
-            category?: "technique" | "theory" | "repertoire" | null;
-            /** @enum {string|null} */
-            difficulty?: "easy" | "medium" | "hard" | null;
-            referenceLink?: string | null;
-            description?: string | null;
-            id: string;
-            title: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        PaginationMetaDto: {
-            total: number;
-            page: number;
-            limit: number;
-            totalPages: number;
-        };
-        PaginatedTasksResponseDto: {
-            data: components["schemas"]["TaskResponseDto"][];
-            meta: components["schemas"]["PaginationMetaDto"];
-        };
-        UpdateTaskDto: {
-            title?: string;
-            /** @enum {string} */
-            category?: "technique" | "theory" | "repertoire";
-            /** @enum {string} */
-            difficulty?: "easy" | "medium" | "hard";
-            /** Format: uri */
-            referenceLink?: string;
-            description?: string;
-        };
-        CreateRoutineDto: {
-            title: string;
-            /** @enum {string} */
-            status?: "active" | "archived";
-            notes?: string;
-        };
-        RoutineResponseDto: {
-            /** @enum {string} */
-            status: "active" | "archived";
-            notes?: string | null;
-            id: string;
-            userId: string;
-            title: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        PaginatedRoutinesResponseDto: {
-            data: components["schemas"]["RoutineResponseDto"][];
-            meta: components["schemas"]["PaginationMetaDto"];
-        };
-        UpdateRoutineDto: {
-            title?: string;
-            /** @enum {string} */
-            status?: "active" | "archived";
-            notes?: string;
-        };
-        AddRoutineTaskDto: {
-            /** Format: uuid */
-            taskId: string;
-            position?: number;
-            targetDurationMinutes?: number;
-        };
-        RoutineTaskResponseDto: {
-            targetDurationMinutes?: number | null;
-            routineId: string;
-            taskId: string;
-            position: number;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        RoutineTaskWithTaskResponseDto: {
-            targetDurationMinutes?: number | null;
-            task: components["schemas"]["TaskResponseDto"];
-            routineId: string;
-            taskId: string;
-            position: number;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        ReorderRoutineTasksDto: {
-            taskIds: string[];
-        };
-        UpdateRoutineTaskDto: {
-            position?: number;
-            targetDurationMinutes?: number;
-        };
-        CreatePracticeSessionTaskDto: {
-            /** Format: uuid */
-            taskId: string;
-            durationMinutes?: number;
-            completed?: boolean;
-        };
-        CreatePracticeSessionDto: {
-            title?: string;
-            notes?: string;
-            /** Format: uuid */
-            routineId?: string;
-            tasks?: components["schemas"]["CreatePracticeSessionTaskDto"][];
-        };
-        PracticeSessionTaskResponseDto: {
-            durationMinutes?: number | null;
-            practiceSessionId: string;
-            taskId: string;
-            completed: boolean;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        PracticeSessionResponseDto: {
-            routineId?: string | null;
-            title?: string | null;
-            notes?: string | null;
-            sessionTasks: components["schemas"]["PracticeSessionTaskResponseDto"][];
-            id: string;
-            userId: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        PaginatedPracticeSessionsResponseDto: {
-            data: components["schemas"]["PracticeSessionResponseDto"][];
-            meta: components["schemas"]["PaginationMetaDto"];
-        };
-        DeleteResultResponseDto: {
-            deletedCount: number;
-        };
-        RecordingResponseDto: {
-            id: string;
-            userId: string;
-            practiceSessionId: string;
-            objectName: string;
-            originalFileName: string;
-            contentType: string;
-            sizeBytes: number;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        DownloadUrlResponseDto: {
-            url: string;
-        };
-        PracticePlanTaskResponseDto: {
-            title: string;
-            description: string;
-            durationMinutes: number;
-        };
-        PracticePlanResponseDto: {
-            tasks: components["schemas"]["PracticePlanTaskResponseDto"][];
-            title: string;
-            summary: string;
-            totalDurationMinutes: number;
-            requiresConfirmation: boolean;
-        };
-        AwaitingConfirmationResponseDto: {
-            /** @enum {string} */
-            status: "awaiting_confirmation";
-            plan: components["schemas"]["PracticePlanResponseDto"];
-            previousResponseId: string;
-        };
-        CreatedRoutineResultResponseDto: {
-            routineId: string;
-            title: string;
-            taskCount: number;
-        };
-        PlanCreatedResponseDto: {
-            /** @enum {string} */
-            status: "created";
-            routine: components["schemas"]["CreatedRoutineResultResponseDto"];
-        };
-        PlanCancelledResponseDto: {
-            /** @enum {string} */
-            status: "cancelled";
-        };
-        PracticePlannerRequestDto: {
-            prompt?: string;
-            confirmation?: boolean;
-            previousResponseId?: string;
-        };
-        RoutineCoachRequestDto: {
-            message: string;
-        };
-        RoutineCoachResponseDto: {
-            routineId?: string;
-            routineTitle?: string;
-            taskCount?: number;
-            message: string;
-        };
+  schemas: {
+    MeResponseDto: {
+      image?: string | null;
+      role?: string;
+      id: string;
+      email: string;
+      emailVerified: boolean;
+      name: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    UserResponseDto: {
+      displayName?: string | null;
+      image?: string | null;
+      banReason?: string | null;
+      /** Format: date-time */
+      banExpires?: string | null;
+      id: string;
+      email: string;
+      emailVerified: boolean;
+      role: string;
+      banned: boolean;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    UpdateUserDto: {
+      /** Format: email */
+      email?: string;
+      displayName?: string;
+    };
+    CreateTaskDto: {
+      title: string;
+      /** @enum {string} */
+      category?: 'technique' | 'theory' | 'repertoire';
+      /** @enum {string} */
+      difficulty?: 'easy' | 'medium' | 'hard';
+      /** Format: uri */
+      referenceLink?: string;
+      description?: string;
+    };
+    TaskResponseDto: {
+      /** @enum {string|null} */
+      category?: 'technique' | 'theory' | 'repertoire' | null;
+      /** @enum {string|null} */
+      difficulty?: 'easy' | 'medium' | 'hard' | null;
+      referenceLink?: string | null;
+      description?: string | null;
+      id: string;
+      title: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    PaginationMetaDto: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+    PaginatedTasksResponseDto: {
+      data: components['schemas']['TaskResponseDto'][];
+      meta: components['schemas']['PaginationMetaDto'];
+    };
+    UpdateTaskDto: {
+      title?: string;
+      /** @enum {string} */
+      category?: 'technique' | 'theory' | 'repertoire';
+      /** @enum {string} */
+      difficulty?: 'easy' | 'medium' | 'hard';
+      /** Format: uri */
+      referenceLink?: string;
+      description?: string;
+    };
+    CreateRoutineDto: {
+      title: string;
+      /** @enum {string} */
+      status?: 'active' | 'archived';
+      notes?: string;
+    };
+    RoutineResponseDto: {
+      /** @enum {string} */
+      status: 'active' | 'archived';
+      notes?: string | null;
+      id: string;
+      userId: string;
+      title: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    PaginatedRoutinesResponseDto: {
+      data: components['schemas']['RoutineResponseDto'][];
+      meta: components['schemas']['PaginationMetaDto'];
+    };
+    UpdateRoutineDto: {
+      title?: string;
+      /** @enum {string} */
+      status?: 'active' | 'archived';
+      notes?: string;
+    };
+    AddRoutineTaskDto: {
+      /** Format: uuid */
+      taskId: string;
+      position?: number;
+      targetDurationMinutes?: number;
+    };
+    RoutineTaskResponseDto: {
+      targetDurationMinutes?: number | null;
+      routineId: string;
+      taskId: string;
+      position: number;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    RoutineTaskWithTaskResponseDto: {
+      targetDurationMinutes?: number | null;
+      task: components['schemas']['TaskResponseDto'];
+      routineId: string;
+      taskId: string;
+      position: number;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    ReorderRoutineTasksDto: {
+      taskIds: string[];
+    };
+    UpdateRoutineTaskDto: {
+      position?: number;
+      targetDurationMinutes?: number;
+    };
+    CreatePracticeSessionTaskDto: {
+      /** Format: uuid */
+      taskId: string;
+      durationMinutes?: number;
+      completed?: boolean;
+    };
+    CreatePracticeSessionDto: {
+      title?: string;
+      notes?: string;
+      /** Format: uuid */
+      routineId?: string;
+      tasks?: components['schemas']['CreatePracticeSessionTaskDto'][];
+    };
+    PracticeSessionTaskResponseDto: {
+      durationMinutes?: number | null;
+      practiceSessionId: string;
+      taskId: string;
+      completed: boolean;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    PracticeSessionResponseDto: {
+      routineId?: string | null;
+      title?: string | null;
+      notes?: string | null;
+      sessionTasks: components['schemas']['PracticeSessionTaskResponseDto'][];
+      id: string;
+      userId: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    PaginatedPracticeSessionsResponseDto: {
+      data: components['schemas']['PracticeSessionResponseDto'][];
+      meta: components['schemas']['PaginationMetaDto'];
+    };
+    DeleteResultResponseDto: {
+      deletedCount: number;
+    };
+    RecordingResponseDto: {
+      id: string;
+      userId: string;
+      practiceSessionId: string;
+      objectName: string;
+      originalFileName: string;
+      contentType: string;
+      sizeBytes: number;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    DownloadUrlResponseDto: {
+      url: string;
+    };
+    PracticePlanTaskResponseDto: {
+      title: string;
+      description: string;
+      durationMinutes: number;
+    };
+    PracticePlanResponseDto: {
+      tasks: components['schemas']['PracticePlanTaskResponseDto'][];
+      title: string;
+      summary: string;
+      totalDurationMinutes: number;
+      requiresConfirmation: boolean;
+    };
+    AwaitingConfirmationResponseDto: {
+      /** @enum {string} */
+      status: 'awaiting_confirmation';
+      plan: components['schemas']['PracticePlanResponseDto'];
+      previousResponseId: string;
+    };
+    CreatedRoutineResultResponseDto: {
+      routineId: string;
+      title: string;
+      taskCount: number;
+    };
+    PlanCreatedResponseDto: {
+      /** @enum {string} */
+      status: 'created';
+      routine: components['schemas']['CreatedRoutineResultResponseDto'];
+    };
+    PlanCancelledResponseDto: {
+      /** @enum {string} */
+      status: 'cancelled';
+    };
+    PracticePlannerRequestDto: {
+      prompt?: string;
+      confirmation?: boolean;
+      previousResponseId?: string;
+    };
+    RoutineCoachRequestDto: {
+      message: string;
+    };
+    RoutineCoachResponseDto: {
+      routineId?: string;
+      routineTitle?: string;
+      taskCount?: number;
+      message: string;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    AppController_getHello: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
-                };
-            };
-        };
+  AppController_getHello: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    HealthController_liveness: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description The Health Check is successful */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @example ok */
-                        status?: string;
-                        /**
-                         * @example {
-                         *       "database": {
-                         *         "status": "up"
-                         *       }
-                         *     }
-                         */
-                        info?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        } | null;
-                        /** @example {} */
-                        error?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        } | null;
-                        /**
-                         * @example {
-                         *       "database": {
-                         *         "status": "up"
-                         *       }
-                         *     }
-                         */
-                        details?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        };
-                    };
-                };
-            };
-            /** @description The Health Check is not successful */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @example error */
-                        status?: string;
-                        /**
-                         * @example {
-                         *       "database": {
-                         *         "status": "up"
-                         *       }
-                         *     }
-                         */
-                        info?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        } | null;
-                        /**
-                         * @example {
-                         *       "redis": {
-                         *         "status": "down",
-                         *         "message": "Could not connect"
-                         *       }
-                         *     }
-                         */
-                        error?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        } | null;
-                        /**
-                         * @example {
-                         *       "database": {
-                         *         "status": "up"
-                         *       },
-                         *       "redis": {
-                         *         "status": "down",
-                         *         "message": "Could not connect"
-                         *       }
-                         *     }
-                         */
-                        details?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        };
-                    };
-                };
-            };
+        content: {
+          'application/json': string;
         };
+      };
     };
-    HealthController_readiness: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The Health Check is successful */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @example ok */
-                        status?: string;
-                        /**
-                         * @example {
-                         *       "database": {
-                         *         "status": "up"
-                         *       }
-                         *     }
-                         */
-                        info?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        } | null;
-                        /** @example {} */
-                        error?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        } | null;
-                        /**
-                         * @example {
-                         *       "database": {
-                         *         "status": "up"
-                         *       }
-                         *     }
-                         */
-                        details?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        };
-                    };
-                };
-            };
-            /** @description The Health Check is not successful */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @example error */
-                        status?: string;
-                        /**
-                         * @example {
-                         *       "database": {
-                         *         "status": "up"
-                         *       }
-                         *     }
-                         */
-                        info?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        } | null;
-                        /**
-                         * @example {
-                         *       "redis": {
-                         *         "status": "down",
-                         *         "message": "Could not connect"
-                         *       }
-                         *     }
-                         */
-                        error?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        } | null;
-                        /**
-                         * @example {
-                         *       "database": {
-                         *         "status": "up"
-                         *       },
-                         *       "redis": {
-                         *         "status": "down",
-                         *         "message": "Could not connect"
-                         *       }
-                         *     }
-                         */
-                        details?: {
-                            [key: string]: {
-                                status: string;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        };
-                    };
-                };
-            };
-        };
+  };
+  HealthController_liveness: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    UsersController_me: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description The Health Check is successful */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MeResponseDto"];
-                };
+        content: {
+          'application/json': {
+            /** @example ok */
+            status?: string;
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up"
+             *       }
+             *     }
+             */
+            info?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /** @example {} */
+            error?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up"
+             *       }
+             *     }
+             */
+            details?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
             };
+          };
         };
+      };
+      /** @description The Health Check is not successful */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @example error */
+            status?: string;
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up"
+             *       }
+             *     }
+             */
+            info?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /**
+             * @example {
+             *       "redis": {
+             *         "status": "down",
+             *         "message": "Could not connect"
+             *       }
+             *     }
+             */
+            error?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up"
+             *       },
+             *       "redis": {
+             *         "status": "down",
+             *         "message": "Could not connect"
+             *       }
+             *     }
+             */
+            details?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
+            };
+          };
+        };
+      };
     };
-    UsersController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponseDto"][];
-                };
-            };
-        };
+  };
+  HealthController_readiness: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    UsersController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description The Health Check is successful */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponseDto"];
-                };
+        content: {
+          'application/json': {
+            /** @example ok */
+            status?: string;
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up"
+             *       }
+             *     }
+             */
+            info?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /** @example {} */
+            error?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up"
+             *       }
+             *     }
+             */
+            details?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
             };
+          };
         };
+      };
+      /** @description The Health Check is not successful */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @example error */
+            status?: string;
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up"
+             *       }
+             *     }
+             */
+            info?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /**
+             * @example {
+             *       "redis": {
+             *         "status": "down",
+             *         "message": "Could not connect"
+             *       }
+             *     }
+             */
+            error?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up"
+             *       },
+             *       "redis": {
+             *         "status": "down",
+             *         "message": "Could not connect"
+             *       }
+             *     }
+             */
+            details?: {
+              [key: string]: {
+                status: string;
+              } & {
+                [key: string]: unknown;
+              };
+            };
+          };
+        };
+      };
     };
-    UsersController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
+  };
+  UsersController_me: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    UsersController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateUserDto"];
-            };
+        content: {
+          'application/json': components['schemas']['MeResponseDto'];
         };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponseDto"];
-                };
-            };
-        };
+      };
     };
-    TasksController_findAll: {
-        parameters: {
-            query?: {
-                page?: number;
-                limit?: number;
-                category?: "technique" | "theory" | "repertoire";
-                difficulty?: "easy" | "medium" | "hard";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedTasksResponseDto"];
-                };
-            };
-        };
+  };
+  UsersController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    TasksController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateTaskDto"];
-            };
+        content: {
+          'application/json': components['schemas']['UserResponseDto'][];
         };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskResponseDto"];
-                };
-            };
-        };
+      };
     };
-    TasksController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskResponseDto"];
-                };
-            };
-        };
+  };
+  UsersController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
     };
-    TasksController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+        content: {
+          'application/json': components['schemas']['UserResponseDto'];
         };
+      };
     };
-    TasksController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateTaskDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskResponseDto"];
-                };
-            };
-        };
+  };
+  UsersController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
     };
-    RoutinesController_findAll: {
-        parameters: {
-            query?: {
-                page?: number;
-                limit?: number;
-                status?: "active" | "archived";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedRoutinesResponseDto"];
-                };
-            };
-        };
+        content?: never;
+      };
     };
-    RoutinesController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateRoutineDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoutineResponseDto"];
-                };
-            };
-        };
+  };
+  UsersController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
     };
-    RoutinesController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoutineResponseDto"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateUserDto'];
+      };
     };
-    RoutinesController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+        content: {
+          'application/json': components['schemas']['UserResponseDto'];
         };
+      };
     };
-    RoutinesController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateRoutineDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoutineResponseDto"];
-                };
-            };
-        };
+  };
+  TasksController_findAll: {
+    parameters: {
+      query?: {
+        page?: number;
+        limit?: number;
+        category?: 'technique' | 'theory' | 'repertoire';
+        difficulty?: 'easy' | 'medium' | 'hard';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    RoutinesController_findTasks: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                routineId: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoutineTaskWithTaskResponseDto"][];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['PaginatedTasksResponseDto'];
         };
+      };
     };
-    RoutinesController_addTask: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                routineId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AddRoutineTaskDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoutineTaskResponseDto"];
-                };
-            };
-        };
+  };
+  TasksController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    RoutinesController_reorderTasks: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                routineId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReorderRoutineTasksDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoutineTaskResponseDto"][];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateTaskDto'];
+      };
     };
-    RoutinesController_removeTask: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                routineId: string;
-                taskId: string;
-            };
-            cookie?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+        content: {
+          'application/json': components['schemas']['TaskResponseDto'];
         };
+      };
     };
-    RoutinesController_updateTask: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                routineId: string;
-                taskId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateRoutineTaskDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoutineTaskResponseDto"];
-                };
-            };
-        };
+  };
+  TasksController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
     };
-    PracticeSessionsController_findAll: {
-        parameters: {
-            query?: {
-                page?: number;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedPracticeSessionsResponseDto"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['TaskResponseDto'];
         };
+      };
     };
-    PracticeSessionsController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreatePracticeSessionDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PracticeSessionResponseDto"];
-                };
-            };
-        };
+  };
+  TasksController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
     };
-    PracticeSessionsController_deleteByTitle: {
-        parameters: {
-            query: {
-                title: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeleteResultResponseDto"];
-                };
-            };
-        };
+        content?: never;
+      };
     };
-    PracticeSessionsController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                sessionId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PracticeSessionResponseDto"];
-                };
-            };
-        };
+  };
+  TasksController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
     };
-    PracticeSessionsController_findRecordings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                sessionId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RecordingResponseDto"][];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateTaskDto'];
+      };
     };
-    PracticeSessionsController_uploadRecording: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                sessionId: string;
-            };
-            cookie?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RecordingResponseDto"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['TaskResponseDto'];
         };
+      };
     };
-    RecordingsController_getDownloadUrl: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                recordingId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DownloadUrlResponseDto"];
-                };
-            };
-        };
+  };
+  RoutinesController_findAll: {
+    parameters: {
+      query?: {
+        page?: number;
+        limit?: number;
+        status?: 'active' | 'archived';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    RecordingsController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                recordingId: string;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+        content: {
+          'application/json': components['schemas']['PaginatedRoutinesResponseDto'];
         };
+      };
     };
-    AiPracticePlannerController_handle: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PracticePlannerRequestDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AwaitingConfirmationResponseDto"] | components["schemas"]["PlanCreatedResponseDto"] | components["schemas"]["PlanCancelledResponseDto"];
-                };
-            };
-        };
+  };
+  RoutinesController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    AiRoutineCoachController_handle: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RoutineCoachRequestDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoutineCoachResponseDto"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateRoutineDto'];
+      };
     };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoutineResponseDto'];
+        };
+      };
+    };
+  };
+  RoutinesController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoutineResponseDto'];
+        };
+      };
+    };
+  };
+  RoutinesController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  RoutinesController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateRoutineDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoutineResponseDto'];
+        };
+      };
+    };
+  };
+  RoutinesController_findTasks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        routineId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoutineTaskWithTaskResponseDto'][];
+        };
+      };
+    };
+  };
+  RoutinesController_addTask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        routineId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AddRoutineTaskDto'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoutineTaskResponseDto'];
+        };
+      };
+    };
+  };
+  RoutinesController_reorderTasks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        routineId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReorderRoutineTasksDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoutineTaskResponseDto'][];
+        };
+      };
+    };
+  };
+  RoutinesController_removeTask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        routineId: string;
+        taskId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  RoutinesController_updateTask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        routineId: string;
+        taskId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateRoutineTaskDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoutineTaskResponseDto'];
+        };
+      };
+    };
+  };
+  PracticeSessionsController_findAll: {
+    parameters: {
+      query?: {
+        page?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PaginatedPracticeSessionsResponseDto'];
+        };
+      };
+    };
+  };
+  PracticeSessionsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreatePracticeSessionDto'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PracticeSessionResponseDto'];
+        };
+      };
+    };
+  };
+  PracticeSessionsController_deleteByTitle: {
+    parameters: {
+      query: {
+        title: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DeleteResultResponseDto'];
+        };
+      };
+    };
+  };
+  PracticeSessionsController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        sessionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PracticeSessionResponseDto'];
+        };
+      };
+    };
+  };
+  PracticeSessionsController_findRecordings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        sessionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RecordingResponseDto'][];
+        };
+      };
+    };
+  };
+  PracticeSessionsController_uploadRecording: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        sessionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RecordingResponseDto'];
+        };
+      };
+    };
+  };
+  RecordingsController_getDownloadUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        recordingId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DownloadUrlResponseDto'];
+        };
+      };
+    };
+  };
+  RecordingsController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        recordingId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AiPracticePlannerController_handle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PracticePlannerRequestDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json':
+            | components['schemas']['AwaitingConfirmationResponseDto']
+            | components['schemas']['PlanCreatedResponseDto']
+            | components['schemas']['PlanCancelledResponseDto'];
+        };
+      };
+    };
+  };
+  AiRoutineCoachController_handle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RoutineCoachRequestDto'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoutineCoachResponseDto'];
+        };
+      };
+    };
+  };
 }

@@ -3,18 +3,15 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/assets/*": [
-        "./assets/*"
-      ]
+      "@/*": ["./src/*"],
+      "@/assets/*": ["./assets/*"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  // `backend/` only exists transiently in CI: contract.yml (see
+  // .github/workflows/contract.yml) checks the backend repo out there so
+  // api:types:check can read its openapi.json. It has its own tsconfig and
+  // node_modules, neither of which is installed here, so tsc must not
+  // recurse into it.
+  "exclude": ["backend"]
 }
