@@ -7,12 +7,27 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 const ENTRIES = [
-  { href: '/(app)/(tabs)', label: 'Home', match: '/', Icon: House },
-  { href: '/(app)/(tabs)/routines', label: 'Routines', match: '/routines', Icon: ListMusic },
-  { href: '/(app)/(tabs)/library', label: 'Library', match: '/library', Icon: BookOpen },
-  { href: '/(app)/history', label: 'History', match: '/history', Icon: History },
-  { href: '/(app)/coach', label: 'AI Coach', match: '/coach', Icon: MessageCircle },
-  { href: '/(app)/(tabs)/profile', label: 'Profile', match: '/profile', Icon: User },
+  { href: '/(app)/(main)/(tabs)', label: 'Home', match: '/', Icon: House },
+  {
+    href: '/(app)/(main)/(tabs)/routines',
+    label: 'Routines',
+    match: '/routines',
+    Icon: ListMusic,
+  },
+  {
+    href: '/(app)/(main)/(tabs)/library',
+    label: 'Library',
+    match: '/library',
+    Icon: BookOpen,
+  },
+  { href: '/(app)/(main)/history', label: 'History', match: '/history', Icon: History },
+  { href: '/(app)/(main)/coach', label: 'AI Coach', match: '/coach', Icon: MessageCircle },
+  {
+    href: '/(app)/(main)/(tabs)/profile',
+    label: 'Profile',
+    match: '/profile',
+    Icon: User,
+  },
 ] as const;
 
 /** Left rail, shown at 768px+ per the web wireframes (option 2a) — plan/SETUP-PLAN.md step 8. */

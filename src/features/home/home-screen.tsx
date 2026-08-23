@@ -49,11 +49,11 @@ export function HomeScreen() {
             )}
           </Card>
 
-          <Link href="/(app)/(tabs)/routines" asChild>
+          <Link href="/(app)/(main)/(tabs)/routines" asChild>
             <Button block>Start practice</Button>
           </Link>
 
-          <Link href="/(app)/coach" asChild>
+          <Link href="/(app)/(main)/coach" asChild>
             <Button variant="secondary" block>
               Ask the AI Coach
             </Button>

@@ -8,7 +8,7 @@ import type { Routine } from '@/types/routine';
 
 export function RoutineCard({ routine }: { routine: Routine }) {
   return (
-    <Link href={{ pathname: '/(app)/routines/[id]', params: { id: routine.id } }} asChild>
+    <Link href={{ pathname: '/routines/[id]', params: { id: routine.id } }} asChild>
       <Card style={styles.card}>
         <View style={styles.row}>
           <ThemedText type="h5" style={styles.title}>

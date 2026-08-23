@@ -31,7 +31,9 @@ export function CoachScreen() {
   const resolvePlanMutation = useResolvePracticePlan();
   const instantCreateMutation = useInstantCreateRoutine();
   const loading =
-    requestPlanMutation.isPending || resolvePlanMutation.isPending || instantCreateMutation.isPending;
+    requestPlanMutation.isPending ||
+    resolvePlanMutation.isPending ||
+    instantCreateMutation.isPending;
 
   async function handleSubmit() {
     if (!input.trim()) return;
@@ -115,7 +117,10 @@ export function CoachScreen() {
           {message && (
             <View style={{ gap: Spacing[2] }}>
               <ThemedText type="body">{message}</ThemedText>
-              <Button variant="secondary" onPress={() => router.push('/(app)/(tabs)/routines')}>
+              <Button
+                variant="secondary"
+                onPress={() => router.push('/(app)/(main)/(tabs)/routines')}
+              >
                 View routines
               </Button>
             </View>

@@ -15,7 +15,7 @@ export function PracticeFab() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Start practice"
-      onPress={() => router.push('/(app)/(tabs)/routines')}
+      onPress={() => router.push('/(app)/(main)/(tabs)/routines')}
       style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
     >
       <Play color={Colors.bg} size={28} strokeWidth={2.75} fill={Colors.bg} />

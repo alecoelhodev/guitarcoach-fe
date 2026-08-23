@@ -57,8 +57,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "format": "prettier --write .",
-    "api:types": "openapi-typescript ${BACKEND_OPENAPI_PATH:-../guitar-coach/openapi.json} -o src/types/api.d.ts",
-    "api:types:remote": "openapi-typescript $EXPO_PUBLIC_API_BASE_URL/docs-json -o src/types/api.d.ts",
+    "api:types": "openapi-typescript ${BACKEND_OPENAPI_PATH:-../guitar-coach/openapi.json} -o src/types/api.d.ts && prettier --write src/types/api.d.ts",
+    "api:types:remote": "openapi-typescript $EXPO_PUBLIC_API_BASE_URL/docs-json -o src/types/api.d.ts && prettier --write src/types/api.d.ts",
     "api:types:check": "npm run api:types && git diff --exit-code src/types/api.d.ts && tsc --noEmit"
   },
   "private": true
