@@ -1,16 +1,4 @@
-export type PracticeSessionTask = {
-  taskId: string;
-  durationMinutes?: number | null;
-  completed: boolean;
-};
+import type { components } from '@/types/api';
 
-export type PracticeSession = {
-  id: string;
-  userId: string;
-  routineId?: string | null;
-  title?: string | null;
-  notes?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  sessionTasks?: PracticeSessionTask[];
-};
+export type PracticeSessionTask = components['schemas']['PracticeSessionTaskResponseDto'];
+export type PracticeSession = components['schemas']['PracticeSessionResponseDto'];

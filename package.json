@@ -46,6 +46,7 @@
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.1",
     "eslint-config-prettier": "^10.1.8",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.6",
     "typescript": "~6.0.3"
   },
@@ -55,7 +56,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "api:types": "openapi-typescript ${BACKEND_OPENAPI_PATH:-../guitar-coach/openapi.json} -o src/types/api.d.ts",
+    "api:types:remote": "openapi-typescript $EXPO_PUBLIC_API_BASE_URL/docs-json -o src/types/api.d.ts",
+    "api:types:check": "npm run api:types && git diff --exit-code src/types/api.d.ts && tsc --noEmit"
   },
   "private": true
 }

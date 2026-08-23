@@ -1,7 +1,7 @@
-import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
 import { getSession } from '@/api/auth';
+import { storage } from '@/lib/storage';
 import type { User } from '@/types/user';
 
 const SESSION_CACHE_KEY = 'guitar-coach.cached-user';
@@ -24,16 +24,16 @@ export const useSessionStore = create<SessionState>((set) => ({
   user: null,
 
   hydrate: async () => {
-    const cached = await SecureStore.getItemAsync(SESSION_CACHE_KEY);
+    const cached = storage.getString(SESSION_CACHE_KEY);
     if (cached) set({ user: JSON.parse(cached) as User });
 
     try {
       const session = await getSession();
       if (session?.user) {
-        await SecureStore.setItemAsync(SESSION_CACHE_KEY, JSON.stringify(session.user));
+        storage.set(SESSION_CACHE_KEY, JSON.stringify(session.user));
         set({ status: 'authenticated', user: session.user });
       } else {
-        await SecureStore.deleteItemAsync(SESSION_CACHE_KEY);
+        storage.remove(SESSION_CACHE_KEY);
         set({ status: 'unauthenticated', user: null });
       }
     } catch {
@@ -43,12 +43,12 @@ export const useSessionStore = create<SessionState>((set) => ({
   },
 
   setUser: (user) => {
-    SecureStore.setItemAsync(SESSION_CACHE_KEY, JSON.stringify(user));
+    storage.set(SESSION_CACHE_KEY, JSON.stringify(user));
     set({ status: 'authenticated', user });
   },
 
   clear: () => {
-    SecureStore.deleteItemAsync(SESSION_CACHE_KEY);
+    storage.remove(SESSION_CACHE_KEY);
     set({ status: 'unauthenticated', user: null });
   },
 }));

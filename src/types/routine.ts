@@ -1,22 +1,7 @@
-import type { Task } from '@/types/task';
+import type { components } from '@/types/api';
 
-export type RoutineStatus = 'active' | 'archived';
+export type Routine = components['schemas']['RoutineResponseDto'];
+export type RoutineStatus = Routine['status'];
 
-export type Routine = {
-  id: string;
-  userId: string;
-  title: string;
-  status: RoutineStatus;
-  notes?: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type RoutineTask = {
-  routineId: string;
-  taskId: string;
-  position: number;
-  targetDurationMinutes?: number | null;
-};
-
-export type RoutineTaskWithTask = RoutineTask & { task: Task };
+export type RoutineTask = components['schemas']['RoutineTaskResponseDto'];
+export type RoutineTaskWithTask = components['schemas']['RoutineTaskWithTaskResponseDto'];

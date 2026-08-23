@@ -1,0 +1,32 @@
+name: API contract
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-types:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out frontend
+        uses: actions/checkout@v6
+
+      - name: Check out backend
+        uses: actions/checkout@v6
+        with:
+          repository: alecoelhodev/guitarcoach
+          path: backend
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Regenerate types from backend/openapi.json and verify no drift
+        run: npm run api:types:check
+        env:
+          BACKEND_OPENAPI_PATH: backend/openapi.json

@@ -33,9 +33,7 @@ export function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <ThemedText type="h3">
-            {user ? `Welcome back, ${user.displayName}` : 'Welcome back'}
-          </ThemedText>
+          <ThemedText type="h3">{user ? `Welcome back, ${user.name}` : 'Welcome back'}</ThemedText>
 
           <Card>
             <ThemedText type="overline" color="textMuted">

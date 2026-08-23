@@ -1,3 +1,5 @@
+import type { components } from '@/types/api';
+
 export type RecordingMimeType =
   | 'audio/mpeg'
   | 'audio/wav'
@@ -9,13 +11,4 @@ export type RecordingMimeType =
 
 export const RECORDING_MAX_SIZE_BYTES = 50 * 1024 * 1024;
 
-export type Recording = {
-  id: string;
-  userId: string;
-  practiceSessionId: string;
-  objectName: string;
-  originalFileName: string;
-  contentType: string;
-  sizeBytes: number;
-  createdAt: string;
-};
+export type Recording = components['schemas']['RecordingResponseDto'];
