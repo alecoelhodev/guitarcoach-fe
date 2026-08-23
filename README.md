@@ -25,6 +25,13 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Working with the API
+
+Types in `src/types/` are generated from the backend's OpenAPI schema, not hand-written.
+After any backend API change, see
+[docs/api-contract-workflow.md](docs/api-contract-workflow.md) for the commands to run and
+the order to merge in.
+
 ## Get a fresh project
 
 When you're ready, run:
