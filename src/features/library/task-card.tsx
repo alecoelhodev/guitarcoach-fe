@@ -9,7 +9,7 @@ import type { Task } from '@/types/task';
 
 export function TaskCard({ task }: { task: Task }) {
   return (
-    <Link href={{ pathname: '/(app)/library/[id]', params: { id: task.id } }} asChild>
+    <Link href={{ pathname: '/library/[id]', params: { id: task.id } }} asChild>
       <Card style={styles.card}>
         <ThemedText type="h5">{task.title}</ThemedText>
         <View style={styles.badges}>

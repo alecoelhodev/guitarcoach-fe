@@ -1,11 +1,5 @@
-export type TaskCategory = 'technique' | 'theory' | 'repertoire';
-export type TaskDifficulty = 'easy' | 'medium' | 'hard';
+import type { components } from '@/types/api';
 
-export type Task = {
-  id: string;
-  title: string;
-  category?: TaskCategory;
-  difficulty?: TaskDifficulty;
-  referenceLink?: string;
-  description?: string;
-};
+export type Task = components['schemas']['TaskResponseDto'];
+export type TaskCategory = NonNullable<Task['category']>;
+export type TaskDifficulty = NonNullable<Task['difficulty']>;

@@ -1,0 +1,43 @@
+name: API contract
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-types:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out frontend
+        uses: actions/checkout@v6
+
+      - name: Check out backend
+        uses: actions/checkout@v6
+        with:
+          repository: alecoelhodev/guitarcoach
+          path: backend
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Expo generates `expo-env.d.ts` (which pulls in expo/types, providing the
+      # ambient `declare module '*.css'` that `import '@/global.css'` needs) and
+      # `.expo/types` (expo-router's typed routes) only when the dev server
+      # starts. Both are gitignored, so a fresh CI checkout has neither and
+      # `tsc --noEmit` fails on the CSS import while silently not checking
+      # routes at all. This is the command Expo documents for exactly this case
+      # — see https://docs.expo.dev/router/reference/typed-routes/ ("generate
+      # these types without initiating the development server ... on a CI").
+      - name: Generate Expo ambient and typed-route declarations
+        run: npx expo customize tsconfig.json
+
+      - name: Regenerate types from backend/openapi.json and verify no drift
+        run: npm run api:types:check
+        env:
+          BACKEND_OPENAPI_PATH: backend/openapi.json

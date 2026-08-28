@@ -1,25 +1,11 @@
-export type PracticePlanTask = {
-  title: string;
-  description: string;
-  durationMinutes: number;
-};
+import type { components } from '@/types/api';
 
-export type PracticePlan = {
-  title: string;
-  summary: string;
-  totalDurationMinutes: number;
-  tasks: PracticePlanTask[];
-  requiresConfirmation: boolean;
-};
+export type PracticePlanTask = components['schemas']['PracticePlanTaskResponseDto'];
+export type PracticePlan = components['schemas']['PracticePlanResponseDto'];
 
 export type DraftPlanResponse =
-  | { status: 'awaiting_confirmation'; plan: PracticePlan; previousResponseId: string }
-  | { status: 'created'; routine: { routineId: string; title: string; taskCount: number } }
-  | { status: 'cancelled' };
+  | components['schemas']['AwaitingConfirmationResponseDto']
+  | components['schemas']['PlanCreatedResponseDto']
+  | components['schemas']['PlanCancelledResponseDto'];
 
-export type InstantCreateResponse = {
-  message: string;
-  routineId?: string;
-  routineTitle?: string;
-  taskCount?: number;
-};
+export type InstantCreateResponse = components['schemas']['RoutineCoachResponseDto'];

@@ -11,7 +11,7 @@ export function SessionCard({ session }: { session: PracticeSession }) {
   const minutes = sumSessionMinutes(session);
 
   return (
-    <Link href={{ pathname: '/(app)/history/[id]', params: { id: session.id } }} asChild>
+    <Link href={{ pathname: '/history/[id]', params: { id: session.id } }} asChild>
       <Card style={styles.card}>
         <ThemedText type="h5">{session.title ?? 'Practice session'}</ThemedText>
         <ThemedText type="caption" color="textMuted">

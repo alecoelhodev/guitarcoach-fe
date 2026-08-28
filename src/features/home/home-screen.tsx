@@ -33,9 +33,7 @@ export function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <ThemedText type="h3">
-            {user ? `Welcome back, ${user.displayName}` : 'Welcome back'}
-          </ThemedText>
+          <ThemedText type="h3">{user ? `Welcome back, ${user.name}` : 'Welcome back'}</ThemedText>
 
           <Card>
             <ThemedText type="overline" color="textMuted">
@@ -51,11 +49,11 @@ export function HomeScreen() {
             )}
           </Card>
 
-          <Link href="/(app)/(tabs)/routines" asChild>
+          <Link href="/(app)/(main)/(tabs)/routines" asChild>
             <Button block>Start practice</Button>
           </Link>
 
-          <Link href="/(app)/coach" asChild>
+          <Link href="/(app)/(main)/coach" asChild>
             <Button variant="secondary" block>
               Ask the AI Coach
             </Button>

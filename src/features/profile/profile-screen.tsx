@@ -30,7 +30,7 @@ export function ProfileScreen() {
         <ThemedText type="h3">Profile</ThemedText>
         {user && (
           <ThemedView style={{ gap: Spacing[1] }}>
-            <ThemedText type="h5">{user.displayName}</ThemedText>
+            <ThemedText type="h5">{user.name}</ThemedText>
             <ThemedText type="body" color="textMuted">
               {user.email}
             </ThemedText>
