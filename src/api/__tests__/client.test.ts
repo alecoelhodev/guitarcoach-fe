@@ -73,6 +73,24 @@ describe('request', () => {
     expect(onUnauthorized).not.toHaveBeenCalled();
   });
 
+  it('aborts a request that outruns its timeout and reports it as offline', async () => {
+    jest.useFakeTimers();
+    const { request, OFFLINE_STATUS } = loadClient('ios');
+    // A server that never answers: the abort signal is the only thing that settles this.
+    globalThis.fetch = jest.fn(
+      (_url, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => reject(new Error('Aborted')));
+        }),
+    ) as unknown as typeof fetch;
+
+    const pending = request('/auth/get-session', { unprefixed: true, timeoutMs: 5000 });
+    jest.advanceTimersByTime(5000);
+
+    await expect(pending).rejects.toMatchObject({ name: 'ApiError', status: OFFLINE_STATUS });
+    jest.useRealTimers();
+  });
+
   it('reports an unreachable server as an offline ApiError', async () => {
     const { request, ApiError, OFFLINE_STATUS } = loadClient('ios');
     globalThis.fetch = jest

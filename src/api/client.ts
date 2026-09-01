@@ -49,6 +49,8 @@ type RequestOptions = {
   query?: Record<string, string | number | boolean | undefined>;
   /** /auth/* and /health/* sit outside the /api/v1 prefix. */
   unprefixed?: boolean;
+  /** Abort after this many ms. Surfaces as the same offline `ApiError` as an unreachable server. */
+  timeoutMs?: number;
 };
 
 function buildUrl(path: string, query?: RequestOptions['query'], unprefixed?: boolean) {
@@ -70,14 +72,23 @@ async function parseErrorMessage(response: Response) {
   }
 }
 
-async function send(url: string, init: RequestInit, prefixed: boolean) {
+async function send(url: string, init: RequestInit, prefixed: boolean, timeoutMs?: number) {
+  // `AbortSignal.timeout` does not exist here: React Native polyfills AbortSignal from
+  // abort-controller@3, which predates that static. whatwg-fetch does honour `signal`.
+  const controller = timeoutMs === undefined ? undefined : new AbortController();
+  const timer =
+    controller === undefined ? undefined : setTimeout(() => controller.abort(), timeoutMs);
+
   let response: Response;
   try {
-    response = await fetch(url, init);
+    response = await fetch(url, { ...init, signal: controller?.signal });
   } catch {
-    // fetch only rejects when the request never completed — no route, DNS, TLS.
-    // Anything the server actually answered arrives as a non-ok Response below.
+    // fetch only rejects when the request never completed — no route, DNS, TLS, or our
+    // own abort above. Anything the server actually answered arrives as a non-ok
+    // Response below.
     throw new ApiError('No connection', OFFLINE_STATUS);
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!response.ok) {
@@ -104,6 +115,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       body: options.body ? JSON.stringify(options.body) : undefined,
     },
     !options.unprefixed,
+    options.timeoutMs,
   );
 
   if (response.status === 204) return undefined as T;

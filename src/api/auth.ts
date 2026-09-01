@@ -29,8 +29,19 @@ export function signOut() {
   return request<void>('/auth/sign-out', { method: 'POST', unprefixed: true });
 }
 
+/**
+ * The boot splash waits on this, so it has to be bounded: on a captive portal or a
+ * black-holed connection fetch hangs until the platform timeout (~60s on iOS) and the
+ * app would show nothing but the splash for that whole window. An abort surfaces as the
+ * offline `ApiError` that `session-store` already falls back to the cached user on.
+ */
+const SESSION_TIMEOUT_MS = 5000;
+
 export function getSession() {
-  return request<{ user: User } | null>('/auth/get-session', { unprefixed: true });
+  return request<{ user: User } | null>('/auth/get-session', {
+    unprefixed: true,
+    timeoutMs: SESSION_TIMEOUT_MS,
+  });
 }
 
 /**

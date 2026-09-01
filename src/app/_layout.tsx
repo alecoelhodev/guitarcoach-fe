@@ -59,7 +59,12 @@ export default function RootLayout() {
   const ready = fontsLoaded && status !== 'loading';
 
   useEffect(() => {
-    setUnauthorizedHandler(() => useSessionStore.getState().clear());
+    setUnauthorizedHandler(() => {
+      useSessionStore.getState().clear();
+      // Same reason the deliberate sign-out path clears it: an expired cookie leaves the
+      // previous user's routines and sessions cached for whoever signs in next.
+      queryClient.clear();
+    });
   }, []);
 
   useEffect(() => {
