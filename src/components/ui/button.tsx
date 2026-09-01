@@ -17,6 +17,8 @@ export type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   variant?: ButtonVariant;
   block?: boolean;
   loading?: boolean;
+  /** Shown in place of the spinner while `loading`, for forms that must keep a visible label. */
+  loadingLabel?: string;
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
 };
@@ -25,6 +27,7 @@ export function Button({
   variant = 'primary',
   block = false,
   loading = false,
+  loadingLabel,
   disabled,
   style,
   children,
@@ -34,6 +37,7 @@ export function Button({
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const isDisabled = disabled || loading;
+  const label = loading && loadingLabel ? loadingLabel : children;
 
   return (
     <Pressable
@@ -81,18 +85,18 @@ export function Button({
       ]}
       {...rest}
     >
-      {loading ? (
+      {loading && !loadingLabel ? (
         <ActivityIndicator color={variant === 'primary' ? Colors.bg : Colors.accent} />
-      ) : typeof children === 'string' ? (
+      ) : typeof label === 'string' ? (
         <ThemedText
           type="button"
           color={variant === 'primary' ? undefined : 'accent'}
           style={variant === 'primary' && styles.primaryLabel}
         >
-          {children}
+          {label}
         </ThemedText>
       ) : (
-        children
+        label
       )}
     </Pressable>
   );
