@@ -12,6 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { setUnauthorizedHandler } from '@/api/client';
 import { queryClient } from '@/api/query-client';
 import { ErrorBoundaryFallback } from '@/components/error-boundary-fallback';
 import { ToastHost } from '@/components/toast-host';
@@ -50,16 +51,31 @@ export default function RootLayout() {
     Figtree_600SemiBold,
   });
   const hydrate = useSessionStore((state) => state.hydrate);
+  const status = useSessionStore((state) => state.status);
+
+  // Session restore is a network round-trip, so hold the splash until it settles —
+  // otherwise `status === 'loading'` falls through both group guards and whichever
+  // group the URL points at mounts and starts firing queries.
+  const ready = fontsLoaded && status !== 'loading';
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      useSessionStore.getState().clear();
+      // Same reason the deliberate sign-out path clears it: an expired cookie leaves the
+      // previous user's routines and sessions cached for whoever signs in next.
+      queryClient.clear();
+    });
+  }, []);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
 
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
 
-  if (!fontsLoaded) return null;
+  if (!ready) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

@@ -51,5 +51,6 @@ const styles = StyleSheet.create({
   },
   invalid: {
     borderColor: Colors.accentRamp[700],
+    backgroundColor: Colors.accentRamp[100],
   },
 });

@@ -41,3 +41,6 @@ jobs:
         run: npm run api:types:check
         env:
           BACKEND_OPENAPI_PATH: backend/openapi.json
+
+      - name: Run tests
+        run: npm test

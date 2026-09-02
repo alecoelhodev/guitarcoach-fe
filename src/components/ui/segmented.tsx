@@ -24,7 +24,7 @@ export function Segmented<T extends string>({ options, value, onChange }: Segmen
             onPress={() => onChange(option.value)}
             style={[styles.segment, selected && styles.segmentSelected]}
           >
-            <ThemedText type="label" color={selected ? 'text' : 'textMuted'}>
+            <ThemedText type="button" color={selected ? 'text' : 'textMuted'}>
               {option.label}
             </ThemedText>
           </Pressable>
