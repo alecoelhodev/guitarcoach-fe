@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-  '/': {
+  '/api/v1': {
     parameters: {
       query?: never;
       header?: never;
@@ -52,7 +52,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/users/me': {
+  '/api/v1/users/me': {
     parameters: {
       query?: never;
       header?: never;
@@ -68,7 +68,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/users': {
+  '/api/v1/users': {
     parameters: {
       query?: never;
       header?: never;
@@ -84,7 +84,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/users/{id}': {
+  '/api/v1/users/{id}': {
     parameters: {
       query?: never;
       header?: never;
@@ -100,7 +100,7 @@ export interface paths {
     patch: operations['UsersController_update'];
     trace?: never;
   };
-  '/tasks': {
+  '/api/v1/tasks': {
     parameters: {
       query?: never;
       header?: never;
@@ -116,7 +116,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/tasks/{id}': {
+  '/api/v1/tasks/{id}': {
     parameters: {
       query?: never;
       header?: never;
@@ -132,7 +132,7 @@ export interface paths {
     patch: operations['TasksController_update'];
     trace?: never;
   };
-  '/routines': {
+  '/api/v1/routines': {
     parameters: {
       query?: never;
       header?: never;
@@ -148,7 +148,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/routines/{id}': {
+  '/api/v1/routines/{id}': {
     parameters: {
       query?: never;
       header?: never;
@@ -164,7 +164,7 @@ export interface paths {
     patch: operations['RoutinesController_update'];
     trace?: never;
   };
-  '/routines/{routineId}/tasks': {
+  '/api/v1/routines/{routineId}/tasks': {
     parameters: {
       query?: never;
       header?: never;
@@ -180,7 +180,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/routines/{routineId}/tasks/reorder': {
+  '/api/v1/routines/{routineId}/tasks/reorder': {
     parameters: {
       query?: never;
       header?: never;
@@ -196,7 +196,7 @@ export interface paths {
     patch: operations['RoutinesController_reorderTasks'];
     trace?: never;
   };
-  '/routines/{routineId}/tasks/{taskId}': {
+  '/api/v1/routines/{routineId}/tasks/{taskId}': {
     parameters: {
       query?: never;
       header?: never;
@@ -212,7 +212,7 @@ export interface paths {
     patch: operations['RoutinesController_updateTask'];
     trace?: never;
   };
-  '/practice-sessions': {
+  '/api/v1/practice-sessions': {
     parameters: {
       query?: never;
       header?: never;
@@ -228,7 +228,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/practice-sessions/{sessionId}': {
+  '/api/v1/practice-sessions/{sessionId}': {
     parameters: {
       query?: never;
       header?: never;
@@ -244,7 +244,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/practice-sessions/{sessionId}/recordings': {
+  '/api/v1/practice-sessions/{sessionId}/recordings': {
     parameters: {
       query?: never;
       header?: never;
@@ -260,7 +260,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/recordings/{recordingId}/download-url': {
+  '/api/v1/recordings/{recordingId}/download-url': {
     parameters: {
       query?: never;
       header?: never;
@@ -276,7 +276,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/recordings/{recordingId}': {
+  '/api/v1/recordings/{recordingId}': {
     parameters: {
       query?: never;
       header?: never;
@@ -292,7 +292,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/ai/practice-planner': {
+  '/api/v1/ai/practice-planner': {
     parameters: {
       query?: never;
       header?: never;
@@ -308,7 +308,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/ai/routine-coach': {
+  '/api/v1/ai/routine-coach': {
     parameters: {
       query?: never;
       header?: never;
