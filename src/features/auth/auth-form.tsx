@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { requestPasswordReset, signIn, signUp } from '@/api/auth';
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
+import { describeError } from '@/api/errors';
 import { ThemedText } from '@/components/themed-text';
 import { Banner, type BannerProps } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
@@ -29,19 +30,17 @@ const FIELD_ORDER = ['name', 'email', 'password'] as const;
 
 function bannerForError(error: unknown, onRetry: () => void): BannerProps {
   if (error instanceof ApiError) {
+    // Offline gets a Retry action here that no other screen offers, and a 401 means bad
+    // credentials rather than an expired session — the two cases `describeError` cannot
+    // know from the status alone.
     if (error.status === OFFLINE_STATUS) {
       return { title: 'No connection', actionLabel: 'Retry', onAction: onRetry };
     }
     if (error.status === 401) {
       return { title: 'Email or password is incorrect', message: 'Check both and try again.' };
     }
-    if (error.status === 429) {
-      return { title: 'Too many attempts', message: 'Try again in about a minute.' };
-    }
-    // Everything else — "User already exists" above all — reads better than a generic line.
-    if (error.message) return { title: 'Something went wrong', message: error.message };
   }
-  return { title: 'Something went wrong', message: 'Try again.' };
+  return describeError(error);
 }
 
 export type AuthFormProps = {

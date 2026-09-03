@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { instantCreateRoutine, requestPracticePlan, resolvePracticePlan } from '@/api/coach';
+import { queryKeys } from '@/api/query-keys';
 
 export function useRequestPracticePlan() {
   return useMutation({ mutationFn: (prompt: string) => requestPracticePlan(prompt) });
@@ -19,7 +20,7 @@ export function useResolvePracticePlan() {
     }) => resolvePracticePlan(previousResponseId, confirmation),
     onSuccess: (response) => {
       if (response.status === 'created') {
-        queryClient.invalidateQueries({ queryKey: ['routines'] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.routinesRoot });
       }
     },
   });
@@ -31,7 +32,7 @@ export function useInstantCreateRoutine() {
   return useMutation({
     mutationFn: (message: string) => instantCreateRoutine(message),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routines'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.routinesRoot });
     },
   });
 }

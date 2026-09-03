@@ -5,7 +5,7 @@ import {
   Figtree_600SemiBold,
 } from '@expo-google-fonts/figtree';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
 import { Stack, ThemeProvider, type Theme } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -13,6 +13,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { setUnauthorizedHandler } from '@/api/client';
+import { CACHE_BUSTER, CACHE_MAX_AGE_MS, purgePersistedCache, queryPersister } from '@/api/persist';
 import { queryClient } from '@/api/query-client';
 import { ErrorBoundaryFallback } from '@/components/error-boundary-fallback';
 import { ToastHost } from '@/components/toast-host';
@@ -62,8 +63,10 @@ export default function RootLayout() {
     setUnauthorizedHandler(() => {
       useSessionStore.getState().clear();
       // Same reason the deliberate sign-out path clears it: an expired cookie leaves the
-      // previous user's routines and sessions cached for whoever signs in next.
+      // previous user's routines and sessions cached for whoever signs in next. The
+      // persisted snapshot has to go too — `clear()` only empties memory.
       queryClient.clear();
+      void purgePersistedCache();
     });
   }, []);
 
@@ -79,7 +82,14 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister: queryPersister,
+          buster: CACHE_BUSTER,
+          maxAge: CACHE_MAX_AGE_MS,
+        }}
+      >
         <BottomSheetModalProvider>
           <ThemeProvider value={navigationTheme}>
             <Stack screenOptions={{ headerShown: false }}>
@@ -89,7 +99,7 @@ export default function RootLayout() {
             <ToastHost />
           </ThemeProvider>
         </BottomSheetModalProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </GestureHandlerRootView>
   );
 }

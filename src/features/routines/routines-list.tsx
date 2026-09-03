@@ -6,15 +6,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorPanel } from '@/components/ui/error-panel';
-import { Skeleton } from '@/components/ui/skeleton';
+import { QueryState } from '@/components/ui/query-state';
 import { RoutineCard } from '@/features/routines/routine-card';
 import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
 
 export function RoutinesList() {
-  const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useRoutines();
-  const routines = data?.pages.flatMap((page) => page.data) ?? [];
+  const query = useRoutines();
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  const routines = query.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
     <ThemedView style={styles.container}>
@@ -23,31 +22,37 @@ export function RoutinesList() {
           Routines
         </ThemedText>
 
-        {isPending ? (
-          <Skeleton height={80} />
-        ) : isError ? (
-          <ErrorPanel title="Couldn't load routines" onRetry={refetch} />
-        ) : routines.length === 0 ? (
-          <EmptyState title="No routines yet" message="Ask the AI Coach to build your first one." />
-        ) : (
-          <FlatList
-            data={routines}
-            keyExtractor={(routine) => routine.id}
-            renderItem={({ item }) => <RoutineCard routine={item} />}
-            contentContainerStyle={styles.list}
-            ListFooterComponent={
-              hasNextPage ? (
-                <Button
-                  variant="secondary"
-                  loading={isFetchingNextPage}
-                  onPress={() => fetchNextPage()}
-                >
-                  Load more
-                </Button>
-              ) : null
-            }
-          />
-        )}
+        <QueryState
+          query={query}
+          errorTitle="Couldn't load routines"
+          isEmpty={routines.length === 0}
+          empty={
+            <EmptyState
+              title="No routines yet"
+              message="Ask the AI Coach to build your first one."
+            />
+          }
+        >
+          {() => (
+            <FlatList
+              data={routines}
+              keyExtractor={(routine) => routine.id}
+              renderItem={({ item }) => <RoutineCard routine={item} />}
+              contentContainerStyle={styles.list}
+              ListFooterComponent={
+                hasNextPage ? (
+                  <Button
+                    variant="secondary"
+                    loading={isFetchingNextPage}
+                    onPress={() => fetchNextPage()}
+                  >
+                    Load more
+                  </Button>
+                ) : null
+              }
+            />
+          )}
+        </QueryState>
       </SafeAreaView>
     </ThemedView>
   );

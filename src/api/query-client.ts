@@ -2,6 +2,8 @@ import NetInfo from '@react-native-community/netinfo';
 import { QueryClient, focusManager, onlineManager } from '@tanstack/react-query';
 import { AppState, Platform } from 'react-native';
 
+import { shouldRetry } from '@/api/errors';
+
 onlineManager.setEventListener((setOnline) =>
   NetInfo.addEventListener((state) => setOnline(!!state.isConnected)),
 );
@@ -15,7 +17,7 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000,
       gcTime: 5 * 60_000,
-      retry: 2,
+      retry: shouldRetry,
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
     },

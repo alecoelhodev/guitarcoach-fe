@@ -6,38 +6,40 @@ import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Badge } from '@/components/ui/badge';
-import { ErrorPanel } from '@/components/ui/error-panel';
+import { QueryState } from '@/components/ui/query-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MaxContentWidth, Spacing } from '@/theme/tokens';
 
 export function TaskDetail({ taskId }: { taskId: string }) {
-  const { data: task, isPending, isError, refetch } = useTask(taskId);
+  const query = useTask(taskId);
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          {isPending ? (
-            <Skeleton height={160} />
-          ) : isError ? (
-            <ErrorPanel title="Couldn't load this task" onRetry={refetch} />
-          ) : (
-            <>
-              <ThemedText type="h3">{task.title}</ThemedText>
-              <ThemedView style={styles.badges}>
-                {task.category && <Badge label={task.category} variant="category" />}
-                {task.difficulty && <Badge label={task.difficulty} variant="difficulty" />}
-              </ThemedView>
-              {task.description && <ThemedText type="body">{task.description}</ThemedText>}
-              {task.referenceLink && (
-                <ExternalLink href={task.referenceLink as `${string}:${string}`}>
-                  <ThemedText type="body" color="accent">
-                    Open reference
-                  </ThemedText>
-                </ExternalLink>
-              )}
-            </>
-          )}
+          <QueryState
+            query={query}
+            skeleton={<Skeleton height={160} />}
+            errorTitle="Couldn't load this task"
+          >
+            {(task) => (
+              <>
+                <ThemedText type="h3">{task.title}</ThemedText>
+                <ThemedView style={styles.badges}>
+                  {task.category && <Badge label={task.category} variant="category" />}
+                  {task.difficulty && <Badge label={task.difficulty} variant="difficulty" />}
+                </ThemedView>
+                {task.description && <ThemedText type="body">{task.description}</ThemedText>}
+                {task.referenceLink && (
+                  <ExternalLink href={task.referenceLink as `${string}:${string}`}>
+                    <ThemedText type="body" color="accent">
+                      Open reference
+                    </ThemedText>
+                  </ExternalLink>
+                )}
+              </>
+            )}
+          </QueryState>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
