@@ -18,7 +18,7 @@ export function useSessions(filters: { limit?: number } = {}) {
  * recent `limit` sessions — not the full history. */
 export function useSessionsSummary(limit = 100) {
   return useQuery({
-    queryKey: queryKeys.sessions({ limit }),
+    queryKey: queryKeys.sessionsSummary(limit),
     queryFn: () => listSessions({ limit }),
     staleTime: 15_000,
   });
@@ -37,7 +37,7 @@ export function useCreateSession() {
   return useMutation({
     mutationFn: createSession,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessionsRoot });
     },
   });
 }

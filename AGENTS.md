@@ -91,13 +91,14 @@ Verified against the committed OpenAPI schema:
 
 ## Documentation map
 
-| Doc                             | What it is                                       |
-| ------------------------------- | ------------------------------------------------ |
-| `docs/api-contract-workflow.md` | Living runbook: BE↔FE type sync commands + flow  |
-| `plan/ARCHITECTURE-HANDOFF.md`  | Architecture review, conventions, open decisions |
-| `plan/MONOREPO-MIGRATION.md`    | Proposed BE+FE monorepo consolidation (not done) |
-| `plan/API-CONTRACT-SYNC.md`     | Original plan for the contract pipeline (built)  |
-| `plan/SETUP-PLAN.md`            | Initial build plan                               |
+| Doc                             | What it is                                         |
+| ------------------------------- | -------------------------------------------------- |
+| `docs/api-contract-workflow.md` | Living runbook: BE↔FE type sync commands + flow    |
+| `docs/api-integration.md`       | How a screen talks to the API: hooks, keys, errors |
+| `plan/ARCHITECTURE-HANDOFF.md`  | Architecture review, conventions, open decisions   |
+| `plan/MONOREPO-MIGRATION.md`    | Proposed BE+FE monorepo consolidation (not done)   |
+| `plan/API-CONTRACT-SYNC.md`     | Original plan for the contract pipeline (built)    |
+| `plan/SETUP-PLAN.md`            | Initial build plan                                 |
 
 `plan/` holds plans and proposals; `docs/` holds living operational docs. Keep new runbooks
 in `docs/`.

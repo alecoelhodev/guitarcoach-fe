@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { describeError } from '@/api/errors';
 import { useReorderRoutineTasks, useRoutine, useRoutineTasks } from '@/api/routines.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -24,9 +25,14 @@ export function RoutineDetail({ routineId }: { routineId: string }) {
 
   if (routineQuery.isPending || tasksQuery.isPending) return <Skeleton height={200} />;
   if (routineQuery.isError || tasksQuery.isError) {
+    const { title, message } = describeError(
+      routineQuery.error ?? tasksQuery.error,
+      "Couldn't load this routine",
+    );
     return (
       <ErrorPanel
-        title="Couldn't load this routine"
+        title={title}
+        message={message}
         onRetry={() => {
           routineQuery.refetch();
           tasksQuery.refetch();

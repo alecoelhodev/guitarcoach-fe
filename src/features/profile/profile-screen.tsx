@@ -1,9 +1,7 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { signOut } from '@/api/auth';
+import { useSignOut } from '@/api/auth.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
@@ -12,22 +10,7 @@ import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
 
 export function ProfileScreen() {
   const user = useSessionStore((state) => state.user);
-  const clear = useSessionStore((state) => state.clear);
-  const queryClient = useQueryClient();
-  const [signingOut, setSigningOut] = useState(false);
-
-  async function handleSignOut() {
-    setSigningOut(true);
-    try {
-      await signOut();
-    } finally {
-      clear();
-      // Cached routines and sessions belong to the user who just left — without this the
-      // next person to sign in on this device sees their data before the refetch lands.
-      queryClient.clear();
-      setSigningOut(false);
-    }
-  }
+  const signOutMutation = useSignOut();
 
   return (
     <ThemedView style={styles.container}>
@@ -41,7 +24,11 @@ export function ProfileScreen() {
             </ThemedText>
           </ThemedView>
         )}
-        <Button variant="secondary" loading={signingOut} onPress={handleSignOut}>
+        <Button
+          variant="secondary"
+          loading={signOutMutation.isPending}
+          onPress={() => signOutMutation.mutate()}
+        >
           Sign out
         </Button>
       </SafeAreaView>

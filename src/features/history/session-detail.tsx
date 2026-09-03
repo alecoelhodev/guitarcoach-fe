@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { describeError } from '@/api/errors';
 import { useRecordings } from '@/api/recordings.queries';
 import { useSession } from '@/api/sessions.queries';
 import { useTask } from '@/api/tasks.queries';
@@ -38,7 +39,8 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
 
   if (sessionQuery.isPending) return <Skeleton height={200} />;
   if (sessionQuery.isError) {
-    return <ErrorPanel title="Couldn't load this session" onRetry={() => sessionQuery.refetch()} />;
+    const { title, message } = describeError(sessionQuery.error, "Couldn't load this session");
+    return <ErrorPanel title={title} message={message} onRetry={() => sessionQuery.refetch()} />;
   }
 
   const session = sessionQuery.data;

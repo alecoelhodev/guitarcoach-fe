@@ -6,15 +6,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorPanel } from '@/components/ui/error-panel';
-import { Skeleton } from '@/components/ui/skeleton';
+import { QueryState } from '@/components/ui/query-state';
 import { TaskCard } from '@/features/library/task-card';
 import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
 
 export function LibraryList() {
-  const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useTasks();
-  const tasks = data?.pages.flatMap((page) => page.data) ?? [];
+  const query = useTasks();
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  const tasks = query.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
     <ThemedView style={styles.container}>
@@ -23,31 +22,32 @@ export function LibraryList() {
           Library
         </ThemedText>
 
-        {isPending ? (
-          <Skeleton height={80} />
-        ) : isError ? (
-          <ErrorPanel title="Couldn't load the library" onRetry={refetch} />
-        ) : tasks.length === 0 ? (
-          <EmptyState title="No tasks yet" />
-        ) : (
-          <FlatList
-            data={tasks}
-            keyExtractor={(task) => task.id}
-            renderItem={({ item }) => <TaskCard task={item} />}
-            contentContainerStyle={styles.list}
-            ListFooterComponent={
-              hasNextPage ? (
-                <Button
-                  variant="secondary"
-                  loading={isFetchingNextPage}
-                  onPress={() => fetchNextPage()}
-                >
-                  Load more
-                </Button>
-              ) : null
-            }
-          />
-        )}
+        <QueryState
+          query={query}
+          errorTitle="Couldn't load the library"
+          isEmpty={tasks.length === 0}
+          empty={<EmptyState title="No tasks yet" />}
+        >
+          {() => (
+            <FlatList
+              data={tasks}
+              keyExtractor={(task) => task.id}
+              renderItem={({ item }) => <TaskCard task={item} />}
+              contentContainerStyle={styles.list}
+              ListFooterComponent={
+                hasNextPage ? (
+                  <Button
+                    variant="secondary"
+                    loading={isFetchingNextPage}
+                    onPress={() => fetchNextPage()}
+                  >
+                    Load more
+                  </Button>
+                ) : null
+              }
+            />
+          )}
+        </QueryState>
       </SafeAreaView>
     </ThemedView>
   );

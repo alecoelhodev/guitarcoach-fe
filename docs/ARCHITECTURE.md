@@ -62,7 +62,7 @@ Three Zustand stores, split by lifetime and ownership:
 
 - **`src/stores/session-store.ts`** — auth/session status (`'loading' | 'authenticated' |
   'unauthenticated'`) plus the current `user`. The real session lives server-side in an
-  httpOnly cookie; this store only caches the last-known `user` in `expo-secure-store` so the
+  httpOnly cookie; this store only caches the last-known `user` in MMKV (`src/lib/storage.ts`) so the
   UI can render instantly on boot. `hydrate()` reads that cache first, then calls
   `getSession()` to reconcile: on success it updates the cache/status, on network failure it
   falls back to `authenticated` if a cached user exists, otherwise `unauthenticated`.
@@ -79,7 +79,8 @@ Three Zustand stores, split by lifetime and ownership:
 `src/api/query-client.ts` builds the shared `QueryClient` with real defaults instead of the
 library defaults, since React Native doesn't get focus/reconnect refetching for free:
 
-- `defaultOptions.queries`: `staleTime: 30_000`, `gcTime: 300_000`, `retry: 2`,
+- `defaultOptions.queries`: `staleTime: 30_000`, `gcTime: 300_000`,
+  `retry: shouldRetry` (from `src/api/errors.ts` — never retries a 4xx),
   `refetchOnWindowFocus: true`, `refetchOnReconnect: true`.
 - `defaultOptions.mutations`: `retry: 0`.
 - `onlineManager` is wired to `@react-native-community/netinfo` (`state.isConnected`).
@@ -112,6 +113,15 @@ Two representative patterns:
 Mutations that write session-critical data (e.g. Finish Session) intentionally have no
 optimistic update — the user should keep seeing their in-progress numbers on screen until the
 write actually succeeds.
+
+The cache is persisted to MMKV (`src/api/persist.ts`) and restored through
+`PersistQueryClientProvider`, so lists render offline from the last snapshot. Both caches are
+dropped on sign-out and on a 401.
+
+Loading, error and empty states go through `src/components/ui/query-state.tsx`, and all error
+copy comes from `describeError` in `src/api/errors.ts`.
+
+See [`api-integration.md`](api-integration.md) for the conventions a new screen should follow.
 
 ## MMKV storage adapter
 
@@ -160,11 +170,12 @@ no external UI-kit dependency: `badge`, `button`, `card`, `checklist-row`, `chip
 ## Known gaps / explicitly out of scope
 
 - Recording upload (`uploadRecording` in `src/api/recordings.ts`) has no consuming UI yet —
-  no picker screen exists, so it isn't wired into any screen.
-- OpenAPI-generated API types/client were not adopted — there's no shared backend repo
-  available to generate against.
-- Offline persistence is limited to the active-session MMKV cache described above; there's no
-  general offline query cache or mutation queue.
+  no picker screen exists, so it isn't wired into any screen. It also uses plain `fetch`,
+  which cannot report progress; a progress bar needs `expo-file-system`'s upload task.
+- Routine CRUD (`createRoutine`, `updateRoutine`, `deleteRoutine`, and the routine-task
+  writes) exists in `src/api/routines.ts` with no hooks and no screens — routines are only
+  created through the AI Coach today.
+- No mutation queue: writes attempted offline fail rather than being replayed on reconnect.
 
 ## Decision log
 

@@ -6,16 +6,15 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorPanel } from '@/components/ui/error-panel';
-import { Skeleton } from '@/components/ui/skeleton';
+import { QueryState } from '@/components/ui/query-state';
 import { SessionCard } from '@/features/history/session-card';
 import { groupSessionsByDay } from '@/lib/date-grouping';
 import { MaxContentWidth, Spacing } from '@/theme/tokens';
 
 export function HistoryList() {
-  const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useSessions();
-  const sessions = data?.pages.flatMap((page) => page.data) ?? [];
+  const query = useSessions();
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  const sessions = query.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
     <ThemedView style={styles.container}>
@@ -24,39 +23,45 @@ export function HistoryList() {
           History
         </ThemedText>
 
-        {isPending ? (
-          <Skeleton height={80} />
-        ) : isError ? (
-          <ErrorPanel title="Couldn't load your history" onRetry={refetch} />
-        ) : sessions.length === 0 ? (
-          <EmptyState title="No sessions yet" message="Finish a practice session to see it here." />
-        ) : (
-          <SectionList
-            sections={groupSessionsByDay(sessions).map((group) => ({
-              title: group.date,
-              data: group.sessions,
-            }))}
-            keyExtractor={(session) => session.id}
-            renderItem={({ item }) => <SessionCard session={item} />}
-            renderSectionHeader={({ section }) => (
-              <ThemedText type="overline" color="textMuted" style={styles.sectionHeader}>
-                {section.title}
-              </ThemedText>
-            )}
-            contentContainerStyle={styles.list}
-            ListFooterComponent={
-              hasNextPage ? (
-                <Button
-                  variant="secondary"
-                  loading={isFetchingNextPage}
-                  onPress={() => fetchNextPage()}
-                >
-                  Load older sessions
-                </Button>
-              ) : null
-            }
-          />
-        )}
+        <QueryState
+          query={query}
+          errorTitle="Couldn't load your history"
+          isEmpty={sessions.length === 0}
+          empty={
+            <EmptyState
+              title="No sessions yet"
+              message="Finish a practice session to see it here."
+            />
+          }
+        >
+          {() => (
+            <SectionList
+              sections={groupSessionsByDay(sessions).map((group) => ({
+                title: group.date,
+                data: group.sessions,
+              }))}
+              keyExtractor={(session) => session.id}
+              renderItem={({ item }) => <SessionCard session={item} />}
+              renderSectionHeader={({ section }) => (
+                <ThemedText type="overline" color="textMuted" style={styles.sectionHeader}>
+                  {section.title}
+                </ThemedText>
+              )}
+              contentContainerStyle={styles.list}
+              ListFooterComponent={
+                hasNextPage ? (
+                  <Button
+                    variant="secondary"
+                    loading={isFetchingNextPage}
+                    onPress={() => fetchNextPage()}
+                  >
+                    Load older sessions
+                  </Button>
+                ) : null
+              }
+            />
+          )}
+        </QueryState>
       </SafeAreaView>
     </ThemedView>
   );
