@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Animated, StyleSheet, type DimensionValue } from 'react-native';
+import { Animated, type DimensionValue, StyleSheet } from 'react-native';
 
 import { Colors, Radius } from '@/theme/tokens';
 
@@ -9,7 +9,7 @@ export type SkeletonProps = {
   radius?: keyof typeof Radius;
 };
 
-export function Skeleton({ width = '100%', height = 16, radius = 'sm' }: SkeletonProps) {
+export function Skeleton({ width = '100%', height = 11, radius = 'pill' }: SkeletonProps) {
   const [opacity] = useState(() => new Animated.Value(0.4));
 
   useEffect(() => {

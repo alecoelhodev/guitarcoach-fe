@@ -50,7 +50,7 @@ Routing is structured around a two-level gate plus a chrome-wrapping group:
   `routines/[id]`, `library/[id]`, `history/index`, `history/[id]`, and `coach`.
 - **`(app)/session/active`** — the active practice screen is registered as a sibling of
   `(main)` inside `(app)/_layout.tsx`, presented as a `fullScreenModal`. It's deliberately
-  *outside* `(main)` so it stays auth-gated (fixing an earlier bug where this route bypassed
+  _outside_ `(main)` so it stays auth-gated (fixing an earlier bug where this route bypassed
   auth entirely by living at the app root) while staying free of the tab bar/rail chrome that
   `(main)` applies — a full-screen practice UI shouldn't have nav chrome around it.
 - **`(tabs)`** — the four bottom-tab screens (home, library, routines, profile), with a
@@ -61,7 +61,7 @@ Routing is structured around a two-level gate plus a chrome-wrapping group:
 Three Zustand stores, split by lifetime and ownership:
 
 - **`src/stores/session-store.ts`** — auth/session status (`'loading' | 'authenticated' |
-  'unauthenticated'`) plus the current `user`. The real session lives server-side in an
+'unauthenticated'`) plus the current `user`. The real session lives server-side in an
   httpOnly cookie; this store only caches the last-known `user` in MMKV (`src/lib/storage.ts`) so the
   UI can render instantly on boot. `hydrate()` reads that cache first, then calls
   `getSession()` to reconcile: on success it updates the cache/status, on network failure it
@@ -134,26 +134,39 @@ real MMKV store on native and an automatic `localStorage`-backed shim on web —
 
 ## UI system
 
-`src/theme/tokens.ts` holds the app's "Organic" design tokens, ported directly from the
-design system's source values rather than approximated: `Colors` (base bg/surface/text/accent
-plus 100–900 accent/neutral ramps), `Spacing` (a 1.10x density scale), `Radius`, `Shadow`
-(cross-platform shadow + elevation pairs), `Interaction` (hover/pressed/focus/disabled
-states), and standalone `MaxContentWidth` / `TabBarInset` constants.
+`src/theme/tokens.ts` holds the design tokens, ported verbatim from the `:root` block of
+`wireframes/Guitar Coach Wireframes.dc.html` rather than approximated: `Colors` (dark
+bg/surface/text plus `accent`, `accent2`, `danger` and their 100–900 ramps — note the ramps
+run dark-to-light, the opposite of a light theme), `Spacing` (a 1.10x density scale whose
+keys skip 5 and 7), `Radius` (five steps plus `pill`), `Shadow` (tuned for a `#0a0b0d`
+ground), `Interaction`, and standalone `MaxContentWidth` / `ConversationMaxWidth`.
 
-`src/components/ui/` is the primitive component library built directly on these tokens, with
-no external UI-kit dependency: `badge`, `button`, `card`, `checklist-row`, `chip`,
-`confirm-dialog`, `empty-state`, `error-panel`, `field-label`, `input`, `progress-bar`,
-`segmented`, `sheet`, `skeleton`, `stepper`, `toast`, `validation-message`.
+The file is deliberately free of `react-native` imports so `tailwind.config.ts` can load it
+outside a RN runtime and derive its colors, spacing and radii from it — one source of truth
+for both `StyleSheet` and `className`. Platform-dependent values live in
+`src/theme/platform.ts` (`TabBarInset`).
+
+`src/components/ui/` is the primitive library. Five primitives are Gluestack-backed —
+components the CLI copied into the repo and which we then restyled to the canvas, kept for
+the focus, overlay and a11y behaviour that is genuinely hard to hand-roll: `button`,
+`progress`, `checkbox`, `actionsheet`, `alert-dialog` (plus `gluestack-ui-provider`). The
+rest are hand-written `StyleSheet` over the same tokens, because Gluestack v5 has no
+equivalent for them: `badge`, `banner`, `card`, `checklist-row`, `chip`, `confirm-dialog`,
+`empty-state`, `error-panel`, `field-label`, `input`, `password-input`, `query-state`,
+`segmented`, `skeleton`, `stepper`, `toast`, `validation-message`.
+
+`checklist-row`, `confirm-dialog` and `query-state` are compositions over the Gluestack
+pieces rather than replacements for them.
 
 ## Cross-cutting mechanisms
 
 - **Error boundaries** — `src/components/error-boundary-fallback.tsx` implements Expo
   Router's file-based `ErrorBoundary` convention: a layout can `export { ErrorBoundaryFallback
-  as ErrorBoundary }` to render `{ error, retry }` in place of a screen that threw. It's wired
+as ErrorBoundary }` to render `{ error, retry }` in place of a screen that threw. It's wired
   at the root layout and at `(app)/_layout.tsx`.
 - **Toasts** — `src/stores/toast-store.ts` + `src/components/toast-host.tsx`. `ToastHost`
   (mounted once in the root layout) renders nothing while `toast` is null, otherwise shows the
-  `Toast` UI component and auto-dismisses after 3 seconds.
+  `Toast` UI component and auto-dismisses after 4 seconds, offset above the tab bar.
 
 ## AI Coach flow
 
@@ -179,7 +192,18 @@ no external UI-kit dependency: `badge`, `button`, `card`, `checklist-row`, `chip
 
 ## Decision log
 
-- **NativeWind / Tamagui rewrite** — considered and declined. Adopting either would mean
-  discarding the 17 working, precisely-themed primitives in `src/components/ui/` for no
-  concrete near-term benefit. Worth revisiting only if the team starts writing Tailwind daily
-  on the web target.
+- **NativeWind / Tamagui rewrite** — _declined 2026-08, then adopted 2026-09-04._
+  Superseded by `docs/MIGRATION-PLAN.md`: the UI moved from the Organic palette to the
+  dark/blue wireframe canvas, on NativeWind 4 + Tailwind 3 with Gluestack v5 for the
+  behaviour-heavy primitives. The earlier reasoning — that a kit would mean discarding
+  working, precisely-themed primitives — held right up until the design itself changed,
+  which removed the thing being protected.
+- **Gluestack adopted selectively, not wholesale** (2026-09-04). Gluestack v5 has no
+  `badge`, `card`, `skeleton`, `spinner` or `divider`, and its defaults are styled against a
+  semantic token vocabulary (`bg-primary`, `bg-muted`) that the canvas does not use. Rather
+  than maintain a second vocabulary mapped onto the first, generated components are restyled
+  to the canvas classes directly and the rest stay hand-written.
+- **NativeWind 4, not 5** (2026-09-04). NativeWind has no stable v5 (`latest` is 4.2.6; v5
+  is `preview`), so Tailwind stays on its `v3-lts` line, 3.4.19. `@gluestack-ui/utils` peers
+  `tailwindcss >=3.0.0`, so this is a supported pairing, not a workaround. Revisit when
+  NativeWind 5 ships stable.

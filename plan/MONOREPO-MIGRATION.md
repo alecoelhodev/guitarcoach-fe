@@ -167,7 +167,7 @@ trusting it.
 2. Add the root `package.json` with `"workspaces": ["apps/*"]`; run `npm install` once from
    the root; fix whatever hoisting surprises `npm ls` reveals.
 3. Adjust `metro.config.js` for the new workspace root; run `expo start` and `expo start
-   --web` end to end before moving on — this is the step most likely to surface a real bug.
+--web` end to end before moving on — this is the step most likely to surface a real bug.
 4. Split `ci.yml` → `backend-ci.yml` + `backend-deploy.yml` (add `paths:` filters,
    preserving all existing steps and secrets), add `frontend-ci.yml` (lint, format, tsc —
    doesn't exist as a standalone workflow today), rewrite `contract-check.yml` to drop the

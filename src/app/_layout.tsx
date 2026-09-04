@@ -1,13 +1,12 @@
-import { Caprasimo_400Regular } from '@expo-google-fonts/caprasimo';
-import {
-  Figtree_400Regular,
-  Figtree_500Medium,
-  Figtree_600SemiBold,
-} from '@expo-google-fonts/figtree';
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+import { Inter_800ExtraBold } from '@expo-google-fonts/inter/800ExtraBold';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
-import { Stack, ThemeProvider, type Theme } from 'expo-router';
+import { Stack, type Theme, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -17,6 +16,7 @@ import { CACHE_BUSTER, CACHE_MAX_AGE_MS, purgePersistedCache, queryPersister } f
 import { queryClient } from '@/api/query-client';
 import { ErrorBoundaryFallback } from '@/components/error-boundary-fallback';
 import { ToastHost } from '@/components/toast-host';
+import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { useSessionStore } from '@/stores/session-store';
 import { Colors } from '@/theme/tokens';
 
@@ -25,7 +25,7 @@ import '@/global.css';
 SplashScreen.preventAutoHideAsync();
 
 const navigationTheme: Theme = {
-  dark: false,
+  dark: true,
   colors: {
     primary: Colors.accent,
     background: Colors.bg,
@@ -35,10 +35,10 @@ const navigationTheme: Theme = {
     notification: Colors.accent,
   },
   fonts: {
-    regular: { fontFamily: 'Figtree_400Regular', fontWeight: '400' },
-    medium: { fontFamily: 'Figtree_500Medium', fontWeight: '500' },
-    bold: { fontFamily: 'Figtree_600SemiBold', fontWeight: '600' },
-    heavy: { fontFamily: 'Figtree_600SemiBold', fontWeight: '600' },
+    regular: { fontFamily: 'Inter_400Regular', fontWeight: '400' },
+    medium: { fontFamily: 'Inter_500Medium', fontWeight: '500' },
+    bold: { fontFamily: 'Inter_700Bold', fontWeight: '700' },
+    heavy: { fontFamily: 'Inter_800ExtraBold', fontWeight: '800' },
   },
 };
 
@@ -46,10 +46,11 @@ export { ErrorBoundaryFallback as ErrorBoundary };
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Caprasimo_400Regular,
-    Figtree_400Regular,
-    Figtree_500Medium,
-    Figtree_600SemiBold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
   });
   const hydrate = useSessionStore((state) => state.hydrate);
   const status = useSessionStore((state) => state.status);
@@ -82,24 +83,26 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={{
-          persister: queryPersister,
-          buster: CACHE_BUSTER,
-          maxAge: CACHE_MAX_AGE_MS,
-        }}
-      >
-        <BottomSheetModalProvider>
-          <ThemeProvider value={navigationTheme}>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(app)" />
-            </Stack>
-            <ToastHost />
-          </ThemeProvider>
-        </BottomSheetModalProvider>
-      </PersistQueryClientProvider>
+      <GluestackUIProvider mode="dark">
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{
+            persister: queryPersister,
+            buster: CACHE_BUSTER,
+            maxAge: CACHE_MAX_AGE_MS,
+          }}
+        >
+          <BottomSheetModalProvider>
+            <ThemeProvider value={navigationTheme}>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(app)" />
+              </Stack>
+              <ToastHost />
+            </ThemeProvider>
+          </BottomSheetModalProvider>
+        </PersistQueryClientProvider>
+      </GluestackUIProvider>
     </GestureHandlerRootView>
   );
 }

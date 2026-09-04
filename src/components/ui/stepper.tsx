@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Button } from '@/components/ui/button';
 
 export type StepperProps = {
   minutes: number;
@@ -11,35 +11,39 @@ export type StepperProps = {
   max?: number;
 };
 
-export function Stepper({ minutes, onChange, step = 1, min = 0, max = 180 }: StepperProps) {
-  const decrement = () => onChange(Math.max(min, minutes - step));
-  const increment = () => onChange(Math.min(max, minutes + step));
+/**
+ * Canvas's minutes stepper: round 44px tertiary buttons either side of the value.
+ * The round form is `Button`'s tertiary variant reshaped by className, so the
+ * disabled and press states come from the one button implementation.
+ */
+const ROUND = 'h-[44px] w-[44px] rounded-pill px-0';
 
+export function Stepper({ minutes, onChange, step = 1, min = 0, max = 180 }: StepperProps) {
   return (
     <View style={styles.row}>
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        variant="tertiary"
+        className={ROUND}
         accessibilityLabel="Decrease minutes"
         disabled={minutes <= min}
-        onPress={decrement}
-        style={[styles.button, minutes <= min && styles.disabled]}
+        onPress={() => onChange(Math.max(min, minutes - step))}
       >
-        <ThemedText type="h5">−</ThemedText>
-      </Pressable>
+        −
+      </Button>
 
-      <ThemedText type="h5" style={styles.value}>
+      <ThemedText type="label" style={styles.value}>
         {minutes} min
       </ThemedText>
 
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        variant="tertiary"
+        className={ROUND}
         accessibilityLabel="Increase minutes"
         disabled={minutes >= max}
-        onPress={increment}
-        style={[styles.button, minutes >= max && styles.disabled]}
+        onPress={() => onChange(Math.min(max, minutes + step))}
       >
-        <ThemedText type="h5">+</ThemedText>
-      </Pressable>
+        +
+      </Button>
     </View>
   );
 }
@@ -48,21 +52,9 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[3],
-  },
-  button: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.surface,
-  },
-  disabled: {
-    opacity: 0.45,
   },
   value: {
-    minWidth: 64,
+    minWidth: 56,
     textAlign: 'center',
   },
 });

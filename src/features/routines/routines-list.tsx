@@ -1,4 +1,5 @@
-import { FlatList, StyleSheet } from 'react-native';
+import { Link } from 'expo-router';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRoutines } from '@/api/routines.queries';
@@ -8,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
 import { RoutineCard } from '@/features/routines/routine-card';
-import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
+import { TabBarInset } from '@/theme/platform';
+import { MaxContentWidth, Spacing } from '@/theme/tokens';
 
 export function RoutinesList() {
   const query = useRoutines();
@@ -40,16 +42,28 @@ export function RoutinesList() {
               renderItem={({ item }) => <RoutineCard routine={item} />}
               contentContainerStyle={styles.list}
               ListFooterComponent={
-                hasNextPage ? (
-                  <Button
-                    variant="secondary"
-                    loading={isFetchingNextPage}
-                    onPress={() => fetchNextPage()}
-                  >
-                    Load more
-                  </Button>
-                ) : null
+                <>
+                  {hasNextPage && (
+                    <View style={styles.footer}>
+                      <Button
+                        variant="tertiary"
+                        disabled={isFetchingNextPage}
+                        onPress={() => fetchNextPage()}
+                      >
+                        {isFetchingNextPage ? 'Loading…' : 'Load more'}
+                      </Button>
+                    </View>
+                  )}
+                  {/* Canvas 05 keeps the coach reachable from the list, not just the
+                      empty state — routines have no other creation path today. */}
+                  <Link href="/(app)/(main)/coach" asChild>
+                    <Button variant="ghost" block>
+                      Ask AI Coach to draft one
+                    </Button>
+                  </Link>
+                </>
               }
+              ListFooterComponentStyle={styles.footerBlock}
             />
           )}
         </QueryState>
@@ -63,4 +77,6 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
   title: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[2] },
   list: { padding: Spacing[4], paddingBottom: TabBarInset + Spacing[4], gap: Spacing[3] },
+  footer: { alignItems: 'center' },
+  footerBlock: { gap: Spacing[3] },
 });

@@ -1,4 +1,4 @@
-import { FlatList, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTasks } from '@/api/tasks.queries';
@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
 import { TaskCard } from '@/features/library/task-card';
-import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
+import { TabBarInset } from '@/theme/platform';
+import { MaxContentWidth, Spacing } from '@/theme/tokens';
 
 export function LibraryList() {
   const query = useTasks();
@@ -19,7 +20,7 @@ export function LibraryList() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ThemedText type="h3" style={styles.title}>
-          Library
+          Task library
         </ThemedText>
 
         <QueryState
@@ -30,19 +31,26 @@ export function LibraryList() {
         >
           {() => (
             <FlatList
+              ListHeaderComponent={
+                <ThemedText type="body" color="textMuted" style={styles.count}>
+                  {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+                </ThemedText>
+              }
               data={tasks}
               keyExtractor={(task) => task.id}
               renderItem={({ item }) => <TaskCard task={item} />}
               contentContainerStyle={styles.list}
               ListFooterComponent={
                 hasNextPage ? (
-                  <Button
-                    variant="secondary"
-                    loading={isFetchingNextPage}
-                    onPress={() => fetchNextPage()}
-                  >
-                    Load more
-                  </Button>
+                  <View style={styles.footer}>
+                    <Button
+                      variant="tertiary"
+                      disabled={isFetchingNextPage}
+                      onPress={() => fetchNextPage()}
+                    >
+                      {isFetchingNextPage ? 'Loading…' : 'Load more'}
+                    </Button>
+                  </View>
                 ) : null
               }
             />
@@ -58,4 +66,6 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
   title: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[2] },
   list: { padding: Spacing[4], paddingBottom: TabBarInset + Spacing[4], gap: Spacing[3] },
+  count: { paddingBottom: Spacing[1] },
+  footer: { alignItems: 'center' },
 });

@@ -10,7 +10,10 @@ import {
 } from '@/api/coach.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
 import { Input } from '@/components/ui/input';
 import { Segmented } from '@/components/ui/segmented';
 import { PlanPreviewCard } from '@/features/coach/plan-preview-card';
@@ -18,6 +21,12 @@ import { MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { DraftPlanResponse } from '@/types/coach';
 
 type Mode = 'draft' | 'instant';
+
+/** Canvas 10 and 10c offer these as starting points rather than an empty box. */
+const SUGGESTIONS: Record<Mode, string[]> = {
+  draft: ['30-min blues routine', 'Fix my barre chords', 'Theory only'],
+  instant: ["What I've skipped lately", '45 min, no repeats'],
+};
 
 export function CoachScreen() {
   const router = useRouter();
@@ -87,11 +96,32 @@ export function CoachScreen() {
             }}
           />
 
-          <ThemedText type="body" color="textMuted">
-            {mode === 'draft'
-              ? 'Describe what you want to practice — nothing is created until you confirm.'
-              : 'Describe what you want to practice — this creates a routine right away.'}
-          </ThemedText>
+          {mode === 'draft' ? (
+            <Card quiet>
+              <ThemedText type="body" color="textMuted">
+                Create a practice plan and review it before anything is saved.
+              </ThemedText>
+            </Card>
+          ) : (
+            /* Canvas 10c puts this warning above the composer, so it is read before
+               sending — Instant Create writes a routine with no confirmation step. */
+            <Banner
+              tone="info"
+              title="Saves straight away"
+              message="The coach can review your recent practice and create a routine immediately. You'll be able to edit or delete it afterwards."
+            />
+          )}
+
+          <View style={styles.suggestions}>
+            <ThemedText type="overline" color="textMuted">
+              Try
+            </ThemedText>
+            <View style={styles.chips}>
+              {SUGGESTIONS[mode].map((suggestion) => (
+                <Chip key={suggestion} label={suggestion} onPress={() => setInput(suggestion)} />
+              ))}
+            </View>
+          </View>
 
           <View style={{ gap: Spacing[3] }}>
             <Input
@@ -135,4 +165,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
   scroll: { padding: Spacing[4], gap: Spacing[4] },
+  suggestions: { gap: Spacing[2] },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },
 });

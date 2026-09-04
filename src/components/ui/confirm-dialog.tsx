@@ -1,8 +1,13 @@
-import { Modal, StyleSheet, View } from 'react-native';
-
-import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Radius, Shadow, Spacing } from '@/theme/tokens';
+import {
+  AlertDialog,
+  AlertDialogBackdrop,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+} from '@/components/ui/alert-dialog';
+import { Button, ButtonText } from '@/components/ui/button';
 
 export type ConfirmDialogProps = {
   visible: boolean;
@@ -10,69 +15,57 @@ export type ConfirmDialogProps = {
   message?: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Renders the confirm action in danger. Canvas 1h keeps it last in the group. */
+  destructive?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 };
 
+/**
+ * Canvas's confirmation shape: a question, a consequence line, then the actions with
+ * the destructive one last (canvas 1g, 1h).
+ */
 export function ConfirmDialog({
   visible,
   title,
   message,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
+  destructive = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={styles.backdrop}>
-        <View style={styles.dialog}>
-          <ThemedText type="h5">{title}</ThemedText>
-          {message && (
-            <ThemedText type="body" color="textMuted" style={styles.message}>
+    <AlertDialog isOpen={visible} onClose={onCancel}>
+      <AlertDialogBackdrop />
+      <AlertDialogContent className="w-full max-w-[400px]">
+        <AlertDialogHeader>
+          <ThemedText type="label">{title}</ThemedText>
+        </AlertDialogHeader>
+
+        {message && (
+          <AlertDialogBody>
+            <ThemedText type="body" color="textMuted">
               {message}
             </ThemedText>
-          )}
-          <View style={styles.actions}>
-            <Button variant="ghost" onPress={onCancel} style={styles.action}>
-              {cancelLabel}
+          </AlertDialogBody>
+        )}
+
+        <AlertDialogFooter className="gap-2">
+          <Button variant="tertiary" onPress={onCancel} className="min-h-[40px] flex-1">
+            {cancelLabel}
+          </Button>
+          {destructive ? (
+            <Button variant="tertiary" onPress={onConfirm} className="min-h-[40px] flex-1">
+              <ButtonText className="text-danger-700">{confirmLabel}</ButtonText>
             </Button>
-            <Button onPress={onConfirm} style={styles.action}>
+          ) : (
+            <Button onPress={onConfirm} className="min-h-[40px] flex-1">
               {confirmLabel}
             </Button>
-          </View>
-        </View>
-      </View>
-    </Modal>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(32,30,29,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing[6],
-  },
-  dialog: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    padding: Spacing[6],
-    gap: Spacing[2],
-    ...Shadow.lg,
-  },
-  message: {
-    marginBottom: Spacing[2],
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: Spacing[3],
-  },
-  action: {
-    flexGrow: 0,
-  },
-});

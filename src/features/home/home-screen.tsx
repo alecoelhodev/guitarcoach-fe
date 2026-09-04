@@ -1,6 +1,6 @@
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSessionsSummary } from '@/api/sessions.queries';
@@ -10,11 +10,20 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SessionCard } from '@/features/history/session-card';
 import { useActiveSessionStore } from '@/features/session/session-store';
-import { useSessionStore } from '@/stores/session-store';
 import { filterThisWeek } from '@/lib/date-grouping';
-import { formatMinutes, sumSessionMinutes } from '@/lib/duration';
-import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
+import { sumSessionMinutes } from '@/lib/duration';
+import { useSessionStore } from '@/stores/session-store';
+import { TabBarInset } from '@/theme/platform';
+import { Colors, MaxContentWidth, Radius, Spacing } from '@/theme/tokens';
+
+/** Canvas 02 greets by time of day ("Evening, Jordan"). */
+function partOfDay(hour = new Date().getHours()) {
+  if (hour < 12) return 'Morning';
+  if (hour < 18) return 'Afternoon';
+  return 'Evening';
+}
 
 export function HomeScreen() {
   const router = useRouter();
@@ -28,36 +37,83 @@ export function HomeScreen() {
   const sessions = data?.data ?? [];
   const thisWeek = filterThisWeek(sessions);
   const totalMinutes = thisWeek.reduce((sum, session) => sum + sumSessionMinutes(session), 0);
+  const recent = sessions[0];
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <ThemedText type="h3">{user ? `Welcome back, ${user.name}` : 'Welcome back'}</ThemedText>
-
-          <Card>
-            <ThemedText type="overline" color="textMuted">
-              This week
+          <View style={styles.header}>
+            <ThemedText type="h3" style={styles.greeting}>
+              {user ? `${partOfDay()}, ${user.name}` : partOfDay()}
             </ThemedText>
-            {isPending ? (
-              <Skeleton height={32} width={160} />
-            ) : (
-              <ThemedText type="h4">
-                {thisWeek.length} {thisWeek.length === 1 ? 'session' : 'sessions'} ·{' '}
-                {formatMinutes(totalMinutes)}
-              </ThemedText>
+            {user && (
+              <Link href="/(app)/(main)/(tabs)/profile" asChild>
+                <View style={styles.avatar} accessibilityRole="button" accessibilityLabel="Profile">
+                  <ThemedText type="label" color="textMuted">
+                    {user.name.slice(0, 1).toUpperCase()}
+                  </ThemedText>
+                </View>
+              </Link>
             )}
-          </Card>
+          </View>
+
+          {/* Canvas is explicit that minutes and session count are the only two
+              progress numbers the backend can honestly support. */}
+          {isPending ? (
+            <Card>
+              <ThemedText type="overline" color="textMuted">
+                This week
+              </ThemedText>
+              <Skeleton width="45%" />
+            </Card>
+          ) : thisWeek.length === 0 ? (
+            <Card quiet>
+              <ThemedText type="overline" color="textMuted">
+                This week
+              </ThemedText>
+              <ThemedText type="body" color="textMuted">
+                Nothing logged yet. Your minutes and sessions appear here after your first practice.
+              </ThemedText>
+            </Card>
+          ) : (
+            <Card>
+              <ThemedText type="overline" color="textMuted">
+                This week
+              </ThemedText>
+              <View style={styles.figures}>
+                <Figure value={totalMinutes} label="minutes" />
+                <View style={styles.figureDivider} />
+                <Figure value={thisWeek.length} label="sessions" />
+              </View>
+            </Card>
+          )}
 
           <Link href="/(app)/(main)/(tabs)/routines" asChild>
-            <Button block>Start practice</Button>
+            <Button block>Start Practice</Button>
           </Link>
 
           <Link href="/(app)/(main)/coach" asChild>
-            <Button variant="secondary" block>
-              Ask the AI Coach
+            <Button variant="ghost" block>
+              Ask AI Coach
             </Button>
           </Link>
+
+          {recent && (
+            <>
+              <View style={styles.sectionHeader}>
+                <ThemedText type="overline" color="textMuted">
+                  Recent session
+                </ThemedText>
+                <Link href="/(app)/(main)/history" asChild>
+                  <ThemedText type="label" style={styles.link}>
+                    See all
+                  </ThemedText>
+                </Link>
+              </View>
+              <SessionCard session={recent} />
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
 
@@ -80,6 +136,20 @@ export function HomeScreen() {
   );
 }
 
+/** Canvas `.big` — the only oversized numerals in the app outside the session clock. */
+function Figure({ value, label }: { value: number; label: string }) {
+  return (
+    <View>
+      <ThemedText type="display" style={styles.figureValue}>
+        {value}
+      </ThemedText>
+      <ThemedText type="body" color="textMuted">
+        {label}
+      </ThemedText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, alignItems: 'center' },
@@ -90,4 +160,41 @@ const styles = StyleSheet.create({
     paddingBottom: TabBarInset + Spacing[4],
     gap: Spacing[4],
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[3],
+  },
+  greeting: { flex: 1 },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.neutral[300],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  figures: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Spacing[4],
+  },
+  figureValue: {
+    fontSize: 34,
+    lineHeight: 34,
+  },
+  figureDivider: {
+    width: 1,
+    height: 34,
+    backgroundColor: Colors.neutral[300],
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  // Canvas uses accent-700 for links and small accent text, never the base accent.
+  link: { color: Colors.accentRamp[700] },
 });

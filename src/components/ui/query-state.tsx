@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode } from 'react';
 
 import { describeError } from '@/api/errors';
+import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,7 +17,7 @@ export type QueryStateQuery<T> = {
 
 export type QueryStateProps<T> = {
   query: QueryStateQuery<T>;
-  /** Rendered while pending. Defaults to a single full-width bar. */
+  /** Rendered while pending. Defaults to a card of skeleton lines, as canvas 03b/05b/08b draw it. */
   skeleton?: ReactNode;
   /** Context shown when the failure has no recognised cause, e.g. "Couldn't load the library". */
   errorTitle?: string;
@@ -41,7 +42,16 @@ export function QueryState<T>({
   empty,
   children,
 }: QueryStateProps<T>): ReactElement {
-  const pending = <>{skeleton ?? <Skeleton height={80} />}</>;
+  const pending = (
+    <>
+      {skeleton ?? (
+        <Card>
+          <Skeleton width="70%" />
+          <Skeleton width="45%" />
+        </Card>
+      )}
+    </>
+  );
 
   if (query.isPending) return pending;
 

@@ -11,8 +11,8 @@ export type ThemedTextProps = TextProps & {
 };
 
 /**
- * Organic's type scale defaults to web/hero sizes (h1 = 42px). Phone screen titles
- * should use `type="h3"` or `type="h4"` — see plan/SETUP-PLAN.md step 5.
+ * The canvas has two real heading sizes: `h3` (21px) for screen titles and `h5` (16px)
+ * for card titles. `h1`/`h2` are wider-viewport steps; `display` is the session clock.
  */
 export function ThemedText({ style, type = 'body', color = 'text', ...rest }: ThemedTextProps) {
   return <Text style={[styles[type], { color: Colors[color] }, style]} {...rest} />;

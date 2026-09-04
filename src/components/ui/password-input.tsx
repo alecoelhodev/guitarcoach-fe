@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Input, type InputProps } from '@/components/ui/input';
-import { Spacing } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 
 /** Wireframe 01: the show/hide toggle is a 44px tap target sitting inside the field. */
 const TOGGLE_WIDTH = 44;
@@ -32,7 +32,7 @@ export const PasswordInput = forwardRef<TextInput, PasswordInputProps>(function 
         onPress={() => setVisible((current) => !current)}
         style={styles.toggle}
       >
-        <ThemedText type="label" color="accent">
+        <ThemedText type="label" style={{ color: Colors.accentRamp[700] }}>
           {visible ? 'Hide' : 'Show'}
         </ThemedText>
       </Pressable>

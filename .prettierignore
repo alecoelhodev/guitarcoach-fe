@@ -1,5 +1,12 @@
+# Prettier is kept ONLY for Markdown, which Biome cannot format yet. Biome owns
+# every other language — see biome.jsonc. Both `format` scripts invoke Prettier
+# through an explicit "**/*.md" glob, so these entries only guard against a
+# stray `prettier --write .` fighting Biome's formatter.
 assets/
 dist/
 .expo/
 ios/
 android/
+
+# CI checks the backend repo out here; its Markdown is not ours to format.
+backend/

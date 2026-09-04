@@ -17,7 +17,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   return (
     <TextInput
       ref={ref}
-      placeholderTextColor={Colors.textMuted}
+      placeholderTextColor={Colors.neutral[600]}
       style={[styles.base, focused && styles.focused, invalid && styles.invalid, style]}
       onFocus={(e) => {
         setFocused(true);
@@ -35,22 +35,26 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
 const styles = StyleSheet.create({
   base: {
     ...Typography.input,
+    minHeight: 44,
     color: Colors.text,
     backgroundColor: Colors.surface,
     borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: Colors.neutral[400],
     paddingHorizontal: Spacing[3],
-    paddingVertical: Spacing[3],
+    paddingVertical: Spacing[2],
   },
   focused: {
     outlineWidth: Interaction.focusRingWidth,
     outlineColor: Interaction.focusRingColor,
     outlineOffset: Interaction.focusRingOffset,
+    borderWidth: 1.5,
     borderColor: Colors.accent,
+    backgroundColor: Colors.neutral[100],
   },
   invalid: {
-    borderColor: Colors.accentRamp[700],
-    backgroundColor: Colors.accentRamp[100],
+    borderWidth: 1.5,
+    borderColor: Colors.danger,
+    backgroundColor: Colors.dangerRamp[100],
   },
 });

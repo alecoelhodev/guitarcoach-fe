@@ -10,10 +10,17 @@ export type BadgeProps = {
   variant?: BadgeVariant;
 };
 
+// The canvas pairs each ground with the 700 step of its own ramp.
+const labelColor: Record<BadgeVariant, string> = {
+  category: Colors.accent2Ramp[700],
+  difficulty: Colors.accentRamp[700],
+  neutral: Colors.neutral[700],
+};
+
 export function Badge({ label, variant = 'neutral' }: BadgeProps) {
   return (
     <View style={[styles.base, styles[variant]]}>
-      <ThemedText type="label" color={variant === 'neutral' ? 'textMuted' : 'text'}>
+      <ThemedText type="badge" style={{ color: labelColor[variant] }}>
         {label}
       </ThemedText>
     </View>
@@ -23,7 +30,7 @@ export function Badge({ label, variant = 'neutral' }: BadgeProps) {
 const styles = StyleSheet.create({
   base: {
     alignSelf: 'flex-start',
-    paddingHorizontal: Spacing[3],
+    paddingHorizontal: Spacing[2],
     paddingVertical: Spacing[1],
     borderRadius: Radius.pill,
   },

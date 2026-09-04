@@ -12,7 +12,8 @@ import { Card } from '@/components/ui/card';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveSessionStore } from '@/features/session/session-store';
-import { MaxContentWidth, Spacing, TabBarInset } from '@/theme/tokens';
+import { TabBarInset } from '@/theme/platform';
+import { MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { RoutineTaskWithTask } from '@/types/routine';
 
 export function RoutineDetail({ routineId }: { routineId: string }) {
@@ -23,7 +24,14 @@ export function RoutineDetail({ routineId }: { routineId: string }) {
   const tasksQuery = useRoutineTasks(routineId);
   const reorderMutation = useReorderRoutineTasks(routineId);
 
-  if (routineQuery.isPending || tasksQuery.isPending) return <Skeleton height={200} />;
+  if (routineQuery.isPending || tasksQuery.isPending) {
+    return (
+      <Card>
+        <Skeleton width="70%" />
+        <Skeleton width="45%" />
+      </Card>
+    );
+  }
   if (routineQuery.isError || tasksQuery.isError) {
     const { title, message } = describeError(
       routineQuery.error ?? tasksQuery.error,
@@ -43,6 +51,10 @@ export function RoutineDetail({ routineId }: { routineId: string }) {
 
   const routine = routineQuery.data;
   const tasks = tasksQuery.data;
+  const plannedMinutes = tasks.reduce(
+    (sum: number, task: RoutineTaskWithTask) => sum + (task.targetDurationMinutes ?? 0),
+    0,
+  );
 
   function move(index: number, direction: -1 | 1) {
     const target = index + direction;
@@ -72,19 +84,34 @@ export function RoutineDetail({ routineId }: { routineId: string }) {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <ThemedText type="h3">{routine.title}</ThemedText>
+
           {routine.notes && (
-            <ThemedText type="body" color="textMuted">
-              {routine.notes}
-            </ThemedText>
+            <Card quiet>
+              <ThemedText type="body" color="textMuted">
+                {routine.notes}
+              </ThemedText>
+            </Card>
           )}
+
+          <View style={styles.summary}>
+            <ThemedText type="overline" color="textMuted">
+              {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+            </ThemedText>
+            {plannedMinutes > 0 && (
+              <ThemedText type="label">{plannedMinutes} min planned</ThemedText>
+            )}
+          </View>
 
           <View style={styles.taskList}>
             {tasks.map((routineTask: RoutineTaskWithTask, index: number) => (
               <Card key={routineTask.taskId} style={styles.taskRow}>
+                <ThemedText type="body" color="textMuted" style={styles.index}>
+                  {index + 1}
+                </ThemedText>
                 <View style={styles.taskInfo}>
-                  <ThemedText type="h5">{routineTask.task.title}</ThemedText>
+                  <ThemedText type="label">{routineTask.task.title}</ThemedText>
                   {routineTask.targetDurationMinutes != null && (
-                    <ThemedText type="caption" color="textMuted">
+                    <ThemedText type="body" color="textMuted">
                       {routineTask.targetDurationMinutes} min
                     </ThemedText>
                   )}
@@ -106,7 +133,7 @@ export function RoutineDetail({ routineId }: { routineId: string }) {
           </View>
 
           <Button block onPress={handleStartPractice}>
-            Start practice
+            Start Practice
           </Button>
         </ScrollView>
       </SafeAreaView>
@@ -121,5 +148,7 @@ const styles = StyleSheet.create({
   taskList: { gap: Spacing[3] },
   taskRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   taskInfo: { flex: 1, gap: Spacing[1] },
+  index: { width: 14 },
+  summary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   moveButtons: { flexDirection: 'row', gap: Spacing[1] },
 });

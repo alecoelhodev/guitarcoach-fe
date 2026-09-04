@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+--font-heading:'Inter',system-ui,sans-serif;--font-body:'Inter',system-ui,sans-serif;
+
+--color-bg:#0a0b0d;--color-surface:#141519;--color-text:#f2f3f5;
+--color-accent:#2f88f0;--color-accent-2:#22c55e;
+--color-divider:rgba(255,255,255,.10);
+
+--color-neutral-100:#17181c;--color-neutral-200:#1d1f24;--color-neutral-300:#282b31;
+--color-neutral-400:#3a3e46;--color-neutral-500:#585e67;--color-neutral-600:#7d838c;
+--color-neutral-700:#a8adb5;--color-neutral-800:#c9cdd3;--color-neutral-900:#eceef0;
+
+--color-accent-100:#122540;--color-accent-200:#173a5f;
+--color-accent-300:#2c5687;--color-accent-400:#3f76b8;--color-accent-500:#5aa4f5;
+--color-accent-600:#4396f2;--color-accent-700:#7ec2fb;--color-accent-800:#0d1f38;--color-accent-900:#081226;
+
+--color-accent-2-100:#0f2e1c;--color-accent-2-200:#123d24;--color-accent-2-700:#5fe0a0;--color-accent-2-800:#0c2417;
+
+--color-danger:#e35d4f;--color-danger-100:#3a1512;--color-danger-200:#4a1a16;
+--color-danger-300:#7a2e26;--color-danger-600:#e35d4f;--color-danger-700:#ff8a7c;
+
+--shadow-sm:0 1px 2px rgba(0,0,0,.5);
+--shadow-md:0 10px 28px rgba(0,0,0,.55);
+--shadow-lg:0 18px 48px rgba(0,0,0,.65);
+}
+
+body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
+*,*::before,*::after{box-sizing:border-box}
+a{color:var(--color-accent-700);text-decoration:none}a:hover{color:var(--color-accent-500)}
+.dv-turn{padding:44px 48px 40px;border-bottom:1px solid var(--color-divider)}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 30px}
+.dv-tid{font:700 10px ui-monospace,Menlo,monospace;padding:4px 9px;background:var(--color-text);color:var(--color-bg);border-radius:999px}
+.dv-tname{font:700 17px/1.2 var(--font-heading)}
+.dv-opts{display:flex;flex-direction:column;gap:58px}
+.dv-opt{display:flex;flex-direction:column;gap:16px;scroll-margin-top:16px}
+.dv-oid{font:700 10.5px ui-monospace,Menlo,monospace;padding:3px 8px;background:var(--color-neutral-300);color:var(--color-text);border-radius:999px}
+.dv-olabel{display:flex;align-items:baseline;gap:11px;font:400 12.5px var(--font-body);color:var(--color-neutral-700)}
+.dv-olabel b{font:700 20px var(--font-heading);color:var(--color-text)}
+.dv-opt:target .dv-oid{background:var(--color-accent);color:#fff}
+.dv-next{margin:36px 0 0;font:12px/1.7 var(--font-body);color:var(--color-neutral-700)}
+.row{display:flex;align-items:flex-start;gap:16px}
+.grp{display:flex;flex-direction:column;gap:9px;align-items:stretch;flex:none;max-width:318px}
+.gtag{font:600 9.5px ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--color-neutral-600)}
+.ph{width:318px;flex:none;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:30px;padding:10px 12px 0;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-md);min-height:646px}
+.ph.alt{background:var(--color-neutral-200);border-style:dashed;min-height:0}
+.st{display:flex;justify-content:space-between;align-items:center;font:600 10px var(--font-body);color:var(--color-neutral-700);padding:2px 8px 0}
+.st i{display:block;width:30px;height:8px;border-radius:999px;background:var(--color-neutral-400)}
+.bar{display:flex;align-items:center;gap:10px;min-height:40px}
+.bk{width:32px;height:32px;border-radius:999px;background:var(--color-neutral-300);flex:none}
+.h1{font:700 21px/1.15 var(--font-heading);letter-spacing:-.01em}
+.h2{font:700 16px/1.25 var(--font-heading);letter-spacing:-.01em}
+.lb{font:600 12.5px/1.35 var(--font-body)}
+.mt{font:400 11.5px/1.45 var(--font-body);color:var(--color-neutral-700)}
+.xs{font:600 9.5px var(--font-body);color:var(--color-neutral-700);letter-spacing:.07em;text-transform:uppercase}
+.cd{background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);border-radius:16px;padding:13px 14px;display:flex;flex-direction:column;gap:8px}
+.cd.q{border-style:dashed;background:transparent}
+.bx{background:var(--color-neutral-300);border-radius:999px;height:9px}
+.btnp{min-height:44px;border-radius:12px;background:var(--color-accent);color:#fff;font:600 14px var(--font-heading);display:flex;align-items:center;justify-content:center;gap:7px;text-align:center;padding:0 14px}
+.btnp.gh{background:transparent;color:var(--color-accent-700);border:1.5px solid var(--color-accent-400)}
+.btns{min-height:44px;border-radius:12px;border:1.5px solid var(--color-neutral-400);font:600 13.5px var(--font-heading);display:flex;align-items:center;justify-content:center;gap:6px;padding:0 14px}
+.btnt{min-height:36px;border-radius:10px;background:var(--color-neutral-200);border:1px solid var(--color-neutral-300);font:600 12px var(--font-body);display:inline-flex;align-items:center;justify-content:center;padding:0 14px;color:var(--color-neutral-700)}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{min-height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--color-neutral-400);font:600 11.5px var(--font-body);display:flex;align-items:center;color:var(--color-neutral-700)}
+.chip.on{background:var(--color-accent);border-color:var(--color-accent);color:#fff}
+.bdg{padding:3px 9px;border-radius:999px;font:700 9px var(--font-body);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.bdg.c{background:var(--color-accent-2-200);color:var(--color-accent-2-700)}
+.bdg.d{background:var(--color-accent-200);color:var(--color-accent-700)}
+.bdg.n{background:var(--color-neutral-200);color:var(--color-neutral-700)}
+.in{min-height:44px;border-radius:10px;background:var(--color-surface);border:1px solid var(--color-neutral-400);display:flex;align-items:center;gap:8px;padding:0 15px;font:400 12.5px var(--font-body);color:var(--color-neutral-600)}
+.in.f{border:1.5px solid var(--color-accent);background:var(--color-neutral-100);color:var(--color-text)}
+.in.e{border:1.5px solid var(--color-danger);background:var(--color-danger-100)}
+.err{font:600 10.5px/1.35 var(--font-body);color:var(--color-danger-700)}
+.ok{font:600 10.5px var(--font-body);color:var(--color-accent-2-700)}
+.bn{margin:auto -12px 0;background:var(--color-neutral-100);border-top:1px solid var(--color-neutral-300);border-radius:24px 24px 30px 30px;padding:8px 12px 14px;display:flex;align-items:flex-end;justify-content:space-between}
+.bni{display:flex;flex-direction:column;align-items:center;gap:4px;width:48px}
+.bni i{width:20px;height:20px;border-radius:7px;background:var(--color-neutral-300);display:block}
+.bni span{font:600 8.5px var(--font-body);color:var(--color-neutral-600)}
+.bni.on i{background:var(--color-accent)}
+.bni.on span{color:var(--color-accent-700)}
+.bnc{width:58px;height:58px;border-radius:999px;background:var(--color-accent);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 9.5px/1.1 var(--font-heading);margin-bottom:8px;box-shadow:0 10px 26px rgba(47,136,240,.45);text-align:center}
+.sh{margin:auto -12px 0;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);border-bottom:0;border-radius:24px 24px 30px 30px;padding:13px 14px 16px;display:flex;flex-direction:column;gap:10px}
+.grab{width:38px;height:4px;border-radius:999px;background:var(--color-neutral-400);margin:0 auto 2px}
+.scr{display:flex;flex-direction:column;gap:11px}
+.note{font:400 11px/1.5 var(--font-body);color:var(--color-accent-700);background:var(--color-accent-100);border:1px solid var(--color-accent-300);border-radius:12px;padding:8px 11px}
+.note b{font-weight:700}
+.arw{align-self:center;flex:none;display:flex;flex-direction:column;align-items:center;gap:5px;width:78px;text-align:center;padding-top:40px}
+.arw i{width:100%;height:1.5px;background:var(--color-neutral-400);position:relative;display:block}
+.arw i::after{content:"";position:absolute;right:-1px;top:-4px;border-left:8px solid var(--color-neutral-400);border-top:4.5px solid transparent;border-bottom:4.5px solid transparent}
+.arw span{font:600 9px/1.3 var(--font-body);color:var(--color-neutral-600)}
+.sk{background:var(--color-neutral-300);border-radius:999px;height:11px;opacity:.65}
+.tick{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--color-neutral-400);flex:none}
+.tick.on{background:var(--color-accent-2);border-color:var(--color-accent-2)}
+.rowb{display:flex;align-items:center;gap:9px}
+.sp{flex:1}
+.tst{background:var(--color-accent-2-800);color:var(--color-accent-2-100);border-radius:14px;padding:10px 13px;font:600 11.5px/1.4 var(--font-body)}
+.pnl.info{background:var(--color-accent-100);border-color:var(--color-accent-300)}
+.pnl{background:var(--color-danger-100);border:1px solid var(--color-danger-300);border-radius:14px;padding:12px 13px;display:flex;flex-direction:column;gap:9px}
+.big{font:800 46px/1 var(--font-heading);letter-spacing:-.03em}
+.map{background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px}
+.mrow{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.mn{border:1.5px solid var(--color-neutral-400);background:var(--color-surface);border-radius:999px;padding:7px 14px;font:600 11.5px var(--font-body)}
+.mn.k{background:var(--color-accent);border-color:var(--color-accent);color:#fff}
+.mn.s{background:transparent;border-style:dashed;color:var(--color-neutral-700)}
+.ma{font:700 12px var(--font-body);color:var(--color-neutral-600)}
+.inv{display:grid;grid-template-columns:repeat(4,196px);gap:12px}
+.ivc{background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);border-radius:14px;padding:11px 12px;display:flex;flex-direction:column;gap:6px}
+.nts{display:grid;grid-template-columns:repeat(3,300px);gap:14px}
+[data-notes="off"] .note{display:none}
+[data-states="off"] .ph.alt{display:none}
+[data-arrows="off"] .arw{display:none}
+.wf{width:1240px;flex:none;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:18px;overflow:hidden;display:flex;box-shadow:var(--shadow-md)}
+.wtop{height:34px;background:var(--color-neutral-300);border-bottom:1px solid var(--color-neutral-400);display:flex;align-items:center;gap:6px;padding:0 14px}
+.wtop i{width:9px;height:9px;border-radius:999px;background:var(--color-neutral-400);display:block}
+.wtop span{font:600 10px var(--font-body);color:var(--color-neutral-600);margin-left:10px}
+.rail{width:198px;flex:none;background:var(--color-neutral-100);border-right:1px solid var(--color-neutral-300);padding:18px 14px;display:flex;flex-direction:column;gap:6px}
+.ri{min-height:42px;border-radius:10px;display:flex;align-items:center;gap:10px;padding:0 12px;font:600 12.5px var(--font-body);color:var(--color-neutral-700)}
+.ri i{width:18px;height:18px;border-radius:6px;background:var(--color-neutral-300);flex:none;display:block}
+.ri.on{background:var(--color-neutral-200);color:var(--color-text)}
+.ri.on i{background:var(--color-accent)}
+.ri.pr{background:var(--color-accent);color:#fff;font:600 14px var(--font-heading);min-height:48px;box-shadow:0 10px 26px rgba(47,136,240,.4)}
+.ri.pr i{background:#fff}
+.pane{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px;padding:22px 24px;overflow:hidden}
+.pane.l{border-right:1px solid var(--color-neutral-300);background:var(--color-surface)}
+.pane.r{background:var(--color-neutral-200)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+</style></helmet>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><span class="dv-tid">2</span><span class="dv-tname">Web layouts — same components, wider canvas</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a><b>Shell &amp; Home</b>Left rail replaces the bottom nav above 768px</div>
+<div class="wf" style="flex-direction:column">
+<div class="wtop"><i></i><i></i><i></i><span>Guitar Coach · 1240px</span></div>
+<div style="display:flex;min-height:600px">
+<div class="rail">
+<div class="h2" style="padding:0 12px 10px">Guitar Coach</div>
+<div class="ri pr"><i></i>Practice</div>
+<div style="height:8px"></div>
+<div class="ri on"><i></i>Home</div>
+<div class="ri"><i></i>Routines</div>
+<div class="ri"><i></i>Library</div>
+<div class="ri"><i></i>History</div>
+<div style="flex:1"></div>
+<div class="ri"><i></i>AI Coach</div>
+<div class="ri"><i></i>Profile</div>
+</div>
+<div class="pane" style="background:var(--color-surface)">
+<div class="rowb"><div><div class="h1">Evening, Jordan</div><div class="mt">Ready for 30 minutes?</div></div><div class="sp"></div><div class="btnp gh" style="min-height:44px;padding:0 20px">Ask AI Coach</div><div class="bk" style="width:40px;height:40px"></div></div>
+<div class="g2" style="grid-template-columns:1.5fr 1fr;align-items:start">
+<div class="cd">
+<div class="rowb"><span class="xs">Today's practice</span><span class="sp"></span><span class="bdg n">4 tasks · 45 min</span></div>
+<div class="h2" style="font-size:19px">Alice's warm-up routine</div>
+<div class="mt">Major scale in one position · Barre chord transitions · Intervals and triads · 12-bar blues</div>
+<div class="rowb" style="gap:9px"><div class="btnp" style="padding:0 26px">Start Practice</div><div class="btnt" style="min-height:44px">View routine</div></div>
+</div>
+<div class="cd">
+<div class="xs">This week</div>
+<div class="rowb" style="gap:20px;align-items:flex-end">
+<div><div class="big" style="font-size:38px">95</div><div class="mt">minutes</div></div>
+<div style="width:1px;height:38px;background:var(--color-neutral-300)"></div>
+<div><div class="big" style="font-size:38px">4</div><div class="mt">sessions</div></div>
+</div>
+</div>
+</div>
+<div class="rowb"><span class="xs">Active routines</span><span class="sp"></span><span style="font:600 11px var(--font-body);color:var(--color-accent-700)">All routines</span></div>
+<div class="g3">
+<div class="cd"><div class="lb">Warm-up routine</div><div class="mt">4 tasks · 45 min</div><div class="btnt" style="min-height:40px">Start</div></div>
+<div class="cd"><div class="lb">Fingerstyle focus</div><div class="mt">2 tasks · 35 min</div><div class="btnt" style="min-height:40px">Start</div></div>
+<div class="cd"><div class="lb">Neglected skills rebuild</div><div class="mt">4 tasks · 45 min</div><div class="btnt" style="min-height:40px">Start</div></div>
+</div>
+<div class="rowb"><span class="xs">Recent sessions</span><span class="sp"></span><span style="font:600 11px var(--font-body);color:var(--color-accent-700)">History</span></div>
+<div class="cd" style="padding:0">
+<div class="rowb" style="padding:11px 14px"><span class="lb" style="width:210px">Evening practice</span><span class="mt" style="flex:1">Warm-up routine</span><span class="bdg n">38 min</span><span class="bdg n">3 of 4</span><span class="bdg c">1 recording</span><span class="mt" style="width:70px;text-align:right">Today</span></div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb" style="padding:11px 14px"><span class="lb" style="width:210px">Quick theory review</span><span class="mt" style="flex:1">—</span><span class="bdg n">15 min</span><span class="bdg n">1 of 1</span><span class="mt" style="width:70px;text-align:right">Yesterday</span></div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb" style="padding:11px 14px"><span class="lb" style="width:210px">Fingerstyle practice</span><span class="mt" style="flex:1">Fingerstyle focus</span><span class="bdg n">20 min</span><span class="bdg n">1 of 2</span><span class="bdg c">2 recordings</span><span class="mt" style="width:70px;text-align:right">Last week</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="note" style="max-width:1240px">The central <b>Practice</b> action keeps its dominance as the first, filled rail item — the one thing that is not a destination. <b>History</b> and <b>AI Coach</b> become their own rail entries because the width no longer forces a five-item budget; on mobile they stay a card link and a CTA. Session rows collapse from stacked cards into a table-like row set, which is the same data at a lower height.</div>
+</div>
+
+<div class="dv-opt" id="2b">
+<div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a><b>Library + Task Details</b>The list/detail pattern, applied three times</div>
+<div class="wf" style="flex-direction:column">
+<div class="wtop"><i></i><i></i><i></i><span>Library — list and detail side by side</span></div>
+<div style="display:flex;min-height:560px">
+<div class="rail">
+<div class="h2" style="padding:0 12px 10px">Guitar Coach</div>
+<div class="ri pr"><i></i>Practice</div>
+<div style="height:8px"></div>
+<div class="ri"><i></i>Home</div>
+<div class="ri"><i></i>Routines</div>
+<div class="ri on"><i></i>Library</div>
+<div class="ri"><i></i>History</div>
+<div style="flex:1"></div>
+<div class="ri"><i></i>AI Coach</div>
+<div class="ri"><i></i>Profile</div>
+</div>
+<div class="pane l" style="max-width:430px">
+<div class="h1" style="font-size:20px">Task library</div>
+<div class="in">Search tasks</div>
+<div class="chips"><span class="chip on">Technique</span><span class="chip">Theory</span><span class="chip">Repertoire</span></div>
+<div class="chips"><span class="chip">Easy</span><span class="chip on">Medium</span><span class="chip">Hard</span><span class="chip" style="border-style:dashed;color:var(--color-accent-700)">Clear</span></div>
+<div class="mt">8 tasks</div>
+<div class="cd" style="padding:11px 13px"><div class="lb">Alternate picking drills</div><div class="rowb" style="gap:6px"><span class="bdg c">Technique</span><span class="bdg d">Medium</span></div></div>
+<div class="cd" style="padding:11px 13px;border-color:var(--color-accent);background:var(--color-neutral-100)"><div class="lb">Travis picking fingerstyle pattern</div><div class="rowb" style="gap:6px"><span class="bdg c">Technique</span><span class="bdg d">Medium</span><span class="sp"></span><span class="xs">Link</span></div></div>
+<div class="cd" style="padding:11px 13px"><div class="lb">Barre chord transitions</div><div class="rowb" style="gap:6px"><span class="bdg c">Technique</span><span class="bdg d">Medium</span></div></div>
+<div class="cd" style="padding:11px 13px"><div class="lb">Sweep picking arpeggios</div><div class="rowb" style="gap:6px"><span class="bdg c">Technique</span><span class="bdg d">Hard</span></div></div>
+<div class="rowb" style="justify-content:center"><span class="btnt">Load more</span></div>
+</div>
+<div class="pane r">
+<div class="rowb" style="gap:6px"><span class="bdg c">Technique</span><span class="bdg d">Medium</span></div>
+<div class="h1">Travis picking fingerstyle pattern</div>
+<div class="cd" style="max-width:560px"><div class="mt" style="font-size:12.5px">Build a steady alternating-bass Travis picking pattern. Start with a static chord shape before moving the bass line under a chord progression.</div></div>
+<div class="cd" style="max-width:560px"><div class="rowb"><span class="lb">Reference link</span><span class="sp"></span><span class="mt">Opens outside the app ↗</span></div></div>
+<div class="rowb" style="gap:10px"><div class="btnp" style="padding:0 24px">Add to Routine</div><div class="mt">Tasks are shared and read-only.</div></div>
+<div class="cd" style="max-width:430px;border-color:var(--color-accent);margin-top:6px">
+<div class="rowb"><span class="h2">Add to which routine?</span><span class="sp"></span><span class="mt">18 active</span></div>
+<div class="in" style="min-height:40px">Find a routine</div>
+<div class="rowb"><span class="tick on"></span><span class="lb">Fingerstyle focus</span><span class="sp"></span><span class="mt">2 tasks</span></div>
+<div class="rowb"><span class="tick"></span><span class="lb">Warm-up routine</span><span class="sp"></span><span class="mt">4 tasks</span></div>
+<div class="rowb"><span class="xs">Target duration</span><span class="sp"></span><div class="rowb" style="gap:0"><span class="btnt" style="width:40px;height:40px;border-radius:999px">−</span><span class="lb" style="width:52px;text-align:center">15 min</span><span class="btnt" style="width:40px;height:40px;border-radius:999px">+</span></div></div>
+<div class="rowb" style="gap:8px"><div class="btnp" style="flex:1;min-height:44px">Add task</div><div class="btnt" style="min-height:44px">Cancel</div></div>
+</div>
+</div>
+</div>
+</div>
+<div class="note" style="max-width:1240px">Mobile's routine-picker <b>bottom sheet becomes an inline panel</b> in the detail pane — same fields, same order, no overlay. Filters stay chips rather than becoming a sidebar, so the mobile and web component is one component. Selecting a row never navigates: the URL updates and the right pane swaps, which is what makes deep links work.</div>
+</div>
+
+<div class="dv-opt" id="2c">
+<div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a><b>Routines + Builder</b>Reordering with a mouse and a keyboard</div>
+<div class="wf" style="flex-direction:column">
+<div class="wtop"><i></i><i></i><i></i><span>Routines — builder in the detail pane</span></div>
+<div style="display:flex;min-height:560px">
+<div class="rail">
+<div class="h2" style="padding:0 12px 10px">Guitar Coach</div>
+<div class="ri pr"><i></i>Practice</div>
+<div style="height:8px"></div>
+<div class="ri"><i></i>Home</div>
+<div class="ri on"><i></i>Routines</div>
+<div class="ri"><i></i>Library</div>
+<div class="ri"><i></i>History</div>
+<div style="flex:1"></div>
+<div class="ri"><i></i>AI Coach</div>
+<div class="ri"><i></i>Profile</div>
+</div>
+<div class="pane l" style="max-width:380px">
+<div class="rowb"><span class="h1" style="font-size:20px">Routines</span><span class="sp"></span><span class="btnt" style="min-height:40px">New</span></div>
+<div style="display:flex;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:3px">
+<div style="flex:1;min-height:36px;border-radius:999px;background:var(--color-accent);color:var(--color-neutral-100);font:400 12.5px var(--font-heading);display:flex;align-items:center;justify-content:center">Active</div>
+<div style="flex:1;min-height:36px;display:flex;align-items:center;justify-content:center;font:600 12px var(--font-body);color:var(--color-neutral-700)">Archived</div>
+</div>
+<div class="cd" style="padding:11px 13px;border-color:var(--color-accent);background:var(--color-neutral-100)"><div class="lb">Warm-up routine</div><div class="mt">Fifteen minutes before anything else.</div><div class="rowb" style="gap:6px"><span class="bdg n">4 tasks</span><span class="bdg n">45 min</span></div></div>
+<div class="cd" style="padding:11px 13px"><div class="lb">Fingerstyle focus</div><div class="rowb" style="gap:6px"><span class="bdg n">2 tasks</span><span class="bdg n">35 min</span></div></div>
+<div class="cd" style="padding:11px 13px"><div class="lb">Neglected skills rebuild</div><div class="rowb" style="gap:6px"><span class="bdg n">4 tasks</span><span class="bdg n">45 min</span></div></div>
+<div class="btnp gh" style="margin-top:4px">Ask AI Coach to draft one</div>
+</div>
+<div class="pane r">
+<div class="rowb"><div class="in f" style="min-height:46px;font:400 19px var(--font-heading);color:var(--color-text);max-width:420px;flex:1">Warm-up routine</div><span class="bdg d">Unsaved</span><div class="btnp" style="min-height:44px;padding:0 22px">Save</div></div>
+<div class="rowb" style="gap:12px;flex-wrap:wrap">
+<div class="cd q" style="padding:9px 13px;flex:1;min-width:280px"><div class="mt">Notes — fifteen minutes before anything else.</div></div>
+<div style="display:flex;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:2px"><span class="btnt" style="background:var(--color-accent);color:var(--color-neutral-100);border:0;min-height:32px">Active</span><span class="btnt" style="background:transparent;border:0;min-height:32px">Archived</span></div>
+</div>
+<div class="rowb"><span class="xs">4 tasks</span><span class="sp"></span><span class="lb">45 min planned</span></div>
+<div class="cd" style="padding:0;max-width:640px">
+<div class="rowb" style="padding:10px 13px"><span class="mt" style="width:16px">⋮⋮</span><span class="mt" style="width:14px">1</span><span class="lb" style="flex:1">Major scale in one position</span><span class="btnt" style="min-height:34px">10 min</span><span class="btnt" style="min-height:34px">Remove</span></div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb" style="padding:10px 13px;background:var(--color-neutral-100)"><span class="mt" style="width:16px">⋮⋮</span><span class="mt" style="width:14px">2</span><span class="lb" style="flex:1">Barre chord transitions</span><span class="btnt" style="min-height:34px">15 min</span><span class="btnt" style="min-height:34px">Remove</span></div>
+<div class="rowb" style="padding:0 13px 10px 13px;background:var(--color-neutral-100)"><span style="width:30px"></span><span class="btnt" style="min-height:34px">Move up</span><span class="btnt" style="min-height:34px">Move down</span><span class="mt">or drag the handle</span></div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb" style="padding:10px 13px"><span class="mt" style="width:16px">⋮⋮</span><span class="mt" style="width:14px">3</span><span class="lb" style="flex:1">Intervals and triads</span><span class="btnt" style="min-height:34px">10 min</span><span class="btnt" style="min-height:34px">Remove</span></div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb" style="padding:10px 13px"><span class="mt" style="width:16px">⋮⋮</span><span class="mt" style="width:14px">4</span><span class="lb" style="flex:1">Learn a 12-bar blues progression</span><span class="btnt" style="min-height:34px">10 min</span><span class="btnt" style="min-height:34px">Remove</span></div>
+</div>
+<div class="rowb" style="gap:9px"><div class="btns" style="padding:0 20px">Add Tasks</div><div class="btnp" style="padding:0 24px">Start Practice</div><div class="sp"></div><span class="btnt" style="min-height:44px">Archive</span><span class="btnt" style="min-height:44px;color:var(--color-danger-700)">Delete</span></div>
+</div>
+</div>
+</div>
+<div class="note" style="max-width:1240px">Task rows go from stacked cards to single lines — duration and Remove are always visible because there is room, so the mobile tap-to-expand step disappears. <b>Move up / Move down</b> still ship: they are the keyboard path here, not just the accessibility fallback.</div>
+</div>
+
+<div class="dv-opt" id="2d">
+<div class="dv-olabel"><a class="dv-oid" href="#2d">2d</a><b>Active Session</b>Stays one centred column, deliberately</div>
+<div class="wf" style="flex-direction:column">
+<div class="wtop"><i></i><i></i><i></i><span>Practice session — no rail, no chrome</span></div>
+<div style="display:flex;justify-content:center;min-height:560px;background:var(--color-surface);padding:26px 24px">
+<div style="width:620px;display:flex;flex-direction:column;gap:13px">
+<div class="rowb"><div><div class="mt">Following · Warm-up routine</div><div class="h1" style="font-size:20px">Evening practice</div></div><div class="sp"></div><span class="btnt" style="min-height:40px">Exit</span></div>
+<div class="cd" style="align-items:center;gap:4px;padding:20px">
+<div class="xs">Elapsed · on this device</div>
+<div class="big" style="font-size:64px">18:24</div>
+<div class="mt">of 45 min planned</div>
+</div>
+<div class="cd" style="border-color:var(--color-accent);background:var(--color-neutral-100)">
+<div class="rowb"><span class="xs">Now</span><span class="sp"></span><span class="bdg n">Task 2 of 4</span></div>
+<div class="h2" style="font-size:20px">Barre chord transitions</div>
+<div class="rowb"><span class="mt">Planned 15 min</span><span class="sp"></span><div class="rowb" style="gap:0"><span class="btnt" style="width:44px;height:44px;border-radius:999px">−</span><span class="lb" style="width:56px;text-align:center">8 min</span><span class="btnt" style="width:44px;height:44px;border-radius:999px">+</span></div></div>
+<div class="rowb" style="gap:9px"><span class="btnt" style="min-height:48px;width:110px">Previous</span><div class="btnp" style="flex:1;min-height:52px;font-size:16px">Complete Task</div><span class="btnt" style="min-height:48px;width:110px">Next</span></div>
+</div>
+<div class="g2" style="align-items:start">
+<div class="cd" style="gap:9px">
+<div class="xs">Routine tasks</div>
+<div class="rowb"><span class="tick on"></span><span class="lb" style="flex:1;text-decoration:line-through;color:var(--color-neutral-700)">Major scale in one position</span><span class="mt">10 min</span></div>
+<div class="rowb"><span class="tick"></span><span class="lb" style="flex:1">Barre chord transitions</span><span class="mt">8 min</span></div>
+<div class="rowb"><span class="tick"></span><span class="lb" style="flex:1">Intervals and triads</span><span class="mt">10 min</span></div>
+<div class="rowb"><span class="tick"></span><span class="lb" style="flex:1">12-bar blues progression</span><span class="mt">10 min</span></div>
+</div>
+<div class="cd q" style="min-height:130px"><div class="xs">Session notes</div><div class="mt">Optional — what went well, what to fix.</div></div>
+</div>
+<div class="rowb" style="gap:9px"><div class="btns" style="padding:0 20px">Add Recording</div><div class="btnp" style="flex:1">Finish Session</div></div>
+<div class="mt" style="text-align:center">Saved when you finish. Keyboard: space completes the current task, ← → move between tasks.</div>
+</div>
+</div>
+</div>
+<div class="note" style="max-width:1240px">The one screen that does <b>not</b> become two panes. It is read from across the room with a guitar in hand, so the width buys bigger type and a wider primary button rather than more content. The rail is hidden while a session is running, for the same reason the mobile version hides the bottom nav.</div>
+</div>
+
+<div class="dv-opt" id="2e">
+<div class="dv-olabel"><a class="dv-oid" href="#2e">2e</a><b>History + Session Details</b>Recordings get room for a real player</div>
+<div class="wf" style="flex-direction:column">
+<div class="wtop"><i></i><i></i><i></i><span>History — session detail and recordings</span></div>
+<div style="display:flex;min-height:560px">
+<div class="rail">
+<div class="h2" style="padding:0 12px 10px">Guitar Coach</div>
+<div class="ri pr"><i></i>Practice</div>
+<div style="height:8px"></div>
+<div class="ri"><i></i>Home</div>
+<div class="ri"><i></i>Routines</div>
+<div class="ri"><i></i>Library</div>
+<div class="ri on"><i></i>History</div>
+<div style="flex:1"></div>
+<div class="ri"><i></i>AI Coach</div>
+<div class="ri"><i></i>Profile</div>
+</div>
+<div class="pane l" style="max-width:360px">
+<div class="h1" style="font-size:20px">History</div>
+<div class="xs">Today</div>
+<div class="cd" style="padding:11px 13px;border-color:var(--color-accent);background:var(--color-neutral-100)"><div class="lb">Evening practice</div><div class="mt">Warm-up routine</div><div class="rowb" style="gap:6px"><span class="bdg n">38 min</span><span class="bdg c">1 rec</span></div></div>
+<div class="xs">Yesterday</div>
+<div class="cd" style="padding:11px 13px"><div class="lb">Quick theory review</div><div class="rowb" style="gap:6px"><span class="bdg n">15 min</span><span class="bdg n">1 of 1</span></div></div>
+<div class="xs">Last week</div>
+<div class="cd" style="padding:11px 13px"><div class="lb">Fingerstyle practice</div><div class="mt">Fingerstyle focus</div><div class="rowb" style="gap:6px"><span class="bdg n">20 min</span><span class="bdg c">2 rec</span></div></div>
+<div class="cd" style="padding:11px 13px"><div class="lb">Rhythm reading catch-up</div><div class="rowb" style="gap:6px"><span class="bdg n">15 min</span><span class="bdg n">1 of 1</span></div></div>
+<div class="rowb" style="justify-content:center"><span class="btnt">Load older</span></div>
+</div>
+<div class="pane r">
+<div class="rowb"><div><div class="h1" style="font-size:20px">Evening practice</div><div class="mt">Today, 8:12 PM · Warm-up routine</div></div><div class="sp"></div><span class="lb">38 min practiced</span></div>
+<div class="g2" style="grid-template-columns:1.15fr 1fr;align-items:start">
+<div class="cd" style="padding:0">
+<div class="rowb" style="padding:9px 13px"><span class="xs" style="flex:1">Practiced tasks</span></div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb" style="padding:9px 13px"><span class="tick on"></span><span class="lb" style="flex:1">Major scale in one position</span><span class="mt">10 min</span></div>
+<div class="rowb" style="padding:9px 13px"><span class="tick on"></span><span class="lb" style="flex:1">Barre chord transitions</span><span class="mt">8 min</span></div>
+<div class="rowb" style="padding:9px 13px"><span class="tick on"></span><span class="lb" style="flex:1">12-bar blues progression</span><span class="mt">20 min</span></div>
+<div class="rowb" style="padding:9px 13px"><span class="tick"></span><span class="lb" style="flex:1;color:var(--color-neutral-700)">Intervals and triads</span><span class="mt">—</span></div>
+</div>
+<div class="cd q"><div class="xs">Notes</div><div class="mt">Barre transitions still buzzing on the B string. Blues form felt better at 80 bpm.</div></div>
+</div>
+<div class="rowb"><span class="xs">Recordings</span><span class="sp"></span><span class="mt">1 file · MP3, WAV, M4A, OGG, WebM · up to 50 MB</span></div>
+<div class="cd" style="padding:0">
+<div class="rowb" style="padding:11px 13px;gap:12px">
+<span class="btnt" style="width:44px;height:44px;border-radius:999px;padding:0">▶</span>
+<div style="width:190px"><div class="lb">blues-take-3.m4a</div><div class="mt">M4A · 4.2 MB · today 8:44 PM</div></div>
+<div style="flex:1;height:6px;border-radius:999px;background:var(--color-neutral-300)"><div style="width:38%;height:6px;border-radius:999px;background:var(--color-accent)"></div></div>
+<span class="mt">0:42 / 1:50</span>
+<span class="btnt" style="min-height:38px;color:var(--color-danger-700)">Delete</span>
+</div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb" style="padding:11px 13px;gap:12px">
+<span class="btnt" style="width:44px;height:44px;border-radius:999px;padding:0">▶</span>
+<div style="width:190px"><div class="lb">take-4.wav</div><div class="mt">Uploading · 18.4 of 29.8 MB</div></div>
+<div style="flex:1;height:6px;border-radius:999px;background:var(--color-neutral-300)"><div style="width:62%;height:6px;border-radius:999px;background:var(--color-accent)"></div></div>
+<span class="mt">62%</span>
+<span class="btnt" style="min-height:38px">Cancel</span>
+</div>
+</div>
+<div class="cd" style="border-style:dashed;align-items:center;padding:20px;background:transparent"><div class="lb">Drop an audio file here</div><div class="mt">or <span style="color:var(--color-accent-700);font-weight:700">choose a file</span> · MP3, WAV, M4A, OGG, WebM · max 50 MB</div></div>
+</div>
+</div>
+</div>
+<div class="note" style="max-width:1240px">Web adds one genuinely new affordance — a <b>drop zone</b>, which has no mobile equivalent — and puts the scrubber on the same line as the file. Everything else is the mobile recording row unwrapped. Completed sessions remain read-only on both platforms.</div>
+</div>
+
+<div class="dv-opt" id="2f">
+<div class="dv-olabel"><a class="dv-oid" href="#2f">2f</a><b>AI Coach &amp; Auth</b>Centred column, capped width</div>
+<div class="row">
+<div class="grp" style="max-width:none">
+<div class="gtag">AI Coach — 640px conversation</div>
+<div class="wf" style="width:760px;flex-direction:column">
+<div class="wtop"><i></i><i></i><i></i><span>AI Coach</span></div>
+<div style="display:flex;justify-content:center;padding:22px;background:var(--color-surface);min-height:520px">
+<div style="width:640px;display:flex;flex-direction:column;gap:12px">
+<div class="rowb"><span class="h1" style="font-size:20px">AI Coach</span><span class="sp"></span><div style="display:flex;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:3px"><span class="btnt" style="background:var(--color-accent);color:var(--color-neutral-100);border:0;min-height:34px">Draft &amp; Review</span><span class="btnt" style="background:transparent;border:0;min-height:34px">Instant Create</span></div></div>
+<div class="cd q" style="padding:9px 13px"><div class="mt">Create a practice plan and review it before anything is saved.</div></div>
+<div class="chips"><span class="chip">30-min blues routine</span><span class="chip">Fix my barre chords</span><span class="chip">Theory only</span><span class="chip">Something short today</span></div>
+<div class="cd" style="align-self:flex-end;max-width:430px;background:var(--color-surface)"><div class="mt" style="color:var(--color-text)">Create a 30-minute blues routine focused on bending and improvisation.</div></div>
+<div class="cd" style="max-width:520px">
+<div class="rowb"><span class="xs">Draft plan</span><span class="sp"></span><span class="bdg n">Not saved · expires in 14 min</span></div>
+<div class="h2" style="font-size:19px">Blues bending and improv</div>
+<div class="mt">Three blocks: warm the fingers, drill controlled bends, then improvise over a 12-bar form.</div>
+<div class="rowb"><span class="lb">30 min total</span><span class="sp"></span><span class="mt">3 tasks</span></div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb"><span class="mt" style="width:14px">1</span><span class="lb" style="flex:1">Chromatic finger warm-up</span><span class="mt">5 min</span></div>
+<div class="rowb"><span class="mt" style="width:14px">2</span><span class="lb" style="flex:1">Alternate picking drills</span><span class="mt">10 min</span></div>
+<div class="rowb"><span class="mt" style="width:14px">3</span><span class="lb" style="flex:1">12-bar blues progression</span><span class="mt">15 min</span></div>
+<div class="rowb" style="gap:9px"><div class="btnp" style="padding:0 24px">Save Routine</div><div class="btnt" style="min-height:44px">Discard</div></div>
+</div>
+<div class="sp" style="min-height:8px"></div>
+<div class="in" style="min-height:52px"><span>Adjust the plan…</span><span class="sp"></span><span style="width:36px;height:36px;border-radius:999px;background:var(--color-accent)"></span></div>
+</div>
+</div>
+</div>
+<div class="note">Conversation caps at 640px however wide the window gets — long lines of chat are harder to read, not easier. The composer pins to the bottom of the column.</div>
+</div>
+
+<div class="grp" style="max-width:none">
+<div class="gtag">Authentication — centred card</div>
+<div class="wf" style="width:440px;flex-direction:column">
+<div class="wtop"><i></i><i></i><i></i><span>Sign in</span></div>
+<div style="padding:34px 30px;background:var(--color-surface);display:flex;flex-direction:column;gap:12px;min-height:520px">
+<div class="h1">Guitar Coach</div>
+<div class="mt">Practice with a plan.</div>
+<div style="display:flex;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:3px;margin-top:6px">
+<div style="flex:1;min-height:38px;border-radius:999px;background:var(--color-accent);color:var(--color-neutral-100);font:400 13px var(--font-heading);display:flex;align-items:center;justify-content:center">Sign In</div>
+<div style="flex:1;min-height:38px;display:flex;align-items:center;justify-content:center;font:600 12.5px var(--font-body);color:var(--color-neutral-700)">Create Account</div>
+</div>
+<div class="xs">Email</div><div class="in">jordan@example.com</div>
+<div class="xs">Password</div><div class="in f"><span>••••••••••</span><span class="sp"></span><span style="font:600 11px var(--font-body);color:var(--color-accent-700)">Show</span></div>
+<div class="rowb"><span class="sp"></span><span style="font:600 11px var(--font-body);color:var(--color-accent-700)">Forgot password?</span></div>
+<div class="btnp">Sign In</div>
+<div class="mt" style="text-align:center">New here? <span style="color:var(--color-accent-700);font-weight:700">Create an account</span></div>
+</div>
+</div>
+<div class="note">No marketing panel beside the form — the app has no public content to show, and a split-screen hero would be inventing a landing page.</div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2g">
+<div class="dv-olabel"><a class="dv-oid" href="#2g">2g</a><b>Cross-platform notes</b>What one React Native codebase can share</div>
+<div class="nts">
+<div class="cd"><div class="lb">Shared without change</div><div class="mt">Task card, routine card, session card, recording row, badges, chips, segmented control, checklist row, stepper, inline validation, toast, network-error panel, skeletons, and the AI plan-preview card. These are the same components at the same sizes — web just places more of them per row.</div></div>
+<div class="cd"><div class="lb">One component, two arrangements</div><div class="mt">The routine task row: stacked with tap-to-expand on mobile, one line with controls always visible on web. The recording row: two stacked lines on mobile, one row with an inline scrubber on web. Both are a single component branching on available width, not two implementations.</div></div>
+<div class="cd"><div class="lb">Navigation is the real fork</div><div class="mt">Bottom tabs with a raised central action on mobile; a left rail on web at 768px and up, where <b>History</b> and <b>AI Coach</b> get their own entries. Same routes, same order, different container — worth isolating behind one navigation component so screens never know which shell they are in.</div></div>
+<div class="cd"><div class="lb">Sheets become panels or dialogs</div><div class="mt">Every bottom sheet in turn 1 has a web counterpart: the routine picker becomes an inline panel, confirmations become centred dialogs, and the Practice choice sheet becomes a small popover under the rail's Practice button. Keep the content identical and let the presenter differ.</div></div>
+<div class="cd"><div class="lb">Web-only affordances</div><div class="mt">Drag-and-drop file upload, hover states on rows, keyboard shortcuts in the session screen, deep-linkable list/detail URLs, and the browser back button. None of these have mobile equivalents, so none of them can be the only way to do anything.</div></div>
+<div class="cd"><div class="lb">Layout rules that carry both ways</div><div class="mt">One content column capped at 560px on mobile and tablet; two panes above 1024px for Library, Routines and History; conversation capped at 640px; the Active Session screen never splits. 44px minimum targets stay on web — they cost nothing with a mouse and matter on touchscreen laptops and tablets.</div></div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "show the tablet width between mobile and 2a" · "make the rail collapsible" · "add the empty and error states for the web panes"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><span class="dv-tid">1</span><span class="dv-tname">Guitar Coach — connected iPhone wireframes</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a><b>Flow map</b>Five journey stages, matching the rows below</div>
+<div class="map" style="width:1320px">
+<div class="mrow"><span class="xs" style="width:74px">Get in</span><span class="mn">Sign In</span><span class="ma">↔</span><span class="mn">Create Account</span><span class="ma">→</span><span class="mn k">Home</span></div>
+<div class="mrow"><span class="xs" style="width:74px">Plan</span><span class="mn k">Home</span><span class="ma">→</span><span class="mn">Library</span><span class="ma">→</span><span class="mn">Task Details</span><span class="ma">→</span><span class="mn s">Routine picker sheet</span><span class="ma">→</span><span class="mn">Routine Builder</span></div>
+<div class="mrow"><span class="xs" style="width:74px">Plan · AI</span><span class="mn k">Home</span><span class="ma">→</span><span class="mn">AI Coach · Draft &amp; Review</span><span class="ma">→</span><span class="mn s">Plan preview → Save</span><span class="ma">→</span><span class="mn">Routine Details</span></div>
+<div class="mrow"><span class="xs" style="width:74px"></span><span class="mn">AI Coach · Instant Create</span><span class="ma">→</span><span class="mn">Routine Details</span><span class="mn s" style="border:0;padding-left:4px">(no confirm step)</span></div>
+<div class="mrow"><span class="xs" style="width:74px">Practice</span><span class="mn k">Practice</span><span class="ma">→</span><span class="mn s">From routine / Blank</span><span class="ma">→</span><span class="mn">Active Session</span><span class="ma">→</span><span class="mn s">Finish</span><span class="ma">→</span><span class="mn">Session Details</span></div>
+<div class="mrow"><span class="xs" style="width:74px">Review</span><span class="mn">History</span><span class="ma">→</span><span class="mn">Session Details</span><span class="ma">→</span><span class="mn s">Recordings · upload / play / delete</span></div>
+<div class="mrow"><span class="xs" style="width:74px">Account</span><span class="mn">Profile</span><span class="ma">→</span><span class="mn s">Sign Out</span><span class="ma">→</span><span class="mn">Sign In</span></div>
+</div>
+<div class="note" style="max-width:1320px">Persistent bottom nav on every stage except Auth, Active Session and full-screen sheets. <b>Practice</b> is the dominant central action; AI Coach is reachable from Home and from Routines, never as a tab.</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a><b>Stage 1 · Get in</b>Authentication, one screen with two states</div>
+<div class="row">
+
+<div class="grp">
+<div class="gtag">01 · Sign In</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div style="height:14px"></div>
+<div class="h1">Guitar Coach</div>
+<div class="mt">Practice with a plan.</div>
+<div style="display:flex;gap:0;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:3px;margin-top:6px">
+<div style="flex:1;min-height:38px;border-radius:999px;background:var(--color-accent);color:var(--color-neutral-100);font:400 13px var(--font-heading);display:flex;align-items:center;justify-content:center">Sign In</div>
+<div style="flex:1;min-height:38px;display:flex;align-items:center;justify-content:center;font:600 12.5px var(--font-body);color:var(--color-neutral-700)">Create Account</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:5px;margin-top:6px">
+<div class="xs">Email</div>
+<div class="in">jordan@example.com</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:5px">
+<div class="xs">Password</div>
+<div class="in f"><span>••••••••••</span><span class="sp"></span><span style="font:600 11px var(--font-body);color:var(--color-accent-700)">Show</span></div>
+</div>
+<div style="display:flex;justify-content:flex-end"><span style="font:600 11px var(--font-body);color:var(--color-accent-700)">Forgot password?</span></div>
+<div class="btnp" style="margin-top:4px">Sign In</div>
+<div class="mt" style="text-align:center">New here? <span style="color:var(--color-accent-700);font-weight:700">Create an account</span></div>
+</div>
+</div>
+<div class="note">Segmented control swaps state in place — no separate screen. Show/hide toggle is a 44px tap zone inside the field.</div>
+</div>
+
+<div class="arw"><i></i><span>submit</span></div>
+
+<div class="grp">
+<div class="gtag">01b · Create Account + validation</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div style="height:14px"></div>
+<div class="h1">Guitar Coach</div>
+<div class="mt">Practice with a plan.</div>
+<div style="display:flex;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:3px;margin-top:6px">
+<div style="flex:1;min-height:38px;display:flex;align-items:center;justify-content:center;font:600 12.5px var(--font-body);color:var(--color-neutral-700)">Sign In</div>
+<div style="flex:1;min-height:38px;border-radius:999px;background:var(--color-accent);color:var(--color-neutral-100);font:400 13px var(--font-heading);display:flex;align-items:center;justify-content:center">Create Account</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:5px;margin-top:6px">
+<div class="xs">Display name</div>
+<div class="in">Jordan</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:5px">
+<div class="xs">Email</div>
+<div class="in e">jordan@example</div>
+<div class="err">Enter a valid email address.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:5px">
+<div class="xs">Password</div>
+<div class="in"><span>••••••</span><span class="sp"></span><span style="font:600 11px var(--font-body);color:var(--color-accent-700)">Show</span></div>
+<div class="mt">At least 8 characters.</div>
+</div>
+<div class="btnp" style="margin-top:4px">Create Account</div>
+</div>
+</div>
+<div class="note">Validation fires on blur, per field, and never blocks typing. Button stays enabled; submitting an invalid form scrolls to the first error.</div>
+</div>
+
+<div class="grp" style="max-width:318px">
+<div class="gtag">01c · Submit states</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">Loading</div>
+<div class="btnp" style="background:var(--color-accent-300);color:var(--color-accent-800)">Signing in…</div>
+<div class="mt">Fields locked, button label swaps, no spinner-only state.</div>
+<div class="xs" style="margin-top:6px">Auth error</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">Email or password is incorrect</div><div class="mt" style="color:var(--color-danger-700)">Check both and try again.</div></div>
+<div class="xs" style="margin-top:6px">Rate limited</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">Too many attempts</div><div class="mt" style="color:var(--color-danger-700)">Try again in about a minute.</div></div>
+<div class="xs" style="margin-top:6px">Offline</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">No connection</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Retry</span></div></div>
+<div class="xs" style="margin-top:6px">Secondary links</div>
+<div class="cd q"><div class="mt">Reset password sent · Verify your email — both surface as banners on this screen, not as their own wireframes.</div></div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a><b>Stage 2 · Home base</b>Home, its empty state, and the central Practice sheet</div>
+<div class="row">
+
+<div class="grp">
+<div class="gtag">02 · Home</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="rowb" style="margin-top:4px">
+<div><div class="h1">Evening, Jordan</div><div class="mt">Ready for 30 minutes?</div></div>
+<div class="sp"></div><div class="bk" style="width:40px;height:40px"></div>
+</div>
+<div class="cd">
+<div class="rowb"><span class="xs">Today's practice</span><span class="sp"></span><span class="bdg n">4 tasks · 45 min</span></div>
+<div class="h2">Alice's warm-up routine</div>
+<div class="mt">Major scale in one position · Barre chord transitions · Intervals and triads · 12-bar blues</div>
+<div class="btnp" style="margin-top:2px">Start Practice</div>
+</div>
+<div class="btnp gh">Ask AI Coach</div>
+<div class="cd">
+<div class="xs">This week</div>
+<div class="rowb" style="gap:18px;align-items:flex-end">
+<div><div class="big" style="font-size:34px">95</div><div class="mt">minutes</div></div>
+<div style="width:1px;height:34px;background:var(--color-neutral-300)"></div>
+<div><div class="big" style="font-size:34px">4</div><div class="mt">sessions</div></div>
+</div>
+</div>
+<div class="note"><b>“Ask AI Coach” opens screen 10</b> in Draft &amp; Review mode, with the composer focused. It is the same screen the Routines tab links to — one AI surface, entered from two places.</div>
+<div class="note"><b>Where “This week” comes from:</b> the client lists the user's own sessions, keeps those created in the current week, and counts them. Minutes are the sum of each session's per-task minutes — the same arithmetic History uses. There is no stats or analytics endpoint, and no total-duration field on a session, so these two figures are the only progress numbers the data can honestly support.</div>
+<div class="rowb"><span class="xs">Recent session</span><span class="sp"></span><span style="font:600 11px var(--font-body);color:var(--color-accent-700)">See all</span></div>
+<div class="cd">
+<div class="rowb"><span class="lb">Evening barre chord practice</span><span class="sp"></span><span class="mt">2d</span></div>
+<div class="mt">Alice's warm-up routine · 35 min · 1 of 2 tasks done · 1 recording</div>
+</div>
+<div class="rowb"><span class="xs">Active routines</span><span class="sp"></span><span style="font:600 11px var(--font-body);color:var(--color-accent-700)">All</span></div>
+<div class="rowb" style="gap:8px;overflow:hidden">
+<div class="cd" style="width:140px;flex:none;padding:11px 12px"><div class="lb">Fingerstyle focus</div><div class="mt">2 tasks · 35 min</div></div>
+<div class="cd" style="width:140px;flex:none;padding:11px 12px"><div class="lb">Warm-up routine</div><div class="mt">4 tasks · 45 min</div></div>
+</div>
+<div style="height:6px"></div>
+</div>
+<div class="bn">
+<div class="bni on"><i></i><span>Home</span></div>
+<div class="bni"><i></i><span>Routines</span></div>
+<div class="bnc">Practice</div>
+<div class="bni"><i></i><span>Library</span></div>
+<div class="bni"><i></i><span>Profile</span></div>
+</div>
+</div>
+<div class="note">Two numbers only — minutes and session count, both summed from logged sessions. No streaks, charts or scores; the backend does not produce them.</div>
+</div>
+
+<div class="arw" style="padding-top:120px"><i></i><span>tap Practice</span></div>
+
+<div class="grp">
+<div class="gtag">02b · Practice choice sheet</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr" style="opacity:.4">
+<div class="rowb" style="margin-top:4px"><div><div class="h1">Evening, Jordan</div><div class="mt">Ready for 30 minutes?</div></div><div class="sp"></div><div class="bk" style="width:40px;height:40px"></div></div>
+<div class="cd"><div class="bx" style="width:60%"></div><div class="bx" style="width:85%"></div><div class="bx" style="width:40%"></div></div>
+<div class="cd"><div class="bx" style="width:50%"></div><div class="bx" style="width:70%"></div></div>
+</div>
+<div class="sh">
+<div class="grab"></div>
+<div class="h2">Start practice</div>
+<div class="cd" style="gap:6px">
+<div class="rowb"><span class="lb">From a routine</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="mt">Alice's warm-up routine · 4 tasks · 45 min</div>
+<div class="mt">Fingerstyle focus · 2 tasks · 35 min</div>
+</div>
+<div class="btns">Start a blank session</div>
+<div class="mt" style="text-align:center">Pick tasks from the library as you go.</div>
+</div>
+</div>
+<div class="note">Sheet, not a screen — dismissible by swipe. Routines listed inline so a one-tap start needs no second navigation.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">02c · Home, new user</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="rowb" style="margin-top:4px"><div><div class="h1">Welcome, Jordan</div><div class="mt">Let's set up your first routine.</div></div><div class="sp"></div><div class="bk" style="width:40px;height:40px"></div></div>
+<div class="cd" style="border-style:dashed;align-items:flex-start;gap:10px">
+<div style="width:52px;height:52px;border-radius:999px;background:var(--color-neutral-200)"></div>
+<div class="h2">No routines yet</div>
+<div class="mt">Build one from the shared task library, or describe what you want to work on and let the coach draft it.</div>
+<div class="btnp" style="width:100%">Browse Tasks</div>
+<div class="btnp gh" style="width:100%">Ask AI Coach</div>
+</div>
+<div class="cd q"><div class="xs">This week</div><div class="mt">Nothing logged yet. Your minutes and sessions appear here after your first practice.</div></div>
+<div class="cd q"><div class="xs">Or just play</div><div class="rowb"><span class="mt">Start a blank session and pick tasks as you go.</span></div></div>
+</div>
+<div class="bn">
+<div class="bni on"><i></i><span>Home</span></div>
+<div class="bni"><i></i><span>Routines</span></div>
+<div class="bnc">Practice</div>
+<div class="bni"><i></i><span>Library</span></div>
+<div class="bni"><i></i><span>Profile</span></div>
+</div>
+</div>
+<div class="note">Empty state keeps all three entry points visible: library, AI Coach, blank session. Stat card stays in place so the layout does not jump once data arrives.</div>
+</div>
+
+</div>
+</div>
+
+<div class="dv-opt" id="1d">
+<div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a><b>Stage 3 · Build a routine</b>Library → Task Details → Routines → Builder</div>
+<div class="row">
+
+<div class="grp">
+<div class="gtag">03 · Task Library</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="bar"><div class="h1" style="font-size:19px">Task library</div><div class="sp"></div><div class="bk"></div></div>
+<div class="in">Search tasks</div>
+<div class="chips"><span class="chip on">Technique</span><span class="chip">Theory</span><span class="chip">Repertoire</span></div>
+<div class="chips"><span class="chip">Easy</span><span class="chip on">Medium</span><span class="chip">Hard</span><span class="chip" style="border-style:dashed;color:var(--color-accent-700)">Clear</span></div>
+<div class="mt">8 tasks · Technique · Medium</div>
+<div class="cd">
+<div class="rowb"><span class="lb">Alternate picking drills</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="rowb" style="gap:6px"><span class="bdg c">Technique</span><span class="bdg d">Medium</span></div>
+</div>
+<div class="cd">
+<div class="rowb"><span class="lb">Barre chord transitions</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="rowb" style="gap:6px"><span class="bdg c">Technique</span><span class="bdg d">Medium</span></div>
+</div>
+<div class="cd">
+<div class="rowb"><span class="lb">Travis picking fingerstyle pattern</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="mt">Build a steady alternating-bass pattern. Start with a static chord shape…</div>
+<div class="rowb" style="gap:6px"><span class="bdg c">Technique</span><span class="bdg d">Medium</span><span class="sp"></span><span class="xs">Link</span></div>
+</div>
+<div class="cd">
+<div class="rowb"><span class="lb">Tears Don't Fall — main riff</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="mt">Learn the main riff in Drop C#. Tight palm-muted eighths on the low…</div>
+<div class="rowb" style="gap:6px"><span class="bdg c">Technique</span><span class="bdg d">Medium</span><span class="sp"></span><span class="xs">Link</span></div>
+</div>
+<div class="rowb" style="justify-content:center"><span class="btnt">Load more</span></div>
+</div>
+<div class="bn">
+<div class="bni"><i></i><span>Home</span></div>
+<div class="bni"><i></i><span>Routines</span></div>
+<div class="bnc">Practice</div>
+<div class="bni on"><i></i><span>Library</span></div>
+<div class="bni"><i></i><span>Profile</span></div>
+</div>
+</div>
+<div class="note">Browse only — no create, edit or delete. Filters are additive across the two rows; <b>Clear</b> appears only once a filter is on. Pages load on demand rather than infinite-scrolling.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">03b · Library states</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">Loading</div>
+<div class="cd"><div class="sk" style="width:65%"></div><div class="rowb" style="gap:6px"><span class="sk" style="width:64px;height:16px"></span><span class="sk" style="width:52px;height:16px"></span></div></div>
+<div class="cd"><div class="sk" style="width:80%"></div><div class="rowb" style="gap:6px"><span class="sk" style="width:64px;height:16px"></span><span class="sk" style="width:52px;height:16px"></span></div></div>
+<div class="xs" style="margin-top:6px">No results</div>
+<div class="cd" style="border-style:dashed"><div class="lb">No tasks match these filters</div><div class="mt">Try removing a difficulty.</div><div class="btns" style="min-height:40px">Clear filters</div></div>
+<div class="xs" style="margin-top:6px">Failed to load</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">Couldn't load the library</div><div class="mt" style="color:var(--color-danger-700)">Filters and search stay as you set them.</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Retry</span></div></div>
+<div class="xs" style="margin-top:6px">Offline</div>
+<div class="pnl"><div class="mt" style="color:var(--color-danger-700)">You're offline. Showing the tasks loaded earlier.</div></div>
+</div>
+</div>
+</div>
+
+<div class="arw"><i></i><span>tap a task</span></div>
+
+<div class="grp">
+<div class="gtag">04 · Task Details + add to routine</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="bar"><div class="bk"></div><div class="sp"></div></div>
+<div class="rowb" style="gap:6px"><span class="bdg c">Technique</span><span class="bdg d">Medium</span></div>
+<div class="h1">Travis picking fingerstyle pattern</div>
+<div class="cd">
+<div class="mt" style="font-size:12px">Build a steady alternating-bass Travis picking pattern. Start with a static chord shape before moving the bass line under a chord progression.</div>
+</div>
+<div class="cd" style="gap:6px"><div class="rowb"><span class="lb">Reference link</span><span class="sp"></span><span class="mt">↗</span></div><div class="mt">Opens outside the app</div></div>
+<div class="btnp">Add to Routine</div>
+<div class="mt" style="text-align:center">Tasks are shared and read-only.</div>
+</div>
+<div class="sh">
+<div class="grab"></div>
+<div class="rowb"><span class="h2">Add to which routine?</span><span class="sp"></span><span class="mt">18 active</span></div>
+<div class="in" style="min-height:40px">Find a routine</div>
+<div class="cd" style="gap:7px;padding:11px 12px"><div class="rowb"><span class="tick on"></span><span class="lb">Fingerstyle focus</span><span class="sp"></span><span class="mt">2 tasks</span></div></div>
+<div class="cd" style="gap:7px;padding:11px 12px"><div class="rowb"><span class="tick"></span><span class="lb">Warm-up routine</span><span class="sp"></span><span class="mt">4 tasks</span></div></div>
+<div class="cd" style="gap:7px;padding:11px 12px;opacity:.55"><div class="rowb"><span class="tick"></span><span class="lb">Neglected skills rebuild</span><span class="sp"></span><span class="mt">4 tasks</span></div></div>
+<div class="rowb" style="justify-content:center"><span class="btnt">Load more routines</span></div>
+<div class="rowb"><span class="xs">Target duration</span><span class="sp"></span><div class="rowb" style="gap:0"><span class="btnt" style="width:44px;height:44px;border-radius:999px">−</span><span class="lb" style="width:52px;text-align:center">15 min</span><span class="btnt" style="width:44px;height:44px;border-radius:999px">+</span></div></div>
+<div class="btnp">Add task</div>
+<div class="btnt" style="align-self:center">New routine instead</div>
+</div>
+</div>
+<div class="note">Duration is optional and prefilled — progressive disclosure keeps it inside the sheet instead of a form on the details screen.</div>
+<div class="note"><b>With 20 routines it does not show all 20.</b> The routine list is paginated, so the sheet loads the first page of <b>active</b> routines, scrolls inside the sheet, and pages on demand. Search filters instead of scrolling once someone has more than a screenful, and the count in the header sets the expectation. Archived routines are excluded — a task added to an archived routine has nowhere useful to go.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">04b · After adding</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">Success</div>
+<div class="tst">Added to Fingerstyle focus · <span style="text-decoration:underline">View routine</span></div>
+<div class="mt">Toast sits above the bottom nav for 4s, sheet closes, task details stay open.</div>
+<div class="xs" style="margin-top:6px">Already in routine</div>
+<div class="pnl"><div class="mt" style="color:var(--color-danger-700)">This task is already in Fingerstyle focus. Change its duration there instead.</div></div>
+<div class="xs" style="margin-top:6px">Saving</div>
+<div class="btnp" style="background:var(--color-accent-300);color:var(--color-accent-800)">Adding…</div>
+<div class="xs" style="margin-top:6px">Failed</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">Couldn't add the task</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Try again</span><span class="btnt" style="background:var(--color-neutral-100)">Dismiss</span></div></div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div class="row" style="margin-top:20px">
+
+<div class="grp">
+<div class="gtag">05 · Routines</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="bar"><div class="h1" style="font-size:19px">Routines</div><div class="sp"></div><div class="bk"></div></div>
+<div style="display:flex;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:3px">
+<div style="flex:1;min-height:36px;border-radius:999px;background:var(--color-accent);color:var(--color-neutral-100);font:400 12.5px var(--font-heading);display:flex;align-items:center;justify-content:center">Active</div>
+<div style="flex:1;min-height:36px;display:flex;align-items:center;justify-content:center;font:600 12px var(--font-body);color:var(--color-neutral-700)">Archived</div>
+</div>
+<div class="cd">
+<div class="rowb"><span class="h2">Warm-up routine</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="mt">Fifteen minutes before anything else.</div>
+<div class="rowb" style="gap:6px"><span class="bdg n">4 tasks</span><span class="bdg n">45 min</span></div>
+<div class="btnp" style="min-height:44px">Start Practice</div>
+</div>
+<div class="cd">
+<div class="rowb"><span class="h2">Fingerstyle focus</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="mt">Alternating bass, then reading.</div>
+<div class="rowb" style="gap:6px"><span class="bdg n">2 tasks</span><span class="bdg n">35 min</span></div>
+<div class="btnp" style="min-height:44px">Start Practice</div>
+</div>
+<div class="btnp gh">Ask AI Coach to draft one</div>
+<div class="btns">Create Routine</div>
+</div>
+<div class="bn">
+<div class="bni"><i></i><span>Home</span></div>
+<div class="bni on"><i></i><span>Routines</span></div>
+<div class="bnc">Practice</div>
+<div class="bni"><i></i><span>Library</span></div>
+<div class="bni"><i></i><span>Profile</span></div>
+</div>
+</div>
+<div class="note">Archived routines live behind the segment: reviewable, no Start button, and never surfaced as today's recommendation.</div>
+<div class="note"><b>“Start Practice” creates nothing.</b> It reads the routine's ordered tasks and their target durations, then opens the Active Session screen (07) pre-loaded with them. The timer, the ticks and any edited minutes are local interface state from there on. The session record is written once, at <b>Finish</b> — so backing out costs nothing and never leaves a half-finished session in History. Same behaviour for the Start action on Home and in the Practice sheet.</div>
+<div class="note"><b>Three entry points, kept deliberately.</b> Home starts today's recommended routine, the central Practice action starts any routine or a blank session, and this button starts the specific routine in front of you. They overlap, but each matches a different intent — “the usual”, “let me choose”, “this one”. All three land on the same Active Session screen and all three write nothing until Finish, so the duplication costs one shared route, not three flows.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">05b · Routines states</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">Archived tab</div>
+<div class="cd" style="opacity:.75"><div class="rowb"><span class="h2">Old metal riff rotation</span><span class="sp"></span><span class="bdg n">Archived</span></div><div class="rowb" style="gap:6px"><span class="bdg n">2 tasks</span><span class="bdg n">40 min</span></div><div class="btns" style="min-height:40px">Restore to active</div></div>
+<div class="xs" style="margin-top:6px">Empty</div>
+<div class="cd" style="border-style:dashed"><div class="lb">No routines yet</div><div class="mt">Build one from the library or ask the coach.</div></div>
+<div class="xs" style="margin-top:6px">Loading</div>
+<div class="cd"><div class="sk" style="width:70%"></div><div class="sk" style="width:45%"></div><div class="sk" style="height:36px;border-radius:999px"></div></div>
+<div class="xs" style="margin-top:6px">Failed</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">Couldn't load your routines</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Retry</span></div></div>
+</div>
+</div>
+</div>
+
+<div class="arw"><i></i><span>open / create</span></div>
+
+<div class="grp">
+<div class="gtag">06 · Routine Builder / Details</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="bar"><div class="bk"></div><div class="sp"></div><span class="bdg d">Unsaved</span><span style="font:400 13px var(--font-heading);color:var(--color-accent-700)">Save</span></div>
+<div class="in f" style="min-height:48px;font:400 18px var(--font-heading);color:var(--color-text)">Warm-up routine</div>
+<div class="cd q" style="padding:10px 13px"><div class="mt">Notes — fifteen minutes before anything else.</div></div>
+<div class="rowb"><span class="xs">Status</span><span class="sp"></span><div style="display:flex;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:2px"><span class="btnt" style="background:var(--color-accent);color:var(--color-neutral-100);border:0;min-height:30px">Active</span><span class="btnt" style="background:transparent;border:0;min-height:30px">Archived</span></div></div>
+<div class="rowb"><span class="xs">4 tasks</span><span class="sp"></span><span class="lb">45 min planned</span></div>
+<div class="cd" style="padding:10px 12px">
+<div class="rowb"><span style="font:600 11px var(--font-body);color:var(--color-neutral-600);width:14px">1</span><div style="flex:1"><div class="lb">Major scale in one position</div><div class="mt">10 min</div></div><span class="btnt" style="min-height:44px;width:44px;padding:0">⋮⋮</span></div>
+</div>
+<div class="cd" style="padding:10px 12px;border-color:var(--color-accent)">
+<div class="rowb"><span style="font:600 11px var(--font-body);color:var(--color-neutral-600);width:14px">2</span><div style="flex:1"><div class="lb">Barre chord transitions</div><div class="rowb" style="gap:6px"><span class="btnt" style="min-height:32px">15 min</span><span class="btnt" style="min-height:32px">Remove</span></div></div><span class="btnt" style="min-height:44px;width:44px;padding:0">⋮⋮</span></div>
+<div class="rowb"><span class="btnt" style="min-height:40px;flex:1">Move up</span><span class="btnt" style="min-height:40px;flex:1">Move down</span></div>
+</div>
+<div class="cd" style="padding:10px 12px"><div class="rowb"><span style="font:600 11px var(--font-body);color:var(--color-neutral-600);width:14px">3</span><div style="flex:1"><div class="lb">Intervals and triads</div><div class="mt">10 min</div></div><span class="btnt" style="min-height:44px;width:44px;padding:0">⋮⋮</span></div></div>
+<div class="cd" style="padding:10px 12px"><div class="rowb"><span style="font:600 11px var(--font-body);color:var(--color-neutral-600);width:14px">4</span><div style="flex:1"><div class="lb">Learn a 12-bar blues progression</div><div class="mt">10 min</div></div><span class="btnt" style="min-height:44px;width:44px;padding:0">⋮⋮</span></div></div>
+<div class="btns">Add Tasks</div>
+<div class="btnp">Start Practice</div>
+<div class="rowb" style="gap:8px"><span class="btnt" style="flex:1;min-height:44px">Archive</span><span class="btnt" style="flex:1;min-height:44px;color:var(--color-danger-700)">Delete</span></div>
+</div>
+</div>
+<div class="note">One screen creates, views and edits. Tapping a task expands its controls in place; drag handle and <b>Move up / Move down</b> both reorder, so ordering never requires a drag.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">06b · Builder states</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">Unsaved changes, leaving</div>
+<div class="cd"><div class="lb">Save changes to this routine?</div><div class="mt">You reordered two tasks and changed a duration.</div><div class="btnp" style="min-height:40px">Save</div><div class="btnt" style="min-height:40px">Discard</div><div class="btnt" style="min-height:40px">Keep editing</div></div>
+<div class="xs" style="margin-top:6px">Reorder failed</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">Order not saved</div><div class="mt" style="color:var(--color-danger-700)">Another change was in progress. The list is back to the last saved order.</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Try again</span></div></div>
+<div class="xs" style="margin-top:6px">Validation</div>
+<div class="cd"><div class="in e" style="min-height:40px">Untitled</div><div class="err">Give the routine a title before saving.</div></div>
+<div class="xs" style="margin-top:6px">Delete confirmation</div>
+<div class="cd"><div class="lb">Delete “Warm-up routine”?</div><div class="mt">Past sessions that followed it are kept, without the link.</div><div class="rowb"><span class="btnt" style="min-height:40px;flex:1;color:var(--color-danger-700)">Delete</span><span class="btnt" style="min-height:40px;flex:1">Cancel</span></div></div>
+<div class="xs" style="margin-top:6px">Saved</div>
+<div class="tst">Routine saved</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="dv-opt" id="1e">
+<div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a><b>Stage 4 · Practice</b>AI Coach in two modes, then the live session</div>
+<div class="row">
+
+<div class="grp">
+<div class="gtag">10 · AI Coach — Draft &amp; Review</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="bar"><div class="bk"></div><div class="h2">AI Coach</div><div class="sp"></div></div>
+<div style="display:flex;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:3px">
+<div style="flex:1;min-height:38px;border-radius:999px;background:var(--color-accent);color:var(--color-neutral-100);font:400 12.5px var(--font-heading);display:flex;align-items:center;justify-content:center">Draft &amp; Review</div>
+<div style="flex:1;min-height:38px;display:flex;align-items:center;justify-content:center;font:600 12px var(--font-body);color:var(--color-neutral-700)">Instant Create</div>
+</div>
+<div class="cd q" style="padding:10px 13px"><div class="mt">Create a practice plan and review it before anything is saved.</div></div>
+<div class="xs">Try</div>
+<div class="chips"><span class="chip">30-min blues routine</span><span class="chip">Fix my barre chords</span><span class="chip">Theory only</span></div>
+<div class="cd" style="align-self:flex-end;max-width:250px;background:var(--color-surface)"><div class="mt" style="color:var(--color-text)">Create a 30-minute blues routine focused on bending and improvisation.</div></div>
+<div class="cd">
+<div class="rowb"><span class="xs">Draft plan</span><span class="sp"></span><span class="bdg n">Not saved</span></div>
+<div class="h2">Blues bending and improv</div>
+<div class="mt">Three blocks: warm the fingers, drill controlled bends, then improvise over a 12-bar form.</div>
+<div class="rowb"><span class="lb">30 min total</span><span class="sp"></span><span class="mt">3 tasks</span></div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb"><span class="mt" style="width:14px">1</span><span class="lb">Chromatic finger warm-up</span><span class="sp"></span><span class="mt">5 min</span></div>
+<div class="rowb"><span class="mt" style="width:14px">2</span><span class="lb">Alternate picking drills</span><span class="sp"></span><span class="mt">10 min</span></div>
+<div class="rowb"><span class="mt" style="width:14px">3</span><span class="lb">12-bar blues progression</span><span class="sp"></span><span class="mt">15 min</span></div>
+</div>
+<div class="rowb" style="gap:8px"><div class="btnp" style="flex:1">Save Routine</div><div class="btnt" style="flex:1;min-height:44px">Discard</div></div>
+<div class="in" style="margin-top:2px"><span>Adjust the plan…</span><span class="sp"></span><span style="width:30px;height:30px;border-radius:999px;background:var(--color-accent)"></span></div>
+</div>
+</div>
+<div class="note"><b>Nothing is written until Save.</b> The draft card carries a “Not saved” badge for the whole time it is on screen.</div>
+<div class="note"><b>Why the two modes exist, and yes — both are supported.</b> They are two different endpoints with two different contracts. Draft &amp; Review returns a plan awaiting confirmation and nothing else happens; the routine is only created when the user confirms, and declining cancels it outright. It is the mode for “I want a say in the plan.” Instant Create is the agent path: it reads recent practice and creates the routine in the same request, so there is nothing to confirm. Exposing them as one ambiguous button would hide the only thing the user needs to know — whether a routine is about to appear in their list.</div>
+<div class="note"><b>Drafts expire after 15 minutes.</b> The pending plan is held server-side for that long and tied to the person who asked for it; past that, confirming returns nothing and the draft must be regenerated — hence the expired state opposite.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">10b · Draft mode states</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">Generating</div>
+<div class="cd"><div class="mt">Drafting your plan…</div><div class="sk" style="width:72%"></div><div class="sk" style="width:88%"></div><div class="sk" style="width:54%"></div></div>
+<div class="xs" style="margin-top:6px">Saved</div>
+<div class="tst">Routine saved · <span style="text-decoration:underline">View “Blues bending and improv”</span></div>
+<div class="xs" style="margin-top:6px">Draft expired</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">This draft has expired</div><div class="mt" style="color:var(--color-danger-700)">Nothing was saved. Send the prompt again to get a fresh plan.</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Redraft</span></div></div>
+<div class="xs" style="margin-top:6px">Generation failed</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">Couldn't draft a plan</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Try again</span></div></div>
+<div class="xs" style="margin-top:6px">Off-topic prompt</div>
+<div class="pnl"><div class="mt" style="color:var(--color-danger-700)">The coach only plans guitar practice. Try describing what you want to work on.</div></div>
+</div>
+</div>
+</div>
+
+<div class="grp">
+<div class="gtag">10c · AI Coach — Instant Create</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="bar"><div class="bk"></div><div class="h2">AI Coach</div><div class="sp"></div></div>
+<div style="display:flex;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:3px">
+<div style="flex:1;min-height:38px;display:flex;align-items:center;justify-content:center;font:600 12px var(--font-body);color:var(--color-neutral-700)">Draft &amp; Review</div>
+<div style="flex:1;min-height:38px;border-radius:999px;background:var(--color-accent);color:var(--color-neutral-100);font:400 12.5px var(--font-heading);display:flex;align-items:center;justify-content:center">Instant Create</div>
+</div>
+<div class="pnl info"><div class="lb" style="color:var(--color-accent-700)">Saves straight away</div><div class="mt" style="color:var(--color-accent-700)">The coach can review your recent practice and create a routine immediately. You'll be able to edit or delete it afterwards.</div></div>
+<div class="xs">Try</div>
+<div class="chips"><span class="chip">What I've skipped lately</span><span class="chip">45 min, no repeats</span></div>
+<div class="cd" style="align-self:flex-end;max-width:255px;background:var(--color-surface)"><div class="mt" style="color:var(--color-text)">Create a 45-minute routine using skills I have not practiced recently. Avoid what I practiced yesterday.</div></div>
+<div class="cd" style="gap:7px">
+<div class="rowb"><span class="tick on"></span><span class="mt">Reviewing recent practice</span></div>
+<div class="rowb"><span class="tick on"></span><span class="mt">Checking your routines</span></div>
+<div class="rowb"><span class="tick"></span><span class="mt">Building the routine…</span></div>
+</div>
+<div class="cd">
+<div class="rowb"><span class="bdg c">Created</span><span class="sp"></span><span class="mt">just now</span></div>
+<div class="h2">Neglected skills rebuild</div>
+<div class="mt">Sight-reading, string skipping and ear training — none practiced in the last two weeks.</div>
+<div class="rowb"><span class="lb">45 min</span><span class="sp"></span><span class="mt">4 tasks</span></div>
+<div class="btnp">View Routine</div>
+</div>
+<div class="in"><span>Ask for another…</span><span class="sp"></span><span style="width:30px;height:30px;border-radius:999px;background:var(--color-accent)"></span></div>
+</div>
+</div>
+<div class="note">The behaviour warning sits <b>above</b> the composer, so it is read before sending. Progress lines are plain language, one per step, ticked as they finish.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">10d · Instant mode failure</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">No routine created</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">No routine was created</div><div class="mt" style="color:var(--color-danger-700)">The coach couldn't finish this one. Nothing was added to your routines.</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Try again</span><span class="btnt" style="background:var(--color-neutral-100)">Switch to Draft &amp; Review</span></div></div>
+<div class="xs" style="margin-top:6px">Not enough history</div>
+<div class="pnl info"><div class="mt" style="color:var(--color-accent-700)">There isn't much practice logged yet, so the coach worked from the library instead.</div></div>
+<div class="xs" style="margin-top:6px">Timed out</div>
+<div class="pnl"><div class="mt" style="color:var(--color-danger-700)">This took too long. Check your routines before retrying, in case one was created.</div></div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div class="row" style="margin-top:20px">
+
+<div class="grp">
+<div class="gtag">07 · Active Practice Session</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="bar"><div class="bk"></div><div class="sp"></div><span class="bdg c">Recording ready</span></div>
+<div class="mt">Following · Warm-up routine</div>
+<div class="h1" style="font-size:19px">Evening practice</div>
+<div class="cd" style="align-items:center;gap:4px;padding:16px 14px">
+<div class="xs">Elapsed · on this device</div>
+<div class="big">18:24</div>
+<div class="mt">of 45 min planned</div>
+</div>
+<div class="cd" style="border-color:var(--color-accent);gap:9px">
+<div class="rowb"><span class="xs">Now</span><span class="sp"></span><span class="bdg n">Task 2 of 4</span></div>
+<div class="h2">Barre chord transitions</div>
+<div class="rowb"><span class="mt">Planned 15 min</span><span class="sp"></span><div class="rowb" style="gap:0"><span class="btnt" style="width:44px;height:44px;border-radius:999px">−</span><span class="lb" style="width:52px;text-align:center">8 min</span><span class="btnt" style="width:44px;height:44px;border-radius:999px">+</span></div></div>
+<div class="btnp" style="min-height:52px;font-size:15px">Complete Task</div>
+<div class="rowb" style="gap:8px"><span class="btnt" style="flex:1;min-height:44px">Previous</span><span class="btnt" style="flex:1;min-height:44px">Next</span></div>
+</div>
+<div class="xs">Routine tasks</div>
+<div class="cd" style="padding:11px 12px;gap:9px">
+<div class="rowb"><span class="tick on"></span><div style="flex:1"><span class="lb" style="text-decoration:line-through;color:var(--color-neutral-700)">Major scale in one position</span></div><span class="mt">10 min</span></div>
+<div class="rowb"><span class="tick"></span><div style="flex:1"><span class="lb">Barre chord transitions</span></div><span class="mt">8 min</span></div>
+<div class="rowb"><span class="tick"></span><div style="flex:1"><span class="lb">Intervals and triads</span></div><span class="mt">10 min</span></div>
+<div class="rowb"><span class="tick"></span><div style="flex:1"><span class="lb">12-bar blues progression</span></div><span class="mt">10 min</span></div>
+</div>
+<div class="cd q" style="padding:10px 13px"><div class="mt">Session notes — optional</div></div>
+<div class="btns">Add Recording</div>
+<div class="btnp">Finish Session</div>
+<div class="mt" style="text-align:center">Saved when you finish.</div>
+</div>
+</div>
+<div class="note">Biggest type on the screen is the clock; the primary action is a 52px target reachable with a thumb. Nothing is written to the server mid-session — the timer and ticks are local until <b>Finish</b>.</div>
+<div class="note"><b>The clock is a local stopwatch, not a saved field.</b> A session stores only a per-task minute count and a completed flag, and <b>both are optional</b> — there is no total-elapsed value on a session. So the stopwatch exists to help the guitarist pace themselves; what actually gets saved is the whole-minute number on each task, which is why the stepper is minutes and why every total elsewhere in the app is a sum of those numbers. If someone never touches the stepper, the task saves with no duration and History shows the completion count without minutes — the interface must read correctly with the minutes missing.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">07b · Session states</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">Exit confirmation</div>
+<div class="cd"><div class="lb">Leave this session?</div><div class="mt">18 minutes and one completed task haven't been saved yet.</div><div class="btnp" style="min-height:40px">Finish and save</div><div class="btnt" style="min-height:40px">Keep practicing</div><div class="btnt" style="min-height:40px;color:var(--color-danger-700)">Discard session</div></div>
+<div class="note"><b>Finish and save</b> does exactly what the Finish Session button does: one write that creates the completed session — optional title and notes, the linked routine, and one entry per task carrying its minutes and completed flag. Nothing partial was on the server before this, so <b>Discard session</b> needs no request and deletes nothing. Because a finished session cannot be edited afterwards, this dialog is the last chance to correct the numbers, which is why <b>Keep practicing</b> sits above the destructive option.</div>
+<div class="xs" style="margin-top:6px">Blank session · pick tasks</div>
+<div class="cd"><div class="in" style="min-height:40px">Search the library</div><div class="rowb"><span class="tick on"></span><span class="lb">Circle of fifths</span></div><div class="rowb"><span class="tick"></span><span class="lb">Sweep picking arpeggios</span></div><div class="btnp" style="min-height:40px">Add 1 task</div></div>
+<div class="xs" style="margin-top:6px">Finishing</div>
+<div class="btnp" style="background:var(--color-accent-300);color:var(--color-accent-800)">Saving session…</div>
+<div class="xs" style="margin-top:6px">Finished</div>
+<div class="tst">Session saved · 38 min · 3 of 4 tasks</div>
+<div class="xs" style="margin-top:6px">Save failed / offline</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">Couldn't save the session</div><div class="mt" style="color:var(--color-danger-700)">Your times are still here. Retry when you're back online.</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Retry</span></div></div>
+</div>
+</div>
+</div>
+
+<div class="arw"><i></i><span>finish</span></div>
+
+<div class="grp">
+<div class="gtag">08 · Session History</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="bar"><div class="h1" style="font-size:19px">History</div><div class="sp"></div><div class="bk"></div></div>
+<div class="xs">Today</div>
+<div class="cd">
+<div class="rowb"><span class="lb">Evening practice</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="mt">Warm-up routine</div>
+<div class="rowb" style="gap:6px"><span class="bdg n">38 min</span><span class="bdg n">3 of 4 done</span><span class="bdg c">1 recording</span></div>
+</div>
+<div class="xs" style="margin-top:4px">Yesterday</div>
+<div class="cd">
+<div class="rowb"><span class="lb">Quick theory review</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="rowb" style="gap:6px"><span class="bdg n">15 min</span><span class="bdg n">1 of 1 done</span></div>
+<div class="mt">Circle of fifths only — short one.</div>
+</div>
+<div class="xs" style="margin-top:4px">Last week</div>
+<div class="cd">
+<div class="rowb"><span class="lb">Fingerstyle practice</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="mt">Fingerstyle focus</div>
+<div class="rowb" style="gap:6px"><span class="bdg n">20 min</span><span class="bdg n">1 of 2 done</span><span class="bdg c">2 recordings</span></div>
+</div>
+<div class="cd">
+<div class="rowb"><span class="lb">Rhythm reading catch-up</span><span class="sp"></span><span class="mt">›</span></div>
+<div class="rowb" style="gap:6px"><span class="bdg n">15 min</span><span class="bdg n">1 of 1 done</span></div>
+</div>
+<div class="rowb" style="justify-content:center"><span class="btnt">Load older sessions</span></div>
+</div>
+<div class="bn">
+<div class="bni"><i></i><span>Home</span></div>
+<div class="bni"><i></i><span>Routines</span></div>
+<div class="bnc">Practice</div>
+<div class="bni"><i></i><span>Library</span></div>
+<div class="bni"><i></i><span>Profile</span></div>
+</div>
+</div>
+<div class="note">Read-only list — no routine editing here. Minutes are summed from each session's task durations, not a separate stored total.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">08b · History states</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">Empty</div>
+<div class="cd" style="border-style:dashed"><div class="lb">No sessions yet</div><div class="mt">Finish a practice session and it shows up here with whatever you actually covered.</div><div class="btnp" style="min-height:40px">Start Practice</div></div>
+<div class="xs" style="margin-top:6px">Loading</div>
+<div class="cd"><div class="sk" style="width:62%"></div><div class="sk" style="width:40%"></div><div class="rowb" style="gap:6px"><span class="sk" style="width:56px;height:16px"></span><span class="sk" style="width:70px;height:16px"></span></div></div>
+<div class="xs" style="margin-top:6px">Failed</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">Couldn't load your history</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Retry</span></div></div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="dv-opt" id="1f">
+<div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a><b>Stage 5 · Review &amp; account</b>Session details, recordings, profile</div>
+<div class="row">
+
+<div class="grp">
+<div class="gtag">09 · Session Details &amp; Recordings</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="bar"><div class="bk"></div><div class="sp"></div></div>
+<div class="h1" style="font-size:19px">Evening practice</div>
+<div class="mt">Today, 8:12 PM · Warm-up routine</div>
+<div class="cd q" style="padding:10px 13px"><div class="mt">Barre transitions still buzzing on the B string. Blues form felt better at 80 bpm.</div></div>
+<div class="rowb"><span class="xs">Practiced</span><span class="sp"></span><span class="lb">38 min</span></div>
+<div class="cd" style="padding:11px 12px;gap:9px">
+<div class="rowb"><span class="tick on"></span><div style="flex:1"><span class="lb">Major scale in one position</span></div><span class="mt">10 min</span></div>
+<div class="rowb"><span class="tick on"></span><div style="flex:1"><span class="lb">Barre chord transitions</span></div><span class="mt">8 min</span></div>
+<div class="rowb"><span class="tick on"></span><div style="flex:1"><span class="lb">12-bar blues progression</span></div><span class="mt">20 min</span></div>
+<div class="rowb"><span class="tick"></span><div style="flex:1"><span class="lb" style="color:var(--color-neutral-700)">Intervals and triads</span><div class="mt">Not completed</div></div><span class="mt">—</span></div>
+</div>
+<div class="rowb"><span class="xs">Recordings</span><span class="sp"></span><span class="mt">1 file</span></div>
+<div class="cd" style="padding:11px 12px;gap:8px">
+<div class="rowb"><span class="lb">blues-take-3.m4a</span><span class="sp"></span><span class="btnt" style="width:44px;height:44px;border-radius:999px;padding:0">▶</span></div>
+<div class="mt">M4A · 4.2 MB · today 8:44 PM</div>
+<div class="rowb" style="gap:8px"><div style="flex:1;height:6px;border-radius:999px;background:var(--color-neutral-300)"><div style="width:38%;height:6px;border-radius:999px;background:var(--color-accent)"></div></div><span class="mt">0:42 / 1:50</span></div>
+<div class="rowb"><span class="btnt" style="min-height:40px;color:var(--color-danger-700)">Delete</span></div>
+</div>
+<div class="btns">Upload recording</div>
+<div class="mt" style="text-align:center">MP3, WAV, M4A, OGG or WebM · up to 50 MB</div>
+</div>
+</div>
+<div class="note">Completed sessions are read-only — durations and ticks are shown, never edited. Playback uses a temporary link fetched when the play button is tapped.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">09b · Recording states</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">Uploading</div>
+<div class="cd"><div class="rowb"><span class="lb">take-4.wav</span><span class="sp"></span><span class="mt">62%</span></div><div style="height:6px;border-radius:999px;background:var(--color-neutral-300)"><div style="width:62%;height:6px;border-radius:999px;background:var(--color-accent)"></div></div><div class="mt">18.4 MB of 29.8 MB</div><div class="btnt" style="min-height:40px">Cancel upload</div></div>
+<div class="xs" style="margin-top:6px">Upload done</div>
+<div class="tst">Recording added</div>
+<div class="xs" style="margin-top:6px">Too large / wrong type</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">That file can't be uploaded</div><div class="mt" style="color:var(--color-danger-700)">Files must be MP3, WAV, M4A, OGG or WebM and under 50 MB.</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Choose another</span></div></div>
+<div class="xs" style="margin-top:6px">Upload failed</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">Upload didn't finish</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Retry upload</span></div></div>
+<div class="xs" style="margin-top:6px">Playback link expired</div>
+<div class="pnl"><div class="mt" style="color:var(--color-danger-700)">This playback link has expired.</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Get a new link</span></div></div>
+<div class="xs" style="margin-top:6px">Delete confirmation</div>
+<div class="cd"><div class="lb">Delete “blues-take-3.m4a”?</div><div class="mt">The audio is removed for good.</div><div class="rowb"><span class="btnt" style="min-height:40px;flex:1;color:var(--color-danger-700)">Delete</span><span class="btnt" style="min-height:40px;flex:1">Cancel</span></div></div>
+<div class="xs" style="margin-top:6px">No recordings</div>
+<div class="cd" style="border-style:dashed"><div class="mt">No recordings for this session. Upload one to hear it back later.</div></div>
+</div>
+</div>
+</div>
+
+<div class="grp">
+<div class="gtag">11 · Profile &amp; Settings</div>
+<div class="ph">
+<div class="st"><span>9:41</span><i></i></div>
+<div class="scr">
+<div class="bar"><div class="h1" style="font-size:19px">Profile</div><div class="sp"></div></div>
+<div class="cd" style="align-items:center;gap:7px;padding:18px 14px">
+<div style="width:66px;height:66px;border-radius:999px;background:var(--color-surface);border:1px solid var(--color-neutral-300);display:flex;align-items:center;justify-content:center;font:400 22px var(--font-heading);color:var(--color-neutral-700)">JR</div>
+<div class="h2">Jordan Reyes</div>
+<div class="mt">jordan@example.com</div>
+</div>
+<div class="cd" style="gap:10px">
+<div class="rowb"><span class="mt">Display name</span><span class="sp"></span><span class="lb">Jordan Reyes</span></div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb"><span class="mt">Email</span><span class="sp"></span><span class="lb">jordan@example.com</span></div>
+<div style="height:1px;background:var(--color-neutral-300)"></div>
+<div class="rowb"><span class="mt">Member since</span><span class="sp"></span><span class="lb">Mar 2026</span></div>
+</div>
+<div class="cd" style="gap:10px;opacity:.6">
+<div class="rowb"><span class="xs">Coming later</span></div>
+<div class="rowb"><span class="mt">Practice reminders</span><span class="sp"></span><span class="bdg n">Soon</span></div>
+<div class="rowb"><span class="mt">Appearance</span><span class="sp"></span><span class="bdg n">Soon</span></div>
+</div>
+<div class="btns" style="color:var(--color-danger-700);border-color:var(--color-danger-300)">Sign Out</div>
+</div>
+<div class="bn">
+<div class="bni"><i></i><span>Home</span></div>
+<div class="bni"><i></i><span>Routines</span></div>
+<div class="bnc">Practice</div>
+<div class="bni"><i></i><span>Library</span></div>
+<div class="bni on"><i></i><span>Profile</span></div>
+</div>
+</div>
+<div class="note">Future settings are visibly inert and labelled, so they read as roadmap rather than broken controls. No admin or user management.</div>
+</div>
+
+<div class="grp">
+<div class="gtag">11b · Account states</div>
+<div class="ph alt" style="padding-bottom:14px">
+<div class="scr">
+<div class="xs">Session expired</div>
+<div class="pnl"><div class="lb" style="color:var(--color-danger-700)">You've been signed out</div><div class="mt" style="color:var(--color-danger-700)">Sign in again to keep practicing. Nothing was lost.</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Sign In</span></div></div>
+<div class="xs" style="margin-top:6px">Couldn't load account</div>
+<div class="pnl"><div class="mt" style="color:var(--color-danger-700)">Your details couldn't be loaded.</div><div class="rowb"><span class="btnt" style="background:var(--color-neutral-100)">Retry</span></div></div>
+<div class="xs" style="margin-top:6px">Signing out</div>
+<div class="btns" style="opacity:.5">Signing out…</div>
+<div class="xs" style="margin-top:6px">Loading</div>
+<div class="cd"><div class="sk" style="width:50%"></div><div class="sk" style="width:70%"></div></div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="dv-opt" id="1g">
+<div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a><b>Component inventory</b>Every screen above is assembled from these</div>
+<div class="inv">
+<div class="ivc"><div class="lb">Bottom navigation</div><div class="mt">4 tabs + dominant central Practice. Persistent everywhere except Auth and Active Session.</div></div>
+<div class="ivc"><div class="lb">Top app bar</div><div class="mt">Back circle, optional title, optional trailing action. 40px min height.</div></div>
+<div class="ivc"><div class="lb">Primary button</div><div class="btnp" style="min-height:44px">Start Practice</div></div>
+<div class="ivc"><div class="lb">Secondary / tertiary</div><div class="btns" style="min-height:40px">Add Tasks</div><div class="rowb"><span class="btnt">Move up</span></div></div>
+<div class="ivc"><div class="lb">Routine card</div><div class="mt">Title, notes preview, task count, duration, Start action.</div></div>
+<div class="ivc"><div class="lb">Task card</div><div class="mt">Title, category + difficulty badges, description preview, link indicator.</div></div>
+<div class="ivc"><div class="lb">Session card</div><div class="mt">Title, linked routine, minutes, completion, recording count, notes preview.</div></div>
+<div class="ivc"><div class="lb">Recording row</div><div class="mt">File name, type, size, date, play target, delete.</div></div>
+<div class="ivc"><div class="lb">Category badge</div><div class="rowb" style="gap:5px"><span class="bdg c">Technique</span><span class="bdg c">Theory</span></div></div>
+<div class="ivc"><div class="lb">Difficulty badge</div><div class="rowb" style="gap:5px"><span class="bdg d">Easy</span><span class="bdg d">Hard</span></div></div>
+<div class="ivc"><div class="lb">Filter chip</div><div class="chips"><span class="chip on">On</span><span class="chip">Off</span></div></div>
+<div class="ivc"><div class="lb">Segmented control</div><div style="display:flex;background:var(--color-surface);border:1px solid var(--color-neutral-400);border-radius:999px;padding:2px"><span class="btnt" style="flex:1;background:var(--color-accent);color:var(--color-neutral-100);border:0;min-height:30px">Active</span><span class="btnt" style="flex:1;background:transparent;border:0;min-height:30px">Archived</span></div></div>
+<div class="ivc"><div class="lb">Progress summary card</div><div class="mt">Two figures only: minutes this week, sessions completed.</div></div>
+<div class="ivc"><div class="lb">Empty-state card</div><div class="cd" style="border-style:dashed;padding:9px 10px"><div class="mt">Nothing here yet + one action</div></div></div>
+<div class="ivc"><div class="lb">AI mode selector</div><div class="mt">Two segments with a one-line behaviour description under the active one.</div></div>
+<div class="ivc"><div class="lb">AI message composer</div><div class="in" style="min-height:40px"><span>Message</span><span class="sp"></span><span style="width:26px;height:26px;border-radius:999px;background:var(--color-accent)"></span></div></div>
+<div class="ivc"><div class="lb">AI plan-preview card</div><div class="mt">Title, summary, total, ordered tasks with durations, Save / Discard.</div></div>
+<div class="ivc"><div class="lb">Confirmation sheet</div><div class="mt">Question, consequence line, destructive action last.</div></div>
+<div class="ivc"><div class="lb">Inline validation</div><div class="in e" style="min-height:36px">jordan@example</div><div class="err">Enter a valid email address.</div></div>
+<div class="ivc"><div class="lb">Loading skeleton</div><div class="sk" style="width:70%"></div><div class="sk" style="width:45%"></div></div>
+<div class="ivc"><div class="lb">Toast / success banner</div><div class="tst">Routine saved</div></div>
+<div class="ivc"><div class="lb">Network-error panel</div><div class="pnl" style="padding:9px 10px"><div class="mt" style="color:var(--color-danger-700)">Something failed + Retry</div></div></div>
+<div class="ivc"><div class="lb">Task checklist row</div><div class="rowb"><span class="tick on"></span><span class="lb">Done</span></div><div class="rowb"><span class="tick"></span><span class="lb">Not yet</span></div></div>
+<div class="ivc"><div class="lb">Stepper</div><div class="rowb" style="gap:0"><span class="btnt" style="width:40px;height:40px;border-radius:999px">−</span><span class="lb" style="width:48px;text-align:center">15 min</span><span class="btnt" style="width:40px;height:40px;border-radius:999px">+</span></div></div>
+</div>
+</div>
+
+<div class="dv-opt" id="1h">
+<div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a><b>Adaptation notes</b>Wider phones and responsive web</div>
+<div class="nts">
+<div class="cd"><div class="lb">Wider phones (up to ~430pt)</div><div class="mt">Everything above is a single 320pt column that grows with the viewport; cards stay full-width and gain internal padding rather than a second column. The bottom nav keeps its fixed 58px central action and distributes the four tabs evenly. Line lengths on task descriptions cap at about 60 characters, so extra width goes to margins.</div></div>
+<div class="cd"><div class="lb">Tablet and small web (600–1024px)</div><div class="mt">Content column caps at 560px and centres. Library, Routines and History switch to a two-column card grid. Bottom sheets become centred modals of the same width. The bottom nav moves to a left rail at 768px and up, with Practice as the first, emphasised item.</div></div>
+<div class="cd"><div class="lb">Wide web (1024px+)</div><div class="mt">Two panes: list on the left, detail on the right — Library beside Task Details, History beside Session Details, Routines beside the Builder. Active Practice Session stays single-column and centred, since it is used at arm's length. AI Coach becomes a centred 640px conversation with the plan preview inline.</div></div>
+<div class="cd"><div class="lb">Touch and reach</div><div class="mt">Every tap target is at least 44×44px, including the show/hide password toggle, the duration steppers and the drag handles. Primary actions sit in the lower half of the screen; destructive actions are always last in their group and never adjacent to a confirm.</div></div>
+<div class="cd"><div class="lb">Reordering without dragging</div><div class="mt">The drag handle is the fast path, but every routine task also exposes Move up / Move down once expanded, so reordering works with assistive tech and with one hand on a guitar neck.</div></div>
+<div class="cd"><div class="lb">What is deliberately absent</div><div class="mt">No task creation or editing (admin-only), no session editing after finishing, no analytics beyond weekly minutes and session count, no waveform or scoring on recordings, and no social, premium or gamified surfaces.</div></div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "expand <a class="dv-oid" href="#1e">1e</a> into a second practice variant" · "show the Library as a two-column layout for wider screens" · "tighten the annotations"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showAnnotations&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Presentation&quot;},&quot;showAltStates&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Presentation&quot;},&quot;showFlowArrows&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Presentation&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { this.sync(); }
+  componentDidUpdate() { this.sync(); }
+  sync() {
+    const r = document.documentElement;
+    r.dataset.notes = (this.props.showAnnotations ?? true) ? 'on' : 'off';
+    r.dataset.states = (this.props.showAltStates ?? true) ? 'on' : 'off';
+    r.dataset.arrows = (this.props.showFlowArrows ?? true) ? 'on' : 'off';
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

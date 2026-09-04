@@ -17,7 +17,7 @@ export function Chip({ label, selected = false, onPress }: ChipProps) {
       onPress={onPress}
       style={[styles.base, selected && styles.selected]}
     >
-      <ThemedText type="label" color={selected ? 'text' : 'textMuted'}>
+      <ThemedText type="label" style={{ color: selected ? '#ffffff' : Colors.neutral[700] }}>
         {label}
       </ThemedText>
     </Pressable>
@@ -26,14 +26,16 @@ export function Chip({ label, selected = false, onPress }: ChipProps) {
 
 const styles = StyleSheet.create({
   base: {
+    minHeight: 32,
     paddingHorizontal: Spacing[3],
-    paddingVertical: Spacing[1],
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: Colors.divider,
+    borderColor: Colors.neutral[400],
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   selected: {
-    backgroundColor: Colors.accentRamp[200],
+    backgroundColor: Colors.accent,
     borderColor: Colors.accent,
   },
 });
