@@ -10,21 +10,21 @@ follows is wiring and discipline rather than new surface.
 
 **Before writing code:** `AGENTS.md` requires reading
 https://docs.expo.dev/versions/v57.0.0/ first. Every version claim below is marked
-*verify* where I could not confirm it against SDK 57 from here.
+_verify_ where I could not confirm it against SDK 57 from here.
 
 ---
 
 ## Verdict up front
 
-| Your proposal | Verdict | Why |
-| --- | --- | --- |
-| Expo Router | **Already done** | Route groups, auth gate, platform forks all in place |
-| TanStack Query | **Installed, under-wired** | Three real gaps — §2. This is the highest-value work in this document |
-| Zustand | **Already done, needs persistence** | Two correctly-scoped stores; one has a data-loss bug — §3 |
-| Reanimated 4 + Gesture Handler | **Already done** | 4.5.1 + worklets 0.10.1, `GestureHandlerRootView` mounted |
-| Type sharing | **OpenAPI codegen** | NestJS emits the schema; the app generates types from it. §1 |
-| NativeWind | **Optional, decide now or never** | §4 |
-| Tamagui / Gluestack | **No** | §5 |
+| Your proposal                  | Verdict                             | Why                                                                   |
+| ------------------------------ | ----------------------------------- | --------------------------------------------------------------------- |
+| Expo Router                    | **Already done**                    | Route groups, auth gate, platform forks all in place                  |
+| TanStack Query                 | **Installed, under-wired**          | Three real gaps — §2. This is the highest-value work in this document |
+| Zustand                        | **Already done, needs persistence** | Two correctly-scoped stores; one has a data-loss bug — §3             |
+| Reanimated 4 + Gesture Handler | **Already done**                    | 4.5.1 + worklets 0.10.1, `GestureHandlerRootView` mounted             |
+| Type sharing                   | **OpenAPI codegen**                 | NestJS emits the schema; the app generates types from it. §1          |
+| NativeWind                     | **Optional, decide now or never**   | §4                                                                    |
+| Tamagui / Gluestack            | **No**                              | §5                                                                    |
 
 Two of the three things you asked about are largely done. The gaps are concentrated in
 TanStack Query's runtime wiring and in the API contract.
@@ -56,7 +56,7 @@ writes `openapi.json` to disk. NestJS's CLI plugin (`"plugins": ["@nestjs/swagge
 `nest-cli.json`) infers most of the decorators from existing TypeScript types, so this is
 mostly configuration rather than annotation.
 
-*Verify:* the backend folder was not mounted for this review — check whether
+_Verify:_ the backend folder was not mounted for this review — check whether
 `@nestjs/swagger` is already a dependency before adding it.
 
 ### Frontend
@@ -202,7 +202,7 @@ server equivalent.
 
 **Keep `api/client.ts`.** It is well-built — the `/api/v1` prefix handling, the `unprefixed`
 escape for `/auth/*`, `credentials: 'include'`, the RN `FormData` cast for uploads with its
-explanatory comment. `openapi-fetch` is optional; the value here is the *types*, not the
+explanatory comment. `openapi-fetch` is optional; the value here is the _types_, not the
 fetch wrapper. If you adopt it, do it after the types land, and preserve the upload path —
 `openapi-fetch` will not handle RN's non-standard `FormData` file shape.
 
@@ -317,7 +317,7 @@ There are **no mutations anywhere yet**. When you add them, four rules matter mo
 code:
 
 - **Finish Session** is the one write that matters. On success, invalidate
-  `queryKeys.sessions` *and* the home summary. Do not optimistically update — if the write
+  `queryKeys.sessions` _and_ the home summary. Do not optimistically update — if the write
   fails the user must still be holding their numbers (wireframe 07b).
 - **Routine reorder** is the one place optimistic updates earn their keep. The wireframe
   already specifies the rollback state ("Order not saved… the list is back to the last saved
@@ -373,10 +373,10 @@ export const mmkvStorage: StateStorage = {
 ```ts
 // features/session/session-store.ts
 export const useActiveSessionStore = create<ActiveSessionState>()(
-  persist(
-    (set) => ({ /* unchanged */ }),
-    { name: 'active-session', storage: createJSONStorage(() => mmkvStorage) },
-  ),
+  persist((set) => ({/* unchanged */}), {
+    name: 'active-session',
+    storage: createJSONStorage(() => mmkvStorage),
+  }),
 );
 ```
 
@@ -385,7 +385,7 @@ new state not in the wireframes — worth adding to the design.
 
 Two caveats: **`react-native-mmkv` does not run in Expo Go** — it needs a dev client, which
 you already have (`expo-dev-client` is installed). And it requires the New Architecture,
-which RN 0.86 defaults to. *Verify against the SDK 57 docs before installing.*
+which RN 0.86 defaults to. _Verify against the SDK 57 docs before installing._
 
 ### 3.2 What else belongs in MMKV
 
@@ -426,9 +426,9 @@ via `cva`, and responsive prefixes that would genuinely help the mobile/web fork
 
 **What it costs:** the Organic tokens must be mirrored into `tailwind.config.js` — a second
 source of truth unless you generate it from `tokens.ts`; all 17 primitives get rewritten;
-Metro and Babel config changes; and Reanimated interop needs care. *Verify NativeWind v4
+Metro and Babel config changes; and Reanimated interop needs care. _Verify NativeWind v4
 against RN 0.86 / React 19.2 before committing — this stack is new enough that compatibility
-should be confirmed, not assumed.*
+should be confirmed, not assumed._
 
 **My read:** adopt it only if the team writes Tailwind daily on the web side. The token layer
 already delivers the consistency Tailwind is usually adopted for, and the primitives are

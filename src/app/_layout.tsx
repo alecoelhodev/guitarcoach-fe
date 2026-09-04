@@ -6,7 +6,7 @@ import { Inter_800ExtraBold } from '@expo-google-fonts/inter/800ExtraBold';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
-import { Stack, ThemeProvider, type Theme } from 'expo-router';
+import { Stack, type Theme, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';

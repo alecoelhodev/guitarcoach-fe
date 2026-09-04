@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Animated, StyleSheet, type DimensionValue } from 'react-native';
+import { Animated, type DimensionValue, StyleSheet } from 'react-native';
 
 import { Colors, Radius } from '@/theme/tokens';
 

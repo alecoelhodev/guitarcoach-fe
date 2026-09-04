@@ -1,0 +1,74 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
+  // Biome honours .gitignore, which already covers node_modules/, .expo/, dist/,
+  // expo-env.d.ts, /ios and /android.
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": [
+      "**",
+      // Biome cannot format Markdown yet (support is "in progress"), so Prettier
+      // is kept for it alone — see package.json's `format` script.
+      "!**/*.md",
+      // CI checks the backend repo out into backend/ before installing deps, so
+      // without this `biome ci .` would format-check an unrelated repository.
+      // tsconfig.json excludes it for the same reason.
+      "!backend/**",
+      // The design authority, an exported artifact. Biome's HTML formatting is
+      // also still experimental.
+      "!wireframes/**",
+      "!assets/**",
+      // npm owns this file entirely; Biome formats JSON and would rewrite it.
+      "!package-lock.json",
+      // `npx expo customize tsconfig.json` rewrites this (it is a CI step), so a
+      // Biome-formatted copy would drift straight back.
+      "!tsconfig.json",
+      "!.claude/**"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    // Biome defaults to tabs; this repo has always been 2-space.
+    "indentStyle": "space",
+    "indentWidth": 2,
+    // Was .prettierrc `printWidth`.
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      // Was .prettierrc `singleQuote`.
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  // Deliberately off: ESLint stays the linter. Biome has no equivalent for the
+  // React Compiler hook rules (`react-hooks/set-state-in-effect`) that this app
+  // relies on with `experiments.reactCompiler: true`, nor for eslint-plugin-expo's
+  // use-dom-exports / no-env-var-destructuring / no-dynamic-env-var. Turning this
+  // on does not make `expo lint` redundant.
+  "linter": { "enabled": false },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        // The house convention, now enforced: external packages alphabetically,
+        // blank line, then @/ aliases alphabetically.
+        //
+        // Never set `sortBareImports: true`. A bare import forms its own chunk and
+        // is never moved, which is what keeps `import '@/global.css'` at the end of
+        // src/app/_layout.tsx.
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            "groups": [
+              [":PACKAGE:", ":PACKAGE_WITH_PROTOCOL:", ":NODE:", ":BUN:"],
+              ":BLANK_LINE:",
+              [":ALIAS:", ":PATH:"]
+            ]
+          }
+        }
+      }
+    }
+  }
+}

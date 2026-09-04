@@ -1,7 +1,6 @@
+import { Link } from 'expo-router';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { Link } from 'expo-router';
 
 import { useRoutines } from '@/api/routines.queries';
 import { ThemedText } from '@/components/themed-text';

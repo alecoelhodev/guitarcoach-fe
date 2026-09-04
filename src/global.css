@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --font-display: 'Inter_800ExtraBold', ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter_800ExtraBold", ui-sans-serif, system-ui, sans-serif;
   --font-body:
-    'Inter_400Regular', ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
+    "Inter_400Regular", ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
     Segoe UI Symbol, Noto Color Emoji;
 }

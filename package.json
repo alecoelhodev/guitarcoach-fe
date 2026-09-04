@@ -50,6 +50,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.12",
     "@react-native/jest-preset": "^0.86.2",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^30.0.0",
@@ -71,9 +72,10 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "format": "prettier --write .",
-    "api:types": "openapi-typescript ${BACKEND_OPENAPI_PATH:-../guitar-coach/openapi.json} -o src/types/api.d.ts && prettier --write src/types/api.d.ts",
-    "api:types:remote": "openapi-typescript $EXPO_PUBLIC_API_BASE_URL/docs-json -o src/types/api.d.ts && prettier --write src/types/api.d.ts",
+    "format": "biome check --write . && prettier --write \"**/*.md\"",
+    "format:check": "biome ci . && prettier --check \"**/*.md\"",
+    "api:types": "openapi-typescript ${BACKEND_OPENAPI_PATH:-../guitar-coach/openapi.json} -o src/types/api.d.ts && biome check --write src/types/api.d.ts",
+    "api:types:remote": "openapi-typescript $EXPO_PUBLIC_API_BASE_URL/docs-json -o src/types/api.d.ts && biome check --write src/types/api.d.ts",
     "api:types:check": "npm run api:types && git diff --exit-code src/types/api.d.ts && tsc --noEmit"
   },
   "private": true

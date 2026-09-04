@@ -1,7 +1,14 @@
 {
+  // Biome owns formatting and import organization; ESLint remains the linter.
+  // The provider-scoped `.biome` action names matter — the bare `source.fixAll`
+  // and `source.organizeImports` requests this file used to make would race with
+  // Biome and could reorder imports twice.
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.organizeImports": "explicit",
-    "source.sortMembers": "explicit"
-  }
+    "source.fixAll.biome": "explicit",
+    "source.organizeImports.biome": "explicit"
+  },
+  // Biome cannot format Markdown yet, so docs stay with Prettier.
+  "[markdown]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }
 }

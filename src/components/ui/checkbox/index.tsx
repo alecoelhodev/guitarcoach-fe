@@ -1,9 +1,9 @@
 'use client';
-import React from 'react';
 import { createCheckbox } from '@gluestack-ui/core/checkbox/creator';
-import { tva, withStyleContext, type VariantProps } from '@gluestack-ui/utils/nativewind-utils';
-import { View, Pressable, Text, Platform } from 'react-native';
+import { tva, type VariantProps, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
+import React from 'react';
 import type { TextProps, ViewProps } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 
 const IndicatorWrapper = React.forwardRef<React.ComponentRef<typeof View>, ViewProps>(
   function IndicatorWrapper({ ...props }, ref) {
@@ -88,4 +88,4 @@ Checkbox.displayName = 'Checkbox';
 CheckboxIndicator.displayName = 'CheckboxIndicator';
 CheckboxLabel.displayName = 'CheckboxLabel';
 
-export { Checkbox, CheckboxIndicator, CheckboxLabel, CheckboxGroup };
+export { Checkbox, CheckboxGroup, CheckboxIndicator, CheckboxLabel };

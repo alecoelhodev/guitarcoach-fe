@@ -2,11 +2,11 @@ import { Link, usePathname } from 'expo-router';
 import {
   BookOpen,
   History,
+  House,
   ListMusic,
   MessageCircle,
   Play,
   User,
-  House,
 } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 

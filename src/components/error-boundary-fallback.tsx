@@ -10,11 +10,7 @@ export function ErrorBoundaryFallback({ error, retry }: { error: Error; retry: (
   return (
     <ThemedView style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', padding: Spacing[6] }}>
-        <ErrorPanel
-          title="Something went wrong"
-          message={error.message}
-          onRetry={retry}
-        />
+        <ErrorPanel title="Something went wrong" message={error.message} onRetry={retry} />
       </SafeAreaView>
     </ThemedView>
   );

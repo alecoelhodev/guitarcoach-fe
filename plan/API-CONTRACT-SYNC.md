@@ -73,7 +73,7 @@ main().catch((error) => {
 });
 ```
 
-*Verify:* `PrismaService` and `createAuth()` are expected to hold connection config without
+_Verify:_ `PrismaService` and `createAuth()` are expected to hold connection config without
 connecting eagerly, and `KeyvRedis` is already configured with `disableOfflineQueue` +
 `throwOnConnectError: false` — so module construction shouldn't require live infra. Run it
 locally once against your normal `.env` to confirm before wiring it into CI.
@@ -100,24 +100,24 @@ so CI can run it against fake-but-valid values instead of real secrets.
 **`.github/workflows/ci.yml` — add after the `build` step:**
 
 ```yaml
-      - name: Generate OpenAPI schema and check it's committed
-        run: npm run openapi:check
-        env:
-          NODE_ENV: test
-          PORT: '3000'
-          API_PREFIX: api
-          API_VERSION: v1
-          DATABASE_URL: postgres://user:pass@localhost:5432/db
-          BETTER_AUTH_SECRET: ci-placeholder-secret-at-least-32-chars-long
-          BETTER_AUTH_URL: http://localhost:3000
-          REDIS_URL: redis://localhost:6379
-          RABBITMQ_URL: amqp://localhost:5672
-          GCP_PROJECT_ID: ci-placeholder
-          GCS_RECORDINGS_BUCKET: ci-placeholder
-          OPENAI_API_KEY: ci-placeholder
-          OPENAI_MODEL: gpt-4o-mini
-          LOG_LEVEL: error
-          METRICS_EXPORT_ENABLED: 'false'
+- name: Generate OpenAPI schema and check it's committed
+  run: npm run openapi:check
+  env:
+    NODE_ENV: test
+    PORT: '3000'
+    API_PREFIX: api
+    API_VERSION: v1
+    DATABASE_URL: postgres://user:pass@localhost:5432/db
+    BETTER_AUTH_SECRET: ci-placeholder-secret-at-least-32-chars-long
+    BETTER_AUTH_URL: http://localhost:3000
+    REDIS_URL: redis://localhost:6379
+    RABBITMQ_URL: amqp://localhost:5672
+    GCP_PROJECT_ID: ci-placeholder
+    GCS_RECORDINGS_BUCKET: ci-placeholder
+    OPENAI_API_KEY: ci-placeholder
+    OPENAI_MODEL: gpt-4o-mini
+    LOG_LEVEL: error
+    METRICS_EXPORT_ENABLED: 'false'
 ```
 
 If a PR changes a DTO without regenerating `openapi.json`, this step fails on the `git diff`

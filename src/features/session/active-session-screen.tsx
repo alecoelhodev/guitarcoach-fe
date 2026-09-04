@@ -13,8 +13,8 @@ import { ChecklistRow } from '@/components/ui/checklist-row';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Stepper } from '@/components/ui/stepper';
 import { useActiveSessionStore } from '@/features/session/session-store';
-import { useToastStore } from '@/stores/toast-store';
 import { formatClock } from '@/lib/duration';
+import { useToastStore } from '@/stores/toast-store';
 import { Spacing } from '@/theme/tokens';
 
 function useStopwatch() {

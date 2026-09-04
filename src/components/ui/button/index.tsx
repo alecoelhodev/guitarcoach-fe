@@ -3,8 +3,8 @@ import { createButton } from '@gluestack-ui/core/button/creator';
 import {
   tva,
   useStyleContext,
-  withStyleContext,
   type VariantProps,
+  withStyleContext,
 } from '@gluestack-ui/utils/nativewind-utils';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -144,5 +144,5 @@ const ButtonGroup = React.forwardRef<React.ComponentRef<typeof UIButton.Group>, 
   },
 );
 
-export { Button, ButtonGroup, ButtonText };
 export type { IButtonProps as ButtonProps };
+export { Button, ButtonGroup, ButtonText };

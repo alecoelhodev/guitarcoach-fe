@@ -1,5 +1,5 @@
 import NetInfo from '@react-native-community/netinfo';
-import { QueryClient, focusManager, onlineManager } from '@tanstack/react-query';
+import { focusManager, onlineManager, QueryClient } from '@tanstack/react-query';
 import { AppState, Platform } from 'react-native';
 
 import { shouldRetry } from '@/api/errors';

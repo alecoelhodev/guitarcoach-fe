@@ -55,7 +55,7 @@ Note that merging to backend `main` also triggers the Cloud Run deploy
 
 ```bash
 cd guitar-coach-fe
-npm run api:types            # rewrites src/types/api.d.ts (auto-formatted with Prettier)
+npm run api:types            # rewrites src/types/api.d.ts (auto-formatted with Biome)
 npx tsc --noEmit             # shows every call site the change broke
 ```
 
@@ -105,11 +105,11 @@ origin (e.g. `http://localhost:3000`) — `/docs-json` sits at the root, _not_ u
 
 **Frontend (`guitar-coach-fe`)**
 
-| Command                    | What it does                                                                               |
-| -------------------------- | ------------------------------------------------------------------------------------------ |
-| `npm run api:types`        | Regenerate `src/types/api.d.ts` from the backend's `openapi.json`, then Prettier-format it |
-| `npm run api:types:remote` | Same, but read the schema from a running server instead of a file                          |
-| `npm run api:types:check`  | Regenerate → fail on any diff → `tsc --noEmit` (this is what CI runs)                      |
+| Command                    | What it does                                                                            |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `npm run api:types`        | Regenerate `src/types/api.d.ts` from the backend's `openapi.json`, then Biome-format it |
+| `npm run api:types:remote` | Same, but read the schema from a running server instead of a file                       |
+| `npm run api:types:check`  | Regenerate → fail on any diff → `tsc --noEmit` (this is what CI runs)                   |
 
 ---
 
