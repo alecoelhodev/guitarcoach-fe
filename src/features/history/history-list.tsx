@@ -1,4 +1,4 @@
-import { SectionList, StyleSheet } from 'react-native';
+import { SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSessions } from '@/api/sessions.queries';
@@ -50,13 +50,15 @@ export function HistoryList() {
               contentContainerStyle={styles.list}
               ListFooterComponent={
                 hasNextPage ? (
-                  <Button
-                    variant="secondary"
-                    loading={isFetchingNextPage}
-                    onPress={() => fetchNextPage()}
-                  >
-                    Load older sessions
-                  </Button>
+                  <View style={styles.footer}>
+                    <Button
+                      variant="tertiary"
+                      disabled={isFetchingNextPage}
+                      onPress={() => fetchNextPage()}
+                    >
+                      {isFetchingNextPage ? 'Loading…' : 'Load older sessions'}
+                    </Button>
+                  </View>
                 ) : null
               }
             />
@@ -73,4 +75,5 @@ const styles = StyleSheet.create({
   title: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[2] },
   list: { padding: Spacing[4], gap: Spacing[3] },
   sectionHeader: { paddingVertical: Spacing[2] },
+  footer: { alignItems: 'center' },
 });

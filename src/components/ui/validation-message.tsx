@@ -9,7 +9,7 @@ export function ValidationMessage({ children }: ValidationMessageProps) {
   if (!children) return null;
 
   return (
-    <ThemedText type="caption" style={{ color: Colors.accentRamp[700], marginTop: Spacing[1] }}>
+    <ThemedText type="caption" style={{ color: Colors.dangerRamp[700], marginTop: Spacing[1] }}>
       {children}
     </ThemedText>
   );

@@ -2,14 +2,18 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
 import { PracticeFab } from '@/components/nav/practice-fab';
 import { Colors } from '@/theme/tokens';
+import { FontFamily } from '@/theme/typography';
 
 export default function AppNav() {
   return (
     <>
       <NativeTabs
-        backgroundColor={Colors.surface}
+        backgroundColor={Colors.neutral[100]}
+        shadowColor={Colors.neutral[300]}
         indicatorColor={Colors.accentRamp[200]}
         tintColor={Colors.accent}
+        iconColor={Colors.neutral[600]}
+        labelStyle={{ fontFamily: FontFamily.bodySemiBold, fontSize: 8.5 }}
       >
         <NativeTabs.Trigger name="index">
           <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>

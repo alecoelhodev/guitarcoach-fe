@@ -4,8 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Toast } from '@/components/ui/toast';
 import { useToastStore } from '@/stores/toast-store';
+import { TabBarInset } from '@/theme/platform';
+import { Spacing } from '@/theme/tokens';
 
-const AUTO_DISMISS_MS = 3000;
+const AUTO_DISMISS_MS = 4000;
 
 export function ToastHost() {
   const toast = useToastStore((state) => state.toast);
@@ -33,5 +35,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
+    // Canvas 04b sits the toast above the tab bar, not flush to the safe-area edge.
+    paddingBottom: TabBarInset + Spacing[3],
   },
 });

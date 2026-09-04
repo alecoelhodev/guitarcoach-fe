@@ -19,7 +19,7 @@ import { ValidationMessage } from '@/components/ui/validation-message';
 import { safeNextPath } from '@/lib/next-path';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
-import { Spacing } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 
 type Mode = 'signin' | 'create';
 
@@ -180,7 +180,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-        <ThemedText type="h2">Guitar Coach</ThemedText>
+        <ThemedText type="h3">Guitar Coach</ThemedText>
         <ThemedText type="body" color="textMuted">
           Practice with a plan.
         </ThemedText>
@@ -286,7 +286,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
           disabled={busy}
           style={styles.forgot}
         >
-          <ThemedText type="body" color="accent">
+          <ThemedText type="caption" style={styles.link}>
             Forgot password?
           </ThemedText>
         </Pressable>
@@ -309,7 +309,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
       >
         <ThemedText type="body" color="textMuted">
           {mode === 'create' ? 'Already have an account? ' : 'New here? '}
-          <ThemedText type="body" color="accent">
+          <ThemedText type="body" style={styles.link}>
             {mode === 'create' ? 'Sign in' : 'Create an account'}
           </ThemedText>
         </ThemedText>
@@ -329,4 +329,6 @@ const styles = StyleSheet.create({
   hint: { marginTop: Spacing[1] },
   forgot: { alignSelf: 'flex-end' },
   switch: { alignSelf: 'center' },
+  // Canvas uses accent-700 for links, never the base accent.
+  link: { color: Colors.accentRamp[700] },
 });

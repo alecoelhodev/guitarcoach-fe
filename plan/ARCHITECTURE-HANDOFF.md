@@ -410,6 +410,12 @@ prevents the slow drift where every feature grows a store.
 
 ## 4. NativeWind — a real decision, not a default
 
+> **Decided 2026-09-04: adopted.** NativeWind 4 + Tailwind 3, with
+> `tailwind.config.ts` generated from `tokens.ts` exactly as this section
+> recommended. The "adopt it only if the team writes Tailwind daily" condition was
+> overtaken by the design change itself — see `docs/ARCHITECTURE.md`'s decision log.
+> The section is kept for its reasoning, not as an open question.
+
 Current styling is `StyleSheet.create` reading `theme/tokens.ts`. It works, it is typed, and
 `button.tsx` shows it handling hover, press, focus-ring and disabled states correctly across
 platforms.
@@ -432,6 +438,13 @@ a sprint. Generate `tailwind.config.js` from `tokens.ts` so the tokens stay sing
 ---
 
 ## 5. UI libraries — don't
+
+> **Decided 2026-09-04: partly overturned.** Gluestack v5 was adopted for the five
+> behaviour-heavy primitives (`button`, `progress`, `checkbox`, `actionsheet`,
+> `alert-dialog`); everything else stayed hand-written, which is closer to this
+> section's advice than to a wholesale kit adoption. `@gorhom/bottom-sheet` is still
+> installed per the recommendation below, though `sheet.tsx` now uses Actionsheet.
+> Drag-reorder remains unresolved; Move up / Move down shipped as suggested.
 
 You listed Tamagui and Gluestack. Both are good. Neither fits here, for the same reason as
 before: Organic is prescriptive down to hover tints and focus rings, and you have already
@@ -458,6 +471,12 @@ needs no library), then spike drag separately against Reanimated 4's own APIs.
 ---
 
 ## 6. Three correctness issues found while reading
+
+> **All three closed.** The active session moved under the auth gate
+> (`src/app/(app)/session/active.tsx`), `error-boundary-fallback.tsx` is exported as
+> `ErrorBoundary` at both the root and `(app)` layouts, and the toast host exists as
+> `src/stores/toast-store.ts` + `src/components/toast-host.tsx`, mounted in the root
+> layout. Kept as a record.
 
 Unrelated to your three questions, but they will bite.
 

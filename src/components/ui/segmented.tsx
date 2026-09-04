@@ -11,6 +11,11 @@ export type SegmentedProps<T extends string> = {
   onChange: (value: T) => void;
 };
 
+/**
+ * Canvas's pill toggle. The selected segment fills with `accent` and takes
+ * neutral-100 text — dark-on-blue, which the canvas prefers to white and which
+ * measures better (~4.5:1 against ~3.1:1).
+ */
 export function Segmented<T extends string>({ options, value, onChange }: SegmentedProps<T>) {
   return (
     <View style={styles.track}>
@@ -24,7 +29,10 @@ export function Segmented<T extends string>({ options, value, onChange }: Segmen
             onPress={() => onChange(option.value)}
             style={[styles.segment, selected && styles.segmentSelected]}
           >
-            <ThemedText type="button" color={selected ? 'text' : 'textMuted'}>
+            <ThemedText
+              type="label"
+              style={{ color: selected ? Colors.neutral[100] : Colors.neutral[700] }}
+            >
               {option.label}
             </ThemedText>
           </Pressable>
@@ -38,16 +46,19 @@ const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.neutral[400],
     borderRadius: Radius.pill,
     padding: Spacing[1],
   },
   segment: {
     flex: 1,
+    minHeight: 38,
     alignItems: 'center',
-    paddingVertical: Spacing[2],
+    justifyContent: 'center',
     borderRadius: Radius.pill,
   },
   segmentSelected: {
-    backgroundColor: Colors.bg,
+    backgroundColor: Colors.accent,
   },
 });

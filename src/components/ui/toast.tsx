@@ -10,10 +10,23 @@ export type ToastProps = {
   variant?: ToastVariant;
 };
 
+/**
+ * Canvas `.tst`. The canvas pairs the success ground (accent2-800) with accent2-100
+ * text — both near-black, about 1.1:1 — so the 700 step is used instead (~9:1).
+ * `error` follows the `.pnl` danger pairing.
+ */
+const tone = {
+  default: { backgroundColor: Colors.neutral[200], color: Colors.text },
+  success: { backgroundColor: Colors.accent2Ramp[800], color: Colors.accent2Ramp[700] },
+  error: { backgroundColor: Colors.dangerRamp[100], color: Colors.dangerRamp[700] },
+} as const;
+
 export function Toast({ message, variant = 'default' }: ToastProps) {
+  const { color, ...surface } = tone[variant];
+
   return (
-    <View style={[styles.base, styles[variant]]}>
-      <ThemedText type="label" style={styles.text}>
+    <View accessibilityRole="alert" style={[styles.base, surface]}>
+      <ThemedText type="label" style={{ color }}>
         {message}
       </ThemedText>
     </View>
@@ -23,22 +36,9 @@ export function Toast({ message, variant = 'default' }: ToastProps) {
 const styles = StyleSheet.create({
   base: {
     alignSelf: 'center',
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3],
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.neutral[900],
+    paddingHorizontal: Spacing[3],
+    paddingVertical: Spacing[2],
+    borderRadius: Radius.lg,
     ...Shadow.md,
-  },
-  default: {
-    backgroundColor: Colors.neutral[900],
-  },
-  success: {
-    backgroundColor: Colors.accent2Ramp[700],
-  },
-  error: {
-    backgroundColor: Colors.accentRamp[800],
-  },
-  text: {
-    color: Colors.neutral[100],
   },
 });

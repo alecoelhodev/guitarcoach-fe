@@ -1,24 +1,26 @@
 import { Link } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Colors } from '@/theme/tokens';
 import type { Routine } from '@/types/routine';
 
 export function RoutineCard({ routine }: { routine: Routine }) {
   return (
     <Link href={{ pathname: '/routines/[id]', params: { id: routine.id } }} asChild>
-      <Card style={styles.card}>
+      <Card>
         <View style={styles.row}>
           <ThemedText type="h5" style={styles.title}>
             {routine.title}
           </ThemedText>
-          <Badge
-            label={routine.status}
-            variant={routine.status === 'active' ? 'category' : 'neutral'}
-          />
+          {/* Canvas 05 leaves active routines unbadged and marks only archived ones. */}
+          {routine.status === 'archived' && <Badge label="Archived" />}
+          <ChevronRight color={Colors.neutral[700]} size={16} strokeWidth={2.75} />
         </View>
+
         {routine.notes && (
           <ThemedText type="body" color="textMuted" numberOfLines={2}>
             {routine.notes}
@@ -30,7 +32,6 @@ export function RoutineCard({ routine }: { routine: Routine }) {
 }
 
 const styles = StyleSheet.create({
-  card: { gap: 8 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { flex: 1 },
 });

@@ -42,25 +42,46 @@ Known pre-existing failures — **not yours, don't "fix" them opportunistically*
 locally (i.e. after `expo start`); a clean checkout that never ran the dev server will not
 type-check routes at all.
 
+**A passing `expo export` is not proof the app runs.** Export builds as production, so it
+skips every `NODE_ENV !== 'production'` guard in the dependencies. A green export plus a
+green test run still missed a crash that only the dev server hit — see the `<Link asChild>`
+rule below. Run the dev client for anything that renders.
+
+**`render` from `@testing-library/react-native` v14 is async — `await` it.** Calling it
+synchronously renders nothing and every later query fails with the misleading
+``render` function has not been called``.
+
 ## Layout and conventions
 
 ```
 src/app/        expo-router routes: (auth) and (app)/(main)/(tabs)
 src/api/        <resource>.ts = transport; <resource>.queries.ts = TanStack Query hooks
 src/features/   screen-level composition, one folder per feature
-src/components/ ui/ = 17 shared primitives; nav/ = navigation chrome
+src/components/ ui/ = 20 shared primitives (5 Gluestack-backed); nav/ = navigation chrome
 src/stores/     app-wide Zustand state (session, toast)
 src/lib/        storage, date-grouping, duration, file-validation
-src/theme/      Organic design tokens
+src/theme/      canvas design tokens (tokens.ts is RN-free; platform.ts holds Platform)
 src/types/      generated api.d.ts + per-resource re-exports
 ```
 
+- **Never give an `asChild` child an array style.** `<Link asChild>` renders through
+  expo-router's Slot, which _throws_ on `style={[a, b]}` — but only in development, so
+  production builds hide it. Flatten with `StyleSheet.flatten` (see `rail.web.tsx`) or pass
+  a single object. `src/components/nav/__tests__/rail.web.test.tsx` guards the rail.
 - Route groups matter: the real path is `/(app)/(main)/(tabs)/routines`, not
   `/(app)/(tabs)/routines`. Detail routes resolve bare: `/routines/[id]`.
 - Components consume `*.queries.ts` hooks; don't call `useQuery` with an inline key from a
   feature file (it splits the cache). Keys live in `src/api/query-keys.ts`.
-- Styling is `StyleSheet.create` over `src/theme/tokens.ts`. No NativeWind — see
-  `plan/ARCHITECTURE-HANDOFF.md` §4 before proposing one.
+- Styling is **NativeWind 4 + Tailwind 3** over `src/theme/tokens.ts`, which is the single
+  source of truth: `tailwind.config.ts` derives its colors, spacing and radii _from_ that
+  file, so `bg-accent` and `Colors.accent` cannot drift. Hand-written primitives still use
+  `StyleSheet.create` over the same tokens — both are current, and mixing them is fine.
+- **`src/theme/tokens.ts` must stay free of `react-native` imports.** `tailwind.config.ts`
+  loads it outside a RN runtime; anything platform-dependent belongs in `theme/platform.ts`.
+- `Spacing` keys are `1,2,3,4,6,8` — **5 and 7 do not exist**. Build scales with
+  `Object.entries`, never a `1..8` loop.
+- Links and small accent text use `accentRamp[700]` (`#7ec2fb`), never base `accent` — the
+  base is for fills. Error states use `danger`/`dangerRamp`, never the accent ramp.
 
 ## Platform gotchas
 
@@ -72,6 +93,36 @@ src/types/      generated api.d.ts + per-resource re-exports
 - `.npmrc` sets `legacy-peer-deps=true` — `openapi-typescript` still declares a
   `typescript@^5.x` peer while this repo is on 6.0. Removing it breaks `npm ci`.
 - `tsconfig.json` excludes `backend/`, which CI checks the backend repo out into. Keep it.
+
+## Styling toolchain
+
+`babel.config.js`, `metro.config.js`, `tailwind.config.ts` and `nativewind-env.d.ts` are all
+hand-written and load-bearing — the repo previously ran on Expo defaults with no babel or
+metro config at all. Babel needs `jsxImportSource: 'nativewind'`; metro needs
+`input: './src/global.css'`.
+
+- **A stale Metro cache silently masks config changes.** `app.config.ts` edits appeared not
+  to apply until `--clear`. Always verify config-level work with
+  `npx expo export -p web --clear`, never a plain export.
+- **`npx gluestack-ui add <name>` has collateral, every single time.** It strips the
+  comments from `.npmrc`, and it injects `overrides`/`resolutions` pinning `lightningcss`
+  (a Tailwind 4 dependency this project does not use). After every `add`:
+  `git checkout .npmrc` and remove those two keys from `package.json`.
+- **Never run `npx gluestack-ui init` here.** It overwrites `tsconfig.json` wholesale
+  (dropping `extends`, `strict`, `types` and remapping `@/*` to `./*`), rewrites babel and
+  metro for NativeWind 5, replaces `src/global.css`, bumps Expo-pinned packages, and
+  scaffolds a `components/` directory at the repo root that `@/*` cannot resolve.
+- **Gluestack's generated components do not typecheck under `strict` + TS 6.** Its
+  `cssInterop(UIIcon, …)` mapping uses `true` where NativeWind's types demand `string`, and
+  `checkbox` also had a ref-variance error. This app renders `lucide-react-native` icons as
+  children, so the fix is to delete the unused Icon slot (`Icon: View`), as `button`,
+  `actionsheet` and `checkbox` already do.
+- `@gluestack-ui/core` ships untranspiled ESM, so `jest.config.js` derives its
+  `transformIgnorePatterns` from jest-expo's and adds `@gluestack-ui|@legendapp`. Extend
+  that derived pattern; don't replace it.
+- `tailwind.config.ts` deliberately names font families `font-body-semibold` /
+  `font-body-medium`. `font-semibold` and `font-medium` would shadow Tailwind's own
+  font-_weight_ utilities, which React Native cannot synthesise.
 
 ## Backend constraints that are easy to break
 
@@ -91,14 +142,16 @@ Verified against the committed OpenAPI schema:
 
 ## Documentation map
 
-| Doc                             | What it is                                         |
-| ------------------------------- | -------------------------------------------------- |
-| `docs/api-contract-workflow.md` | Living runbook: BE↔FE type sync commands + flow    |
-| `docs/api-integration.md`       | How a screen talks to the API: hooks, keys, errors |
-| `plan/ARCHITECTURE-HANDOFF.md`  | Architecture review, conventions, open decisions   |
-| `plan/MONOREPO-MIGRATION.md`    | Proposed BE+FE monorepo consolidation (not done)   |
-| `plan/API-CONTRACT-SYNC.md`     | Original plan for the contract pipeline (built)    |
-| `plan/SETUP-PLAN.md`            | Initial build plan                                 |
+| Doc                                          | What it is                                                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `wireframes/Guitar Coach Wireframes.dc.html` | **The design authority.** Every colour, radius and type size comes from its `:root` block. |
+| `docs/MIGRATION-PLAN.md`                     | Record of the Organic → canvas UI migration                                                |
+| `docs/api-contract-workflow.md`              | Living runbook: BE↔FE type sync commands + flow                                            |
+| `docs/api-integration.md`                    | How a screen talks to the API: hooks, keys, errors                                         |
+| `plan/ARCHITECTURE-HANDOFF.md`               | Architecture review, conventions, open decisions                                           |
+| `plan/MONOREPO-MIGRATION.md`                 | Proposed BE+FE monorepo consolidation (not done)                                           |
+| `plan/API-CONTRACT-SYNC.md`                  | Original plan for the contract pipeline (built)                                            |
+| `plan/SETUP-PLAN.md`                         | Initial build plan                                                                         |
 
 `plan/` holds plans and proposals; `docs/` holds living operational docs. Keep new runbooks
 in `docs/`.

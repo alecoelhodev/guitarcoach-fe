@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
-import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 export type ErrorPanelProps = {
@@ -12,15 +12,17 @@ export type ErrorPanelProps = {
 
 export function ErrorPanel({ title, message, onRetry }: ErrorPanelProps) {
   return (
-    <View style={styles.base}>
-      <ThemedText type="h5">{title}</ThemedText>
+    <View accessibilityRole="alert" style={styles.base}>
+      <ThemedText type="label" style={styles.text}>
+        {title}
+      </ThemedText>
       {message && (
-        <ThemedText type="body" color="textMuted" style={styles.message}>
+        <ThemedText type="body" style={[styles.text, styles.message]}>
           {message}
         </ThemedText>
       )}
       {onRetry && (
-        <Button variant="secondary" onPress={onRetry} style={styles.retry}>
+        <Button variant="tertiary" onPress={onRetry} style={styles.retry}>
           Try again
         </Button>
       )}
@@ -32,14 +34,19 @@ const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
     gap: Spacing[2],
-    padding: Spacing[6],
-    borderRadius: Radius.md,
-    backgroundColor: Colors.accentRamp[100],
+    padding: Spacing[3],
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.dangerRamp[100],
+    borderColor: Colors.dangerRamp[300],
+  },
+  text: {
+    color: Colors.dangerRamp[700],
   },
   message: {
     textAlign: 'center',
   },
   retry: {
-    marginTop: Spacing[2],
+    marginTop: Spacing[1],
   },
 });

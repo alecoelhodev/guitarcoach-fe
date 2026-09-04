@@ -14,23 +14,26 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Stepper } from '@/components/ui/stepper';
 import { useActiveSessionStore } from '@/features/session/session-store';
 import { useToastStore } from '@/stores/toast-store';
+import { formatClock } from '@/lib/duration';
 import { Spacing } from '@/theme/tokens';
 
 function useStopwatch() {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setSeconds((s) => s + 1), 1000);
+    const id = setInterval(() => setSeconds((current) => current + 1), 1000);
     return () => clearInterval(id);
   }, []);
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
+  return seconds;
 }
 
 export function ActiveSessionScreen() {
   const router = useRouter();
   const { routineId, title, tasks, setTaskMinutes, toggleTaskCompleted, reset } =
     useActiveSessionStore();
-  const elapsed = useStopwatch();
+  const elapsedSeconds = useStopwatch();
+  // Canvas 07: the clock is a local pacing aid; what gets saved is the per-task
+  // minutes. "Planned" is the sum of the routine's target durations.
+  const plannedMinutes = tasks.reduce((sum, task) => sum + (task.targetDurationMinutes ?? 0), 0);
   const [confirmExit, setConfirmExit] = useState(false);
   const [startedWithNoTasks] = useState(() => tasks.length === 0);
   const createSessionMutation = useCreateSession();
@@ -74,14 +77,39 @@ export function ActiveSessionScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <Button variant="icon" onPress={() => setConfirmExit(true)}>
+          <Button
+            variant="icon"
+            accessibilityLabel="Exit practice"
+            onPress={() => setConfirmExit(true)}
+          >
             <X size={20} strokeWidth={2.75} />
           </Button>
-          <ThemedText type="h4">{elapsed}</ThemedText>
-          <View style={{ width: 36 }} />
         </View>
 
-        <ThemedText type="h5">{title ?? 'Practice session'}</ThemedText>
+        <View>
+          {title && (
+            <ThemedText type="body" color="textMuted">
+              Following · {title}
+            </ThemedText>
+          )}
+          <ThemedText type="h3">{title ?? 'Practice session'}</ThemedText>
+        </View>
+
+        <Card style={styles.clockCard}>
+          <ThemedText type="overline" color="textMuted">
+            Elapsed · on this device
+          </ThemedText>
+          <ThemedText type="display">{formatClock(elapsedSeconds)}</ThemedText>
+          {plannedMinutes > 0 && (
+            <ThemedText type="body" color="textMuted">
+              of {plannedMinutes} min planned
+            </ThemedText>
+          )}
+        </Card>
+
+        <ThemedText type="overline" color="textMuted">
+          Routine tasks
+        </ThemedText>
 
         <ScrollView contentContainerStyle={styles.taskList}>
           {tasks.map((task) => (
@@ -99,15 +127,25 @@ export function ActiveSessionScreen() {
           ))}
         </ScrollView>
 
-        <Button block loading={createSessionMutation.isPending} onPress={handleFinish}>
-          Finish
+        <Button
+          block
+          loading={createSessionMutation.isPending}
+          loadingLabel="Saving session…"
+          onPress={handleFinish}
+        >
+          Finish Session
         </Button>
+
+        <ThemedText type="body" color="textMuted" style={styles.note}>
+          Saved when you finish.
+        </ThemedText>
       </SafeAreaView>
 
       <ConfirmDialog
         visible={confirmExit}
         title="Exit practice?"
         message="Nothing is saved until you finish. Exiting now discards this session."
+        destructive
         confirmLabel="Exit"
         cancelLabel="Keep practicing"
         onConfirm={() => {
@@ -123,7 +161,9 @@ export function ActiveSessionScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, padding: Spacing[4], gap: Spacing[4] },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  header: { flexDirection: 'row', alignItems: 'center' },
+  clockCard: { alignItems: 'center' },
+  note: { textAlign: 'center' },
   taskList: { gap: Spacing[3] },
   taskCard: { gap: Spacing[3] },
 });

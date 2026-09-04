@@ -1,8 +1,9 @@
 import { type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Spacing } from '@/theme/tokens';
 
 export type EmptyStateProps = {
@@ -13,35 +14,38 @@ export type EmptyStateProps = {
   onAction?: () => void;
 };
 
+/**
+ * Canvas renders empty states as the dashed `.cd` — the same surface as `Card`'s
+ * `quiet` variant. `icon` and the action are used by canvas 02c, 03b and 08b.
+ */
 export function EmptyState({ icon, title, message, actionLabel, onAction }: EmptyStateProps) {
   return (
-    <View style={styles.base}>
+    <Card quiet style={styles.base}>
       {icon}
-      <ThemedText type="h5">{title}</ThemedText>
+      <ThemedText type="label">{title}</ThemedText>
       {message && (
         <ThemedText type="body" color="textMuted" style={styles.message}>
           {message}
         </ThemedText>
       )}
       {actionLabel && onAction && (
-        <Button onPress={onAction} style={styles.action}>
+        <Button variant="secondary" onPress={onAction} style={styles.action}>
           {actionLabel}
         </Button>
       )}
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
-    gap: Spacing[2],
-    padding: Spacing[8],
+    padding: Spacing[4],
   },
   message: {
     textAlign: 'center',
   },
   action: {
-    marginTop: Spacing[3],
+    marginTop: Spacing[1],
   },
 });

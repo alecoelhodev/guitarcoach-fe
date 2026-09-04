@@ -5,9 +5,10 @@ export type FieldLabelProps = {
   children: string;
 };
 
+/** Canvas `.xs` — 9.5px uppercase with wide tracking, in neutral-700. */
 export function FieldLabel({ children }: FieldLabelProps) {
   return (
-    <ThemedText type="label" color="textMuted" style={{ marginBottom: Spacing[1] }}>
+    <ThemedText type="overline" color="textMuted" style={{ marginBottom: Spacing[1] }}>
       {children}
     </ThemedText>
   );

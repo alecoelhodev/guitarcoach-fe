@@ -5,6 +5,9 @@ const config: ExpoConfig = {
   slug: 'guitar-coach',
   version: '1.0.0',
   orientation: 'portrait',
+  // Root view background behind all React views (expo-system-ui applies it natively)
+  // and the default the web PWA manifest inherits. Without it both flash light.
+  backgroundColor: '#0a0b0d',
   icon: './assets/images/icon.png',
   scheme: 'guitarcoachfe',
   userInterfaceStyle: 'automatic',
@@ -17,7 +20,7 @@ const config: ExpoConfig = {
   },
   android: {
     adaptiveIcon: {
-      backgroundColor: '#f5ead8',
+      backgroundColor: '#0a0b0d',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -28,6 +31,7 @@ const config: ExpoConfig = {
   web: {
     output: 'static',
     favicon: './assets/images/favicon.png',
+    backgroundColor: '#0a0b0d',
   },
   plugins: [
     'expo-router',
@@ -37,7 +41,7 @@ const config: ExpoConfig = {
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#f5ead8',
+        backgroundColor: '#0a0b0d',
         image: './assets/images/splash-icon.png',
         imageWidth: 76,
       },
