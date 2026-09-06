@@ -146,8 +146,17 @@ Both are correct; do not "fix" them into hooks.
 `src/api/__tests__/routines.queries.test.tsx` is the template for hook tests.
 
 - RNTL 14's `renderHook` is **async** — `await` it, or `result` is undefined.
-- Give the test `QueryClient` `mutations: { gcTime: 0 }`, or a settled mutation keeps a
-  five-minute collection timer and Jest will not exit. Use `gcTime: Infinity` for queries so
-  seeded `setQueryData` survives the test.
+- Build the test client with `withQueryClient()` from `src/test/query-client.tsx` rather than
+  a fresh `new QueryClient` per suite. Its options are load-bearing: `mutations:
+{ gcTime: 0 }`, or a settled mutation keeps a five-minute collection timer and Jest will not
+  exit; `gcTime: Infinity` for queries so seeded `setQueryData` survives the test.
 - Assert optimistic writes _inside_ the mocked transport — that proves the cache was updated
   before the request went out, not merely after it returned.
+- Mock the transport module (`jest.mock('@/api/sessions', …)`), not `fetch`. The transports are
+  thin wrappers over `request()`, which `__tests__/client.test.ts` covers directly.
+- To prove a hook invalidated something, spy on the client —
+  `jest.spyOn(queryClient, 'invalidateQueries')`. Asserting `isSuccess` only proves the request
+  resolved, which is a different claim; `coach.queries.test.tsx` leans on the distinction,
+  since a `cancelled` draft succeeds and must invalidate nothing.
+- Pagination lives in `getNextPageParam` (`page < totalPages`). `makePage()` in
+  `src/test/fixtures.ts` takes the `meta` override, so the last-page boundary is one argument.

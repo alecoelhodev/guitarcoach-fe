@@ -1,27 +1,20 @@
 import { getSession } from '@/api/auth';
 import { storage } from '@/lib/storage';
 import { useSessionStore } from '@/stores/session-store';
-import type { User } from '@/types/user';
+import { makeUser } from '@/test/fixtures';
+import { resetStores } from '@/test/reset-stores';
 
 jest.mock('@/api/auth', () => ({ getSession: jest.fn() }));
 
 const getSessionMock = getSession as jest.MockedFunction<typeof getSession>;
 
-const user = {
-  id: 'u1',
-  email: 'jordan@example.com',
-  emailVerified: true,
-  name: 'Jordan',
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
-} satisfies User;
+const user = makeUser();
 
 const CACHE_KEY = 'guitar-coach.cached-user';
 
 beforeEach(() => {
   jest.clearAllMocks();
-  storage.remove(CACHE_KEY);
-  useSessionStore.setState({ status: 'loading', user: null });
+  resetStores();
 });
 
 describe('hydrate', () => {

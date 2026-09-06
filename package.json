@@ -72,6 +72,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "format": "biome check --write . && prettier --write \"**/*.md\"",
     "format:check": "biome ci . && prettier --check \"**/*.md\"",
     "api:types": "openapi-typescript ${BACKEND_OPENAPI_PATH:-../guitar-coach/openapi.json} -o src/types/api.d.ts && biome check --write src/types/api.d.ts",

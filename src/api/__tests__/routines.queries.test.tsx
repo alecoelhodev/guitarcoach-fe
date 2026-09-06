@@ -1,10 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react-native';
-import { type ReactNode } from 'react';
 
 import { queryKeys } from '@/api/query-keys';
 import { reorderRoutineTasks } from '@/api/routines';
 import { useReorderRoutineTasks } from '@/api/routines.queries';
+import { withQueryClient } from '@/test/query-client';
 import type { RoutineTaskWithTask } from '@/types/routine';
 
 jest.mock('@/api/routines', () => ({ reorderRoutineTasks: jest.fn() }));
@@ -18,20 +17,9 @@ function task(taskId: string): RoutineTaskWithTask {
 }
 
 async function setup() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      // Infinity schedules no collection timer at all, so the seeded cache survives the test.
-      queries: { retry: false, gcTime: Infinity },
-      // Without gcTime 0 the settled mutation keeps a five-minute collection timer, and
-      // Jest will not exit until it fires.
-      mutations: { retry: false, gcTime: 0 },
-    },
-  });
+  // The client's gcTime/retry options are load-bearing; see src/test/query-client.tsx.
+  const { queryClient, wrapper } = withQueryClient();
   queryClient.setQueryData(queryKeys.routineTasks(ROUTINE_ID), [task('a'), task('b'), task('c')]);
-
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
 
   // RNTL 14's renderHook is async — it awaits the initial render internally.
   const { result } = await renderHook(() => useReorderRoutineTasks(ROUTINE_ID), { wrapper });

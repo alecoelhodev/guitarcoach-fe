@@ -30,6 +30,7 @@ command-by-command flow: [`docs/api-contract-workflow.md`](docs/api-contract-wor
 npx tsc --noEmit      # no `typecheck` script exists; run the compiler directly
 npx expo lint
 npx biome ci .        # formatting + import order; `npm run format` fixes both
+npm test              # 20 suites; `npm run test:coverage` adds the coverage floor
 ```
 
 Known pre-existing failures — **not yours, don't "fix" them opportunistically**:
@@ -47,7 +48,29 @@ rule below. Run the dev client for anything that renders.
 
 **`render` from `@testing-library/react-native` v14 is async — `await` it.** Calling it
 synchronously renders nothing and every later query fails with the misleading
-``render` function has not been called``.
+``render` function has not been called``. So are `renderHook`, `fireEvent` and `act`; the
+`renderAsync` / `fireEventAsync` variants no longer exist. RNTL's matchers
+(`toBeOnTheScreen`, `toHaveTextContent`, …) register on import — do **not** add
+`@testing-library/jest-native`, which is deprecated.
+
+**`jest.config.js` pins `process.env.TZ = 'UTC'`.** `src/lib/date-grouping.ts` derives "this
+week" in local time, so without the pin its tests assert one thing on a dev machine and
+another on CI's UTC runner. Never assert on the host zone, and don't move the pin into the
+npm script — `TZ=UTC jest` does not work on Windows.
+
+**Coverage has a floor, and it is a floor.** `coverageThreshold` in `jest.config.js` sits just
+under the real figures and CI runs `npm test -- --coverage`. Raise it when you add suites;
+never lower it to turn a red build green. `collectCoverageFrom` is what makes the number mean
+"of the app" — without it Jest measured only the files a test already imported and reported
+84% where the truth was 27%.
+
+**Shared test helpers live in `src/test/`** — `fixtures.ts` (builders for the generated DTOs),
+`query-client.tsx` (`makeTestQueryClient` / `withQueryClient`), `reset-stores.ts`. Use them
+rather than re-deriving a `QueryClient` or a `user` object per suite. Two traps they exist to
+absorb: **never pass `replace: true` to a store's `setState`** (actions live in the same object
+as the data, so a replace deletes `start`, `show`, `hydrate`), and **clear MMKV between tests**
+— `jest.setup.ts` builds its mock on a single `Map` in the factory closure, shared by every
+`createMMKV()` call in a file, so a persisted store otherwise rehydrates the previous test.
 
 ## Formatting and linting are two different tools
 

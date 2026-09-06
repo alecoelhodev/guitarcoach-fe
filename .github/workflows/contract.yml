@@ -47,5 +47,7 @@ jobs:
         env:
           BACKEND_OPENAPI_PATH: backend/openapi.json
 
+      # --coverage is what makes jest.config.js's coverageThreshold gate the PR; without
+      # it the floor is inert. Costs roughly 15s over a plain run.
       - name: Run tests
-        run: npm test
+        run: npm test -- --coverage --ci

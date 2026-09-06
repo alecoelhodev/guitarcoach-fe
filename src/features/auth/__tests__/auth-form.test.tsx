@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { requestPasswordReset, signIn } from '@/api/auth';
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { AuthForm } from '@/features/auth/auth-form';
+import { makeUser } from '@/test/fixtures';
 
 const mockReplace = jest.fn();
 
@@ -21,14 +22,7 @@ const requestPasswordResetMock = requestPasswordReset as jest.MockedFunction<
   typeof requestPasswordReset
 >;
 
-const user = {
-  id: 'u1',
-  email: 'jordan@example.com',
-  emailVerified: true,
-  name: 'Jordan',
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
-};
+const user = makeUser();
 
 async function signInWith(email: string, password: string) {
   await fireEvent.changeText(screen.getByPlaceholderText('jordan@example.com'), email);

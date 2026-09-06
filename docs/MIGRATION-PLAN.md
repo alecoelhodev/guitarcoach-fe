@@ -90,3 +90,15 @@ the web two-pane list/detail layouts.
   Pre-existing; fixing it is a data-layer change.
 - Routine cards show no task count or duration: `RoutineResponseDto` carries neither, and
   fetching them per row would be a query per card.
+- **`date-grouping.ts` groups by UTC but filters by local time.** `groupSessionsByDay` keys on
+  `createdAt.slice(0, 10)` — the raw ISO date — while `filterThisWeek` compares
+  `new Date(createdAt)` against a local Sunday midnight. Under a negative UTC offset a
+  late-evening session therefore files under the _next_ day's header on History while Home's
+  "this week" total leaves it out. Reproduced at UTC−3 with a session at
+  `2026-09-06T01:00:00Z` (Sat 5 Sep, 22:00 local): grouped as `2026-09-06`, excluded from the
+  week. Pinned by `src/lib/__tests__/date-grouping.test.ts`, which asserts the current
+  behaviour rather than the intended one — picking a single basis is a product call about
+  which day a late-night session belongs to.
+- **`formatMinutes` renders `"NaNh NaNm"`** where its sibling `formatClock` guards and returns
+  `"0:00"`. Per-task minutes are optional throughout the API, so a `NaN` reaching it is
+  plausible. Also pinned by test rather than fixed.

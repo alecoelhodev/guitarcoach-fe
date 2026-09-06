@@ -45,7 +45,7 @@ This command will move the starter code to the **app-example** directory and cre
 ### Other setup steps
 
 - Lint with `npx expo lint` (ESLint). Format with `npm run format` (Biome for code, Prettier for Markdown) — see `AGENTS.md`.
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
+- Run tests with `npm test` (Jest + jest-expo). `npm run test:coverage` adds the coverage floor CI enforces.
 - Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
 
 ## Learn more
