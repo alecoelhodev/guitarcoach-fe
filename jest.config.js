@@ -42,10 +42,20 @@ module.exports = {
     '!src/test/**', // the shared helpers below are test code, not subject
     '!src/app/**', // expo-router route files: each re-exports one component from features/
   ],
-  // A floor, not a target: set just under the measured figures (39.8/42.1/39.0/39.2 at the
-  // time of writing, up from 27.2/28.4/21.6/27.0) so an untested addition trips the gate.
-  // Raise it when suites land; never lower it to make a red build green.
+  // Jest's default is ['json', 'text', 'lcov', 'clover']; none of it was chosen. `text` prints
+  // a ~100-row per-file table on every run, and `json`/`clover` are machine formats with no
+  // consumer in this repo. `text-summary` gives the four totals; `html` writes the browsable
+  // per-file report to `coverage/index.html` — note the bare reporter has no subdir, whereas
+  // `lcov` is a composite that used to bury the same HTML under `coverage/lcov-report/`.
+  // A failed threshold names the metric and both numbers on its own, independently of any
+  // reporter, so dropping `text` does not cost the diagnosis — only the per-file breakdown,
+  // which is what the HTML report is for.
+  coverageReporters: ['text-summary', 'html'],
+  // A floor, not a target. Measured 96.8/93.8/96.9/97.4; the floor sits at 80, which is the
+  // agreed contract rather than the high-water mark — there is room to add a screen without
+  // tripping the gate, but not room to add an untested feature.
+  // Raise it as coverage grows; never lower it to make a red build green.
   coverageThreshold: {
-    global: { statements: 35, branches: 40, functions: 35, lines: 35 },
+    global: { statements: 80, branches: 80, functions: 80, lines: 80 },
   },
 };

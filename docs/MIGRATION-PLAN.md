@@ -88,6 +88,10 @@ the web two-pane list/detail layouts.
   tab bar renders there. Fixing it means moving a route, not restyling.
 - **`session-detail` issues one `useTask` per session task** — an N+1 against `/tasks/:id`.
   Pre-existing; fixing it is a data-layer change.
+- **The unused `ui/actionsheet` scaffolding has been deleted** (438 lines of
+  `gluestack-ui add` output that nothing in `src/` imported), along with
+  `src/hooks/use-color-scheme{,.web}.ts` — also unimported, and the source of the repo's only
+  `expo lint` error.
 - Routine cards show no task count or duration: `RoutineResponseDto` carries neither, and
   fetching them per row would be a query per card.
 - **`date-grouping.ts` groups by UTC but filters by local time.** `groupSessionsByDay` keys on
@@ -102,3 +106,12 @@ the web two-pane list/detail layouts.
 - **`formatMinutes` renders `"NaNh NaNm"`** where its sibling `formatClock` guards and returns
   `"0:00"`. Per-task minutes are optional throughout the API, so a `NaN` reaching it is
   plausible. Also pinned by test rather than fixed.
+- **`Toast`, `Banner` and `ErrorPanel` set `accessibilityRole="alert"` on a plain `View`
+  without `accessible`.** React Native only exposes a view as an accessibility element when
+  `accessible` is set, so none of the three is announced as an alert and RNTL's
+  `getByRole('alert')` cannot find them either — the suites query them off the rendered tree
+  instead. Three components share the defect, so it is a pattern rather than a slip. A
+  one-line fix each, but it changes what assistive tech announces, so it is a deliberate
+  change rather than a drive-by.
+- **`src/components/nav/app-nav.tsx` is the one file left uncovered** (1 statement). It is a
+  pure shell over `expo-router/unstable-native-tabs`, which has no Jest mock.

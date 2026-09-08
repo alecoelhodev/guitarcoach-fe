@@ -104,3 +104,70 @@ describe('request', () => {
     await expect(request('/routines')).rejects.toBeInstanceOf(ApiError);
   });
 });
+
+describe('upload', () => {
+  afterEach(() => {
+    jest.resetModules();
+    jest.restoreAllMocks();
+  });
+
+  it('sends the file as multipart FormData in the shape React Native expects', async () => {
+    const { upload } = loadClient('ios');
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(201, { id: 'rec-1' }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await upload('/practice-sessions/s1/recordings', {
+      uri: 'file:///take-1.m4a',
+      name: 'take-1.m4a',
+      mimeType: 'audio/x-m4a',
+    });
+
+    expect(result).toEqual({ id: 'rec-1' });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain('/api/v1/practice-sessions/s1/recordings');
+    expect(init.method).toBe('POST');
+    expect(init.credentials).toBe('include');
+    expect(init.body).toBeInstanceOf(FormData);
+    // No Content-Type of our own: fetch has to set the multipart boundary itself.
+    expect(init.headers).not.toHaveProperty('Content-Type');
+    // The field is present but its value cannot be read back as an object here: production
+    // uses React Native's FormData, which accepts `{ uri, name, type }`, while this
+    // environment's FormData coerces any non-Blob value to a string. So only presence is
+    // asserted — the shape itself is what the `as unknown as Blob` cast in `client.ts` exists
+    // to express, and RN's own implementation is what honours it.
+    expect(init.body.has('file')).toBe(true);
+  });
+
+  it('carries the Origin header on native, like every other request', async () => {
+    const { upload } = loadClient('ios');
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(201));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await upload('/practice-sessions/s1/recordings', {
+      uri: 'file:///a.m4a',
+      name: 'a.m4a',
+      mimeType: 'audio/x-m4a',
+    });
+
+    expect(fetchMock.mock.calls[0][1].headers).toMatchObject({
+      Origin: 'http://localhost:3000',
+    });
+  });
+
+  it('raises an ApiError when the upload is rejected', async () => {
+    const { upload, ApiError } = loadClient('ios');
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(413, { message: 'File too large' }),
+      ) as unknown as typeof fetch;
+
+    await expect(
+      upload('/practice-sessions/s1/recordings', {
+        uri: 'file:///big.m4a',
+        name: 'big.m4a',
+        mimeType: 'audio/x-m4a',
+      }),
+    ).rejects.toBeInstanceOf(ApiError);
+  });
+});

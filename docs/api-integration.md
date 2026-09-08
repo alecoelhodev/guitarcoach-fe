@@ -160,3 +160,27 @@ Both are correct; do not "fix" them into hooks.
   since a `cancelled` draft succeeds and must invalidate nothing.
 - Pagination lives in `getNextPageParam` (`page < totalPages`). `makePage()` in
   `src/test/fixtures.ts` takes the `meta` override, so the last-page boundary is one argument.
+
+### Where each layer's tests draw the line
+
+Three layers, three mocking boundaries. Mixing them re-verifies covered code and makes every
+assertion wait on `waitFor`.
+
+| Testing…                                 | Mock                       | Helper                    |
+| ---------------------------------------- | -------------------------- | ------------------------- |
+| a transport (`src/api/<resource>.ts`)    | `@/api/client`'s `request` | —                         |
+| a hook (`src/api/<resource>.queries.ts`) | the transport module       | `withQueryClient()`       |
+| a screen (`src/features/**`)             | the `.queries` module      | `src/test/query-hooks.ts` |
+
+`src/api/__tests__/transports.test.ts` covers every transport in one suite by asserting
+**path, method and query** against a mocked `request`. That is not a tautology: commit
+`a3caba8` moved every path under `/api/v1`, `/auth/*` routes must keep `unprefixed: true`
+because better-auth mounts outside that prefix, and `getSession` must keep its `timeoutMs` or
+the boot splash can hang for the platform timeout. All three are invisible to the compiler.
+
+Screen tests build plain result objects — `pendingQuery()`, `successQuery(data)`,
+`errorQuery(err)`, `infinitePages([makePage(…)])`, `mutationStub()` — because `QueryState`'s
+`query` prop is structural and every screen reads the same handful of fields. Note that
+`describeError` outranks a screen's own `errorTitle` for statuses it recognises: an
+`ApiError('', 404)` renders "Not found", not the fallback, so a fallback-title test needs an
+unrecognised status such as 418.

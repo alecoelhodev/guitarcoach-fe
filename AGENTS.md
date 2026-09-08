@@ -30,12 +30,12 @@ command-by-command flow: [`docs/api-contract-workflow.md`](docs/api-contract-wor
 npx tsc --noEmit      # no `typecheck` script exists; run the compiler directly
 npx expo lint
 npx biome ci .        # formatting + import order; `npm run format` fixes both
-npm test              # 20 suites; `npm run test:coverage` adds the coverage floor
+npm test              # 43 suites; `npm run test:coverage` adds the coverage floor
 ```
 
-Known pre-existing failures — **not yours, don't "fix" them opportunistically**:
-
-- `src/hooks/use-color-scheme.web.ts` — one `react-hooks/set-state-in-effect` lint error.
+All four should be **clean**. `expo lint` used to carry one known error in
+`src/hooks/use-color-scheme.web.ts`; that file was unused by anything in `src/` and has been
+deleted, so a lint error now is yours.
 
 `tsc --noEmit` should be **0 errors**. Typed routes only resolve when `.expo/types` exists
 locally (i.e. after `expo start`); a clean checkout that never ran the dev server will not
@@ -58,19 +58,65 @@ week" in local time, so without the pin its tests assert one thing on a dev mach
 another on CI's UTC runner. Never assert on the host zone, and don't move the pin into the
 npm script — `TZ=UTC jest` does not work on Windows.
 
-**Coverage has a floor, and it is a floor.** `coverageThreshold` in `jest.config.js` sits just
-under the real figures and CI runs `npm test -- --coverage`. Raise it when you add suites;
-never lower it to turn a red build green. `collectCoverageFrom` is what makes the number mean
-"of the app" — without it Jest measured only the files a test already imported and reported
-84% where the truth was 27%.
+**Coverage has a floor of 80 on all four metrics**, and CI runs `npm test -- --coverage`.
+Measured is currently ~96/94/97/97, so there is slack for a new screen but not for an untested
+feature. Raise the floor as coverage grows; never lower it to turn a red build green.
+`collectCoverageFrom` is what makes the number mean "of the app" — without it Jest measured
+only the files a test already imported and reported 84% where the truth was 27%.
+
+**Two things are pinned per test, not globally, and both fail only sometimes if you forget.**
+_Freeze the clock_ wherever a component reads the wall clock rather than a prop:
+`home-screen`'s `partOfDay()` takes no argument, and `filterThisWeek` compares against "now" —
+`jest.useFakeTimers()` + `setSystemTime` in `beforeEach`, `useRealTimers` in `afterEach`.
+_Never assert a localised date string exactly_ — `toLocaleTimeString`/`toLocaleDateString` in
+`recording-row`, `session-detail` and `profile-screen` follow Node's default **locale**, which
+the `TZ` pin does not cover and which differs between a laptop and CI's ICU build. Match a
+regex, or pass an explicit locale.
+
+**`process.env.EXPO_OS` is inlined at build time, so a test cannot flip it.** Assigning it
+inside a test changes nothing — the comparison has already been baked to the preset's platform
+(`ios`). This is also why `eslint-plugin-expo` bans destructuring or dynamically indexing it.
+`external-link.tsx`'s web fall-through is therefore uncovered by design; it would need a
+second Jest project on `jest-expo/web`.
 
 **Shared test helpers live in `src/test/`** — `fixtures.ts` (builders for the generated DTOs),
-`query-client.tsx` (`makeTestQueryClient` / `withQueryClient`), `reset-stores.ts`. Use them
-rather than re-deriving a `QueryClient` or a `user` object per suite. Two traps they exist to
+`query-client.tsx` (`makeTestQueryClient` / `withQueryClient`), `reset-stores.ts`,
+`expo-router.tsx` (the minimal `useRouter`/`Link`/`usePathname` mock, plus `linkHrefs` and
+`mockRouter`), `query-hooks.ts` (`pendingQuery` / `successQuery` / `errorQuery` /
+`infinitePages` / `mutationStub`) and `gluestack.tsx` (`withGluestack`). Use them rather than
+re-deriving a `QueryClient` or a `user` object per suite. Two traps they exist to
 absorb: **never pass `replace: true` to a store's `setState`** (actions live in the same object
 as the data, so a replace deletes `start`, `show`, `hydrate`), and **clear MMKV between tests**
 — `jest.setup.ts` builds its mock on a single `Map` in the factory closure, shared by every
 `createMMKV()` call in a file, so a persisted store otherwise rehydrates the previous test.
+(`jest.setup.ts` also calls `resetStores()` in a global `beforeEach`, so a suite no longer has
+to remember — it `require`s it lazily so store-free suites don't load the store graph.)
+
+**`jest.setup.ts`'s four mocks each unblock an import that otherwise throws.** None are
+conveniences; removing one breaks whole suites with an error that names the wrong culprit:
+
+| Mock                              | Why                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `react-native-worklets`           | `react-native-reanimated` imports it, its `.native` variant wins under the iOS preset, and it dereferences a native proxy at module scope. jest-expo mocks `ReanimatedModule` but **not** `WorkletsModule`. Mocking `react-native-reanimated/mock` instead does _not_ work — that mock re-imports reanimated's real index. Reached via `ui/alert-dialog` → `ConfirmDialog` → home + active-session. |
+| `expo-audio`                      | Ships no `mocks/` dir for jest-expo to find and dereferences `AudioModule.AudioPlayer.prototype` at import, so `recording-row.tsx` cannot even be loaded. Re-point the two hooks per test.                                                                                                                                                                                                          |
+| `@react-native-community/netinfo` | `api/query-client.ts` registers a listener at module scope. Unmocked it does not fail a test — it **kills the worker process** from inside NetInfo's async reachability polling.                                                                                                                                                                                                                    |
+| `react-native-safe-area-context`  | Twelve files render `SafeAreaView`. It works unmocked; the package's own `jest/mock` just pins deterministic metrics.                                                                                                                                                                                                                                                                               |
+
+**Gluestack overlays render nothing without a provider above them.** `ConfirmDialog` portals
+through `OverlayProvider`, so a bare `render(<ConfirmDialog visible … />)` produces _empty_
+output and a "dialog is closed" assertion passes for the wrong reason. Wrap it in
+`withGluestack` from `src/test/gluestack.tsx`.
+
+**Screens mock the `.queries` module; hook suites mock the transport.** The five
+`src/api/*.queries.ts` suites already cover those hooks against a real `QueryClient`, so a
+screen test builds plain result objects with `src/test/query-hooks.ts` instead of mounting a
+provider — faster, and no `waitFor` on every assertion.
+
+**Route-level tests are not possible today.** `expo-router/testing-library` was built against
+RNTL 13's _synchronous_ `render` (its own devDependency is `^13.3.0`); with RNTL 14 awaiting
+`renderRouter()` discards the `getPathname`/`getSegments` helpers it attaches with
+`Object.assign`, and `expect(screen).toHavePathname(…)` throws. Its `mocks.js` also swallows
+the worklets throw in a `try/catch`. `collectCoverageFrom` excludes `src/app/**` anyway.
 
 ## Formatting and linting are two different tools
 
@@ -107,9 +153,10 @@ defensive: `backend/**` (CI checks the backend repo out there), `package-lock.js
 src/app/        expo-router routes: (auth) and (app)/(main)/(tabs)
 src/api/        <resource>.ts = transport; <resource>.queries.ts = TanStack Query hooks
 src/features/   screen-level composition, one folder per feature
-src/components/ ui/ = 20 shared primitives (5 Gluestack-backed); nav/ = navigation chrome
+src/components/ ui/ = 21 shared primitives (4 Gluestack-backed) + the provider; nav/ = chrome
 src/stores/     app-wide Zustand state (session, toast)
 src/lib/        storage, date-grouping, duration, file-validation
+src/test/       shared test helpers (fixtures, query client, router mock, store reset)
 src/theme/      canvas design tokens (tokens.ts is RN-free; platform.ts holds Platform)
 src/types/      generated api.d.ts + per-resource re-exports
 ```
@@ -165,8 +212,8 @@ metro config at all. Babel needs `jsxImportSource: 'nativewind'`; metro needs
 - **Gluestack's generated components do not typecheck under `strict` + TS 6.** Its
   `cssInterop(UIIcon, …)` mapping uses `true` where NativeWind's types demand `string`, and
   `checkbox` also had a ref-variance error. This app renders `lucide-react-native` icons as
-  children, so the fix is to delete the unused Icon slot (`Icon: View`), as `button`,
-  `actionsheet` and `checkbox` already do.
+  children, so the fix is to delete the unused Icon slot (`Icon: View`), as `button` and
+  `checkbox` already do.
 - `@gluestack-ui/core` ships untranspiled ESM, so `jest.config.js` derives its
   `transformIgnorePatterns` from jest-expo's and adds `@gluestack-ui|@legendapp`. Extend
   that derived pattern; don't replace it.
