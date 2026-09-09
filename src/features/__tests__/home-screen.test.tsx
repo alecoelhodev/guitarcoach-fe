@@ -12,6 +12,7 @@ import { mockRouter } from '@/test/expo-router';
 import { makePage, makeSession, makeSessionTask, makeUser } from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
 import { pendingQuery, successQuery } from '@/test/query-hooks';
+import { MaxContentWidth } from '@/theme/tokens';
 
 /**
  * Two reasons this suite pins the clock rather than just the timezone.
@@ -215,5 +216,20 @@ describe('primary actions', () => {
 
     expect(screen.getByText('Start Practice')).toBeTruthy();
     expect(screen.getByText('Ask AI Coach')).toBeTruthy();
+  });
+});
+
+describe('layout', () => {
+  // The width cap has to sit on a node that is also capped at 100% of the screen. Home once
+  // put it on the ScrollView's content container while the ScrollView itself was centred
+  // rather than stretched, which left the ScrollView width-less and let it lay out at the
+  // full 560pt cap on a 393pt phone.
+  it('caps its width at the screen, not at MaxContentWidth alone', async () => {
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByTestId('home-safe-area')).toHaveStyle({
+      width: '100%',
+      maxWidth: MaxContentWidth,
+    });
   });
 });

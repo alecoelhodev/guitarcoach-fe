@@ -45,7 +45,7 @@ export function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['top']} testID="home-safe-area">
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.header}>
             <ThemedText type="h3" style={styles.greeting}>
@@ -156,10 +156,8 @@ function Figure({ value, label }: { value: number; label: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: { flex: 1, alignItems: 'center' },
+  safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
   scroll: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
     padding: Spacing[4],
     paddingBottom: TabBarInset + Spacing[4],
     gap: Spacing[4],
