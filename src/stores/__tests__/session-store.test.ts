@@ -12,9 +12,9 @@ const user = makeUser();
 
 const CACHE_KEY = 'guitar-coach.cached-user';
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
-  resetStores();
+  await resetStores();
 });
 
 describe('hydrate', () => {
@@ -24,21 +24,21 @@ describe('hydrate', () => {
     await useSessionStore.getState().hydrate();
 
     expect(useSessionStore.getState()).toMatchObject({ status: 'authenticated', user });
-    expect(storage.getString(CACHE_KEY)).toBe(JSON.stringify(user));
+    expect(await storage.getItem(CACHE_KEY)).toBe(JSON.stringify(user));
   });
 
   it('drops the cached user when the server says there is no session', async () => {
-    storage.set(CACHE_KEY, JSON.stringify(user));
+    await storage.setItem(CACHE_KEY, JSON.stringify(user));
     getSessionMock.mockResolvedValue(null);
 
     await useSessionStore.getState().hydrate();
 
     expect(useSessionStore.getState()).toMatchObject({ status: 'unauthenticated', user: null });
-    expect(storage.getString(CACHE_KEY)).toBeUndefined();
+    expect(await storage.getItem(CACHE_KEY)).toBeNull();
   });
 
   it('falls back to the cached user when the network is unreachable', async () => {
-    storage.set(CACHE_KEY, JSON.stringify(user));
+    await storage.setItem(CACHE_KEY, JSON.stringify(user));
     getSessionMock.mockRejectedValue(new Error('No connection'));
 
     await useSessionStore.getState().hydrate();
@@ -57,13 +57,13 @@ describe('hydrate', () => {
 });
 
 describe('clear', () => {
-  it('forgets the cached user', () => {
-    useSessionStore.getState().setUser(user);
-    expect(storage.getString(CACHE_KEY)).toBeDefined();
+  it('forgets the cached user', async () => {
+    await useSessionStore.getState().setUser(user);
+    expect(await storage.getItem(CACHE_KEY)).not.toBeNull();
 
-    useSessionStore.getState().clear();
+    await useSessionStore.getState().clear();
 
     expect(useSessionStore.getState()).toMatchObject({ status: 'unauthenticated', user: null });
-    expect(storage.getString(CACHE_KEY)).toBeUndefined();
+    expect(await storage.getItem(CACHE_KEY)).toBeNull();
   });
 });

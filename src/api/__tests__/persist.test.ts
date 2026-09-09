@@ -14,14 +14,14 @@ const client = {
  * storage directly so the adapter's read and remove paths are what is under test.
  */
 function seed() {
-  storage.set(CACHE_KEY, JSON.stringify(client));
+  return storage.setItem(CACHE_KEY, JSON.stringify(client));
 }
 
 describe('queryPersister', () => {
   afterEach(() => purgePersistedCache());
 
-  it('reads the snapshot back off MMKV', async () => {
-    seed();
+  it('reads the snapshot back off storage', async () => {
+    await seed();
 
     expect(await queryPersister.restoreClient()).toEqual(client);
   });
@@ -31,10 +31,10 @@ describe('queryPersister', () => {
    * person to open the app offline reads the previous user's routines and history.
    */
   it('leaves nothing on disk after a purge', async () => {
-    seed();
+    await seed();
     await purgePersistedCache();
 
-    expect(storage.getString(CACHE_KEY)).toBeUndefined();
+    expect(await storage.getItem(CACHE_KEY)).toBeNull();
     expect(await queryPersister.restoreClient()).toBeUndefined();
   });
 

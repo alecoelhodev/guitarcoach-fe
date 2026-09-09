@@ -125,14 +125,14 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
           email: values.email,
           password: values.password,
         });
-        setUser(user);
+        await setUser(user);
         router.replace(target);
         // The wireframe puts this on the auth screen, but sign-up returns a live session
         // and `(auth)/_layout.tsx` redirects away from here, so it has to follow them.
         showToast('Verify your email to secure your account');
       } else {
         const { user } = await signIn({ email: values.email, password: values.password });
-        setUser(user);
+        await setUser(user);
         router.replace(target);
       }
     } catch (error) {

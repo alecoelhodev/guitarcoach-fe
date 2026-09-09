@@ -1,20 +1,17 @@
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 
 import { storage } from '@/lib/storage';
 
 const CACHE_KEY = 'guitar-coach.query-cache';
 
 /**
- * MMKV is synchronous, so this uses the sync persister rather than the async-storage one —
- * no Promise wrapping around calls that never yield.
+ * AsyncStorage is asynchronous, so this uses the async persister rather than the sync one.
+ * `PersistQueryClientProvider` in `src/app/_layout.tsx` already waits out the restore, so
+ * the wait costs nothing at the call site.
  */
-export const queryPersister = createSyncStoragePersister({
+export const queryPersister = createAsyncStoragePersister({
   key: CACHE_KEY,
-  storage: {
-    getItem: (key) => storage.getString(key) ?? null,
-    setItem: (key, value) => storage.set(key, value),
-    removeItem: (key) => storage.remove(key),
-  },
+  storage,
 });
 
 /** Bump when a cached response shape changes; restoring old shapes into new screens crashes. */

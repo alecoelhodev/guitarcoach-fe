@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { mmkvStorage } from '@/lib/storage';
+import { storage } from '@/lib/storage';
 
 export type ActiveSessionTask = {
   taskId: string;
@@ -22,7 +22,7 @@ type ActiveSessionState = {
 };
 
 /**
- * Starting practice loads a routine's tasks into local state, persisted to MMKV so
+ * Starting practice loads a routine's tasks into local state, persisted to AsyncStorage so
  * an in-progress session survives the app being backgrounded and killed. The
  * session record itself is still written once, on Finish (plan/SETUP-PLAN.md
  * "API constraints") — persistence here only protects against losing that local
@@ -51,6 +51,6 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
 
       reset: () => set({ routineId: undefined, title: undefined, tasks: [] }),
     }),
-    { name: 'active-session', storage: createJSONStorage(() => mmkvStorage) },
+    { name: 'active-session', storage: createJSONStorage(() => storage) },
   ),
 );

@@ -1,3 +1,5 @@
+import { waitFor } from '@testing-library/react-native';
+
 import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { storage } from '@/lib/storage';
 import { resetStores } from '@/test/reset-stores';
@@ -16,8 +18,8 @@ function task(overrides: Partial<ActiveSessionTask> = {}): ActiveSessionTask {
 
 const state = () => useActiveSessionStore.getState();
 
-beforeEach(() => {
-  resetStores();
+beforeEach(async () => {
+  await resetStores();
 });
 
 describe('start', () => {
@@ -117,31 +119,38 @@ describe('reset', () => {
 });
 
 describe('persistence', () => {
-  it('writes the session to storage so it survives the app being killed', () => {
+  // AsyncStorage writes settle a microtask after the `set`, so every read here waits.
+  it('writes the session to storage so it survives the app being killed', async () => {
     state().start({ routineId: 'routine-1', title: 'Morning warm-up', tasks: [task()] });
     state().setTaskMinutes('task-1', 20);
 
-    const persisted = storage.getString(PERSIST_KEY);
-    expect(persisted).toBeDefined();
-    expect(JSON.parse(persisted as string).state).toMatchObject({
-      routineId: 'routine-1',
-      title: 'Morning warm-up',
-      tasks: [expect.objectContaining({ taskId: 'task-1', durationMinutes: 20 })],
+    await waitFor(async () => {
+      const persisted = await storage.getItem(PERSIST_KEY);
+      expect(persisted).not.toBeNull();
+      expect(JSON.parse(persisted as string).state).toMatchObject({
+        routineId: 'routine-1',
+        title: 'Morning warm-up',
+        tasks: [expect.objectContaining({ taskId: 'task-1', durationMinutes: 20 })],
+      });
     });
   });
 
-  it('persists an empty session after reset, so a killed app does not resume a stale one', () => {
+  it('persists an empty session after reset, so a killed app does not resume a stale one', async () => {
     state().start({ routineId: 'routine-1', tasks: [task()] });
 
     state().reset();
 
     // `routineId` and `title` are absent rather than null: JSON.stringify drops undefined
     // values, so a reset session persists as `{"tasks":[]}`.
-    expect(JSON.parse(storage.getString(PERSIST_KEY) as string).state).toEqual({ tasks: [] });
+    await waitFor(async () =>
+      expect(JSON.parse((await storage.getItem(PERSIST_KEY)) as string).state).toEqual({
+        tasks: [],
+      }),
+    );
   });
 
   it('rehydrates a session written by a previous launch', async () => {
-    storage.set(
+    await storage.setItem(
       PERSIST_KEY,
       JSON.stringify({
         version: 0,

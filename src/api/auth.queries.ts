@@ -15,7 +15,7 @@ export function useSignOut() {
   return useMutation({
     mutationFn: signOut,
     onSettled: async () => {
-      useSessionStore.getState().clear();
+      await useSessionStore.getState().clear();
       queryClient.clear();
       await purgePersistedCache();
     },

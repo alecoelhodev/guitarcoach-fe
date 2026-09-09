@@ -32,6 +32,33 @@ After any backend API change, see
 [docs/api-contract-workflow.md](docs/api-contract-workflow.md) for the commands to run and
 the order to merge in.
 
+## Running against the deployed backend
+
+`EXPO_PUBLIC_API_BASE_URL` defaults to `http://localhost:3000` (the local Docker backend).
+That does not work on a **physical phone in Expo Go**, where `localhost` resolves to the phone
+itself rather than your machine. Point it at the deployed Cloud Run service instead, in
+`.env.local` — which overrides `.env`, is gitignored, and can be deleted to switch back:
+
+```bash
+echo 'EXPO_PUBLIC_API_BASE_URL=https://guitarcoach-685026468764.us-east1.run.app' > .env.local
+npx expo start --clear    # the var is read at dev-server start, so restart is required
+```
+
+Three things to expect, none of them bugs in this app:
+
+- **Web stops working against it.** The deployed backend's `CORS_ORIGINS` trusts only its own
+  origin, so a browser's real `Origin` (`http://localhost:8081`) is rejected at preflight, and
+  better-auth's `SameSite=Lax` cookie would not be stored cross-site anyway. Native is fine —
+  `src/api/client.ts` synthesizes a matching `Origin` on iOS/Android. Keep `.env` on localhost
+  for web work, or have the backend add `http://localhost:8081` to `CORS_ORIGINS`.
+- **The first launch after a cold start may bounce you to sign-in.** `getSession()` is capped
+  at 5s (`src/api/auth.ts`) because the splash waits on it, and a Cloud Run cold start can take
+  ~14s. Reopen the app and the session holds. The fix is backend side
+  (`gcloud run services update guitarcoach --min-instances=1`), not a longer timeout.
+- **It is a different database from your local one**, so you need an account created there.
+  There is no separate staging service; this one is pre-production and not serving real
+  traffic (see the backend's `docs/deployment.md`).
+
 ## Get a fresh project
 
 When you're ready, run:

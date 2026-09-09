@@ -2,7 +2,7 @@ import { focusManager, onlineManager } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 
 import { shouldRetry } from '@/api/errors';
-import { mmkvStorage, storage } from '@/lib/storage';
+import { storage } from '@/lib/storage';
 import { TabBarInset } from '@/theme/platform';
 
 /**
@@ -104,19 +104,18 @@ describe('module-scope listeners', () => {
   });
 });
 
-describe('mmkvStorage', () => {
-  it('returns null rather than undefined for a miss, as zustand/persist requires', () => {
-    expect(mmkvStorage.getItem('absent')).toBeNull();
+describe('storage', () => {
+  it('returns null rather than undefined for a miss, as zustand/persist requires', async () => {
+    expect(await storage.getItem('absent')).toBeNull();
   });
 
-  it('round-trips a value and removes it', () => {
-    mmkvStorage.setItem('k', 'v');
-    expect(mmkvStorage.getItem('k')).toBe('v');
-    expect(storage.getString('k')).toBe('v');
+  it('round-trips a value and removes it', async () => {
+    await storage.setItem('k', 'v');
+    expect(await storage.getItem('k')).toBe('v');
 
-    mmkvStorage.removeItem('k');
+    await storage.removeItem('k');
 
-    expect(mmkvStorage.getItem('k')).toBeNull();
+    expect(await storage.getItem('k')).toBeNull();
   });
 });
 

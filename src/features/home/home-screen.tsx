@@ -32,7 +32,11 @@ export function HomeScreen() {
 
   const activeSessionTasks = useActiveSessionStore((state) => state.tasks);
   const resetActiveSession = useActiveSessionStore((state) => state.reset);
-  const [showResumePrompt, setShowResumePrompt] = useState(() => activeSessionTasks.length > 0);
+  // Derived rather than latched into state: `persist` rehydrates AsyncStorage asynchronously,
+  // so the task list is still empty on the first render and a `useState` initializer would
+  // capture "no session" permanently.
+  const [resumeDismissed, setResumeDismissed] = useState(false);
+  const showResumePrompt = !resumeDismissed && activeSessionTasks.length > 0;
 
   const sessions = data?.data ?? [];
   const thisWeek = filterThisWeek(sessions);
@@ -124,11 +128,11 @@ export function HomeScreen() {
         confirmLabel="Resume"
         cancelLabel="Discard"
         onConfirm={() => {
-          setShowResumePrompt(false);
+          setResumeDismissed(true);
           router.push('/session/active');
         }}
         onCancel={() => {
-          setShowResumePrompt(false);
+          setResumeDismissed(true);
           resetActiveSession();
         }}
       />

@@ -23,10 +23,10 @@ async function setup() {
   return { result, queryClient };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
-  resetStores();
-  useSessionStore.getState().setUser(makeUser());
+  await resetStores();
+  await useSessionStore.getState().setUser(makeUser());
 });
 
 describe('useSignOut', () => {

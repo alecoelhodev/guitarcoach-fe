@@ -3,8 +3,8 @@ import { resetStores } from '@/test/reset-stores';
 
 const state = () => useToastStore.getState();
 
-beforeEach(() => {
-  resetStores();
+beforeEach(async () => {
+  await resetStores();
 });
 
 describe('useToastStore', () => {

@@ -44,7 +44,8 @@ type-check routes at all.
 **A passing `expo export` is not proof the app runs.** Export builds as production, so it
 skips every `NODE_ENV !== 'production'` guard in the dependencies. A green export plus a
 green test run still missed a crash that only the dev server hit — see the `<Link asChild>`
-rule below. Run the dev client for anything that renders.
+rule below. Run it in Expo Go (`npx expo start`, then scan the QR) for anything that renders —
+`expo-dev-client` is deliberately **not** a dependency, so `expo start` targets Expo Go directly.
 
 **`render` from `@testing-library/react-native` v14 is async — `await` it.** Calling it
 synchronously renders nothing and every later query fails with the misleading
@@ -86,21 +87,29 @@ second Jest project on `jest-expo/web`.
 `infinitePages` / `mutationStub`) and `gluestack.tsx` (`withGluestack`). Use them rather than
 re-deriving a `QueryClient` or a `user` object per suite. Two traps they exist to
 absorb: **never pass `replace: true` to a store's `setState`** (actions live in the same object
-as the data, so a replace deletes `start`, `show`, `hydrate`), and **clear MMKV between tests**
-— `jest.setup.ts` builds its mock on a single `Map` in the factory closure, shared by every
-`createMMKV()` call in a file, so a persisted store otherwise rehydrates the previous test.
-(`jest.setup.ts` also calls `resetStores()` in a global `beforeEach`, so a suite no longer has
-to remember — it `require`s it lazily so store-free suites don't load the store graph.)
+as the data, so a replace deletes `start`, `show`, `hydrate`), and **clear storage between
+tests** — `jest.setup.ts` builds its AsyncStorage mock on a single `Map` in the factory
+closure, shared by every call in a file, so a persisted store otherwise rehydrates the
+previous test. (`jest.setup.ts` also calls `resetStores()` in a global `beforeEach`, so a
+suite no longer has to remember — it `require`s it lazily so store-free suites don't load the
+store graph. `resetStores` is **async**; `await` it if a suite calls it directly.)
 
-**`jest.setup.ts`'s four mocks each unblock an import that otherwise throws.** None are
+**`persist` writes on every `setState`, which will overwrite a seeded key.** To test
+rehydration, write the key and then call `useActiveSessionStore.persist.rehydrate()` — do not
+`setState` in between "to clear it first", because that write lands on the value just seeded.
+`rehydrate()` flips `hasHydrated` to false synchronously and settles later, which is what
+makes it a faithful stand-in for a cold start.
+
+**`jest.setup.ts`'s five mocks each unblock an import that otherwise throws.** None are
 conveniences; removing one breaks whole suites with an error that names the wrong culprit:
 
-| Mock                              | Why                                                                                                                                                                                                                                                                                                                                                                                                 |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `react-native-worklets`           | `react-native-reanimated` imports it, its `.native` variant wins under the iOS preset, and it dereferences a native proxy at module scope. jest-expo mocks `ReanimatedModule` but **not** `WorkletsModule`. Mocking `react-native-reanimated/mock` instead does _not_ work — that mock re-imports reanimated's real index. Reached via `ui/alert-dialog` → `ConfirmDialog` → home + active-session. |
-| `expo-audio`                      | Ships no `mocks/` dir for jest-expo to find and dereferences `AudioModule.AudioPlayer.prototype` at import, so `recording-row.tsx` cannot even be loaded. Re-point the two hooks per test.                                                                                                                                                                                                          |
-| `@react-native-community/netinfo` | `api/query-client.ts` registers a listener at module scope. Unmocked it does not fail a test — it **kills the worker process** from inside NetInfo's async reachability polling.                                                                                                                                                                                                                    |
-| `react-native-safe-area-context`  | Twelve files render `SafeAreaView`. It works unmocked; the package's own `jest/mock` just pins deterministic metrics.                                                                                                                                                                                                                                                                               |
+| Mock                                        | Why                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `react-native-worklets`                     | `react-native-reanimated` imports it, its `.native` variant wins under the iOS preset, and it dereferences a native proxy at module scope. jest-expo mocks `ReanimatedModule` but **not** `WorkletsModule`. Mocking `react-native-reanimated/mock` instead does _not_ work — that mock re-imports reanimated's real index. Reached via `ui/alert-dialog` → `ConfirmDialog` → home + active-session. |
+| `expo-audio`                                | Ships no `mocks/` dir for jest-expo to find and dereferences `AudioModule.AudioPlayer.prototype` at import, so `recording-row.tsx` cannot even be loaded. Re-point the two hooks per test.                                                                                                                                                                                                          |
+| `@react-native-community/netinfo`           | `api/query-client.ts` registers a listener at module scope. Unmocked it does not fail a test — it **kills the worker process** from inside NetInfo's async reachability polling.                                                                                                                                                                                                                    |
+| `@react-native-async-storage/async-storage` | Its native module is absent under Node, and `src/lib/storage.ts` is reached by every store. Hand-rolled over one `Map` rather than the package's `jest/async-storage-mock`, so `resetStores()` can clear it. The methods must return **resolved promises** — a mock that returns undefined leaves `persist` rehydration permanently unsettled.                                                      |
+| `react-native-safe-area-context`            | Twelve files render `SafeAreaView`. It works unmocked; the package's own `jest/mock` just pins deterministic metrics.                                                                                                                                                                                                                                                                               |
 
 **Gluestack overlays render nothing without a provider above them.** `ConfirmDialog` portals
 through `OverlayProvider`, so a bare `render(<ConfirmDialog visible … />)` produces _empty_
@@ -182,11 +191,26 @@ src/types/      generated api.d.ts + per-resource re-exports
 
 ## Platform gotchas
 
-- **Use `src/lib/storage.ts` (MMKV) for persistence, not `expo-secure-store`.** SecureStore
-  has no web implementation and throws at runtime on web. MMKV's `createMMKV` resolves to a
-  native instance or a `localStorage` shim automatically. (`expo-secure-store` remains a
-  config plugin in `app.config.ts` but is unused in `src/` — safe to remove.)
-- `react-native-mmkv` needs a dev client; it does not run in Expo Go.
+- **This app runs in Expo Go, so no dependency may ship native code outside Expo Go's
+  bundled set.** That set is `node_modules/expo/bundledNativeModules.json` — check a package
+  against it _before_ adding it, and use `npx expo install <pkg>` so the version matches the
+  one Expo Go contains. This is not a preference: Expo Go's native modules are fixed at its
+  own build time and cannot be extended. `react-native-mmkv` was removed for exactly this
+  reason — it is a Nitro module, and `react-native-nitro-modules` throws
+  `Failed to get NitroModules` from **module scope**, so a single unsatisfied native import
+  takes down every route that transitively imports it and surfaces as ~30 unrelated-looking
+  errors ("missing the required default export", `ErrorBoundary of undefined`).
+- **Use `src/lib/storage.ts` (AsyncStorage) for persistence, not `expo-secure-store`.**
+  SecureStore has no web implementation and throws at runtime on web; AsyncStorage is in Expo
+  Go and falls back to `localStorage` on web. (`expo-secure-store` remains a config plugin in
+  `app.config.ts` but is unused in `src/` — safe to remove.)
+- **`storage` is asynchronous, so persisted state is absent on the first render.** Anything
+  that reads it during render must gate on hydration rather than latch it into a
+  `useState(() => …)` initialiser, which is decided once and would capture the pre-hydration
+  value forever. `active-session-screen.tsx` shows the gate
+  (`useActiveSessionStore.persist.hasHydrated()` + `onFinishHydration`, body in a child
+  component); `home-screen.tsx` shows the cheaper alternative of deriving the value each
+  render. Both have a regression test that fails if the gate is removed.
 - `.npmrc` sets `legacy-peer-deps=true` — `openapi-typescript` still declares a
   `typescript@^5.x` peer while this repo is on 6.0. Removing it breaks `npm ci`.
 - `tsconfig.json` excludes `backend/`, which CI checks the backend repo out into. Keep it.

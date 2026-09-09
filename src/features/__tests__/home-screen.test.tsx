@@ -1,11 +1,12 @@
 jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
 jest.mock('@/api/sessions.queries', () => ({ useSessionsSummary: jest.fn() }));
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { useSessionsSummary } from '@/api/sessions.queries';
 import { HomeScreen } from '@/features/home/home-screen';
 import { useActiveSessionStore } from '@/features/session/session-store';
+import { storage } from '@/lib/storage';
 import { useSessionStore } from '@/stores/session-store';
 import { mockRouter } from '@/test/expo-router';
 import { makePage, makeSession, makeSessionTask, makeUser } from '@/test/fixtures';
@@ -166,6 +167,32 @@ describe('resume prompt', () => {
     // Resuming must keep the in-progress tasks — they are the session.
     expect(useActiveSessionStore.getState().tasks).toHaveLength(1);
     expect(screen.queryByText('Resume practice session?')).toBeNull();
+  });
+
+  /**
+   * `persist` reads AsyncStorage asynchronously, so the task list is still empty on the first
+   * render. The prompt's visibility is derived rather than latched into `useState` for exactly
+   * this reason — a lazy initialiser would capture "no session" and never offer the resume.
+   */
+  it('offers the resume once a session rehydrates after the first render', async () => {
+    await storage.setItem(
+      'active-session',
+      JSON.stringify({
+        version: 0,
+        state: {
+          title: 'Morning warm-up',
+          tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+        },
+      }),
+    );
+    const rehydrated = useActiveSessionStore.persist.rehydrate();
+
+    await render(withGluestack(<HomeScreen />));
+    await act(async () => {
+      await rehydrated;
+    });
+
+    expect(screen.getByText('Resume practice session?')).toBeTruthy();
   });
 
   it('throws the session away on Discard, without navigating', async () => {

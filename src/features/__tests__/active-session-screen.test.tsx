@@ -6,6 +6,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useCreateSession } from '@/api/sessions.queries';
 import { ActiveSessionScreen } from '@/features/session/active-session-screen';
 import { useActiveSessionStore } from '@/features/session/session-store';
+import { storage } from '@/lib/storage';
 import { useToastStore } from '@/stores/toast-store';
 import { mockRouter } from '@/test/expo-router';
 import { withGluestack } from '@/test/gluestack';
@@ -63,6 +64,49 @@ describe('with no active session', () => {
     await act(async () => startSession());
 
     expect(screen.getByText('No active session')).toBeTruthy();
+  });
+});
+
+describe('restored from a previous launch', () => {
+  /**
+   * The cold-start ordering that the hydration gate exists for: `persist` reads AsyncStorage
+   * asynchronously, so the store is still empty when the screen first mounts. Without the
+   * gate the body would mount on that empty render and `startedWithNoTasks` — a lazy
+   * `useState` initialiser, decided once — would latch "no session" for good, hiding a
+   * session that is sitting on disk.
+   */
+  it('shows the persisted session instead of latching the empty state', async () => {
+    await storage.setItem(
+      'active-session',
+      JSON.stringify({
+        version: 0,
+        state: {
+          routineId: 'r1',
+          title: 'Morning warm-up',
+          tasks: [
+            {
+              taskId: 't1',
+              title: 'Alternate picking',
+              targetDurationMinutes: 10,
+              durationMinutes: 10,
+              completed: false,
+            },
+          ],
+        },
+      }),
+    );
+    // Deliberately not awaited: `rehydrate()` flips `hasHydrated` to false synchronously and
+    // settles later, which is exactly the ordering a cold start produces.
+    const rehydrated = useActiveSessionStore.persist.rehydrate();
+
+    await render(withGluestack(<ActiveSessionScreen />));
+    await act(async () => {
+      await rehydrated;
+    });
+
+    expect(screen.getByText('Following · Morning warm-up')).toBeTruthy();
+    expect(screen.getByText('Alternate picking')).toBeTruthy();
+    expect(screen.queryByText('No active session')).toBeNull();
   });
 });
 

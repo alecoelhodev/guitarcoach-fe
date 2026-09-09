@@ -10,30 +10,34 @@ type SessionState = {
   status: 'loading' | 'authenticated' | 'unauthenticated';
   user: User | null;
   hydrate: () => Promise<void>;
-  setUser: (user: User) => void;
-  clear: () => void;
+  setUser: (user: User) => Promise<void>;
+  clear: () => Promise<void>;
 };
 
 /**
  * The auth session itself lives in an httpOnly cookie (better-auth) — this store
  * only caches the last-known user so the app can render a session gate instantly
  * on boot, then reconciles with `getSession()`.
+ *
+ * The writes return promises because the cache lives in AsyncStorage: `clear()` in
+ * particular has to be awaited on sign-out, or the previous user's name is still on
+ * disk when the next one signs in.
  */
 export const useSessionStore = create<SessionState>((set) => ({
   status: 'loading',
   user: null,
 
   hydrate: async () => {
-    const cached = storage.getString(SESSION_CACHE_KEY);
+    const cached = await storage.getItem(SESSION_CACHE_KEY);
     if (cached) set({ user: JSON.parse(cached) as User });
 
     try {
       const session = await getSession();
       if (session?.user) {
-        storage.set(SESSION_CACHE_KEY, JSON.stringify(session.user));
+        await storage.setItem(SESSION_CACHE_KEY, JSON.stringify(session.user));
         set({ status: 'authenticated', user: session.user });
       } else {
-        storage.remove(SESSION_CACHE_KEY);
+        await storage.removeItem(SESSION_CACHE_KEY);
         set({ status: 'unauthenticated', user: null });
       }
     } catch {
@@ -42,13 +46,13 @@ export const useSessionStore = create<SessionState>((set) => ({
     }
   },
 
-  setUser: (user) => {
-    storage.set(SESSION_CACHE_KEY, JSON.stringify(user));
+  setUser: async (user) => {
+    await storage.setItem(SESSION_CACHE_KEY, JSON.stringify(user));
     set({ status: 'authenticated', user });
   },
 
-  clear: () => {
-    storage.remove(SESSION_CACHE_KEY);
+  clear: async () => {
+    await storage.removeItem(SESSION_CACHE_KEY);
     set({ status: 'unauthenticated', user: null });
   },
 }));

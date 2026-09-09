@@ -1,13 +1,17 @@
-// react-native-mmkv resolves to a native instance that does not exist under Node.
-jest.mock('react-native-mmkv', () => {
+// AsyncStorage's native module does not exist under Node. Hand-rolled rather than the
+// package's own `jest/async-storage-mock`, to match the other mocks in this file and to keep
+// the `Map` reachable for `resetStores()`. The methods return promises, as the real one does —
+// resolve them, or `persist` rehydration never settles.
+jest.mock('@react-native-async-storage/async-storage', () => {
   const store = new Map<string, string>();
   return {
-    createMMKV: () => ({
-      set: (key: string, value: string) => store.set(key, value),
-      getString: (key: string) => store.get(key),
-      remove: (key: string) => store.delete(key),
-      clearAll: () => store.clear(),
-    }),
+    __esModule: true,
+    default: {
+      getItem: async (key: string) => store.get(key) ?? null,
+      setItem: async (key: string, value: string) => void store.set(key, value),
+      removeItem: async (key: string) => void store.delete(key),
+      clear: async () => store.clear(),
+    },
   };
 });
 
@@ -66,11 +70,12 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-// Zustand stores are module singletons and the MMKV mock's `Map` is shared per file, so
-// leftover state leaks between tests as a pass-alone / fail-in-company split. Every screen
+// Zustand stores are module singletons and the AsyncStorage mock's `Map` is shared per file,
+// so leftover state leaks between tests as a pass-alone / fail-in-company split. Every screen
 // reads `useSessionStore`, which makes forgetting this the default mistake rather than an
 // unusual one. Required lazily so suites that touch no store don't pull the store graph —
-// and with it `@/api/auth` and `@/api/client` — in at load.
-beforeEach(() => {
-  require('@/test/reset-stores').resetStores();
+// and with it `@/api/auth` and `@/api/client` — in at load. Awaited because clearing storage
+// is a promise now; without the await the next test starts on the previous one's keys.
+beforeEach(async () => {
+  await require('@/test/reset-stores').resetStores();
 });

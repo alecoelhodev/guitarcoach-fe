@@ -62,7 +62,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      useSessionStore.getState().clear();
+      void useSessionStore.getState().clear();
       // Same reason the deliberate sign-out path clears it: an expired cookie leaves the
       // previous user's routines and sessions cached for whoever signs in next. The
       // persisted snapshot has to go too — `clear()` only empties memory.

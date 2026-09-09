@@ -26,7 +26,28 @@ function useStopwatch() {
   return seconds;
 }
 
+/**
+ * `persist` rehydrates AsyncStorage asynchronously, so the store is still empty on the first
+ * render. The body below latches `startedWithNoTasks` from that first render, so it has to
+ * mount only once hydration has finished — otherwise a session restored from disk always
+ * renders as "No active session".
+ */
 export function ActiveSessionScreen() {
+  const [hydrated, setHydrated] = useState(() => useActiveSessionStore.persist.hasHydrated());
+
+  useEffect(
+    // Subscribed rather than set from the effect body, which the React Compiler's
+    // `set-state-in-effect` rule forbids. Returns its own unsubscribe.
+    () => useActiveSessionStore.persist.onFinishHydration(() => setHydrated(true)),
+    [],
+  );
+
+  if (!hydrated) return null;
+
+  return <ActiveSessionScreenBody />;
+}
+
+function ActiveSessionScreenBody() {
   const router = useRouter();
   const { routineId, title, tasks, setTaskMinutes, toggleTaskCompleted, reset } =
     useActiveSessionStore();
