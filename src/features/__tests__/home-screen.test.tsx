@@ -1,17 +1,33 @@
 jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
 jest.mock('@/api/sessions.queries', () => ({ useSessionsSummary: jest.fn() }));
+jest.mock('@/api/routines.queries', () => ({
+  useRoutines: jest.fn(),
+  useRoutine: jest.fn(),
+  useRoutineTasks: jest.fn(),
+}));
+jest.mock('@/hooks/use-is-wide', () => ({ useIsWide: jest.fn() }));
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { useRoutine, useRoutines, useRoutineTasks } from '@/api/routines.queries';
 import { useSessionsSummary } from '@/api/sessions.queries';
 import { HomeScreen } from '@/features/home/home-screen';
 import { useActiveSessionStore } from '@/features/session/session-store';
+import { useIsWide } from '@/hooks/use-is-wide';
 import { storage } from '@/lib/storage';
 import { useSessionStore } from '@/stores/session-store';
 import { mockRouter } from '@/test/expo-router';
-import { makePage, makeSession, makeSessionTask, makeUser } from '@/test/fixtures';
+import {
+  makePage,
+  makeRoutine,
+  makeRoutineTaskWithTask,
+  makeSession,
+  makeSessionTask,
+  makeTask,
+  makeUser,
+} from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
-import { pendingQuery, successQuery } from '@/test/query-hooks';
+import { emptyQuery, infinitePages, pendingQuery, successQuery } from '@/test/query-hooks';
 import { MaxContentWidth } from '@/theme/tokens';
 
 /**
@@ -25,7 +41,15 @@ import { MaxContentWidth } from '@/theme/tokens';
 
 const FIXED_NOW = new Date('2026-09-09T20:00:00.000Z'); // a Wednesday, 20:00 UTC → "Evening"
 
-const mock = useSessionsSummary as unknown as jest.MockedFunction<(...args: never[]) => unknown>;
+const mockSessions = useSessionsSummary as jest.MockedFunction<typeof useSessionsSummary>;
+const mockRoutines = useRoutines as jest.MockedFunction<typeof useRoutines>;
+const mockRoutine = useRoutine as jest.MockedFunction<typeof useRoutine>;
+const mockRoutineTasks = useRoutineTasks as jest.MockedFunction<typeof useRoutineTasks>;
+const mockIsWide = useIsWide as jest.MockedFunction<typeof useIsWide>;
+
+// The hooks are mocked, so their real generics are irrelevant here — the screen only reads
+// `data`/`isPending`, which is exactly what the query-hooks builders provide.
+const asHookResult = <T,>(value: T) => value as never;
 
 function thisWeekSession(id: string, minutes: number) {
   return makeSession({
@@ -35,11 +59,28 @@ function thisWeekSession(id: string, minutes: number) {
   });
 }
 
+/** No history and no routines — Home's default in this suite is the populated screen. */
+function givenNoRoutines() {
+  mockRoutines.mockReturnValue(asHookResult(infinitePages([makePage([])])));
+  mockRoutine.mockReturnValue(asHookResult(emptyQuery()));
+  mockRoutineTasks.mockReturnValue(asHookResult(emptyQuery()));
+}
+
+function givenRoutines(...routines: ReturnType<typeof makeRoutine>[]) {
+  mockRoutines.mockReturnValue(asHookResult(infinitePages([makePage(routines)])));
+  mockRoutine.mockReturnValue(asHookResult(successQuery(routines[0])));
+  mockRoutineTasks.mockReturnValue(asHookResult(successQuery([])));
+}
+
 beforeEach(() => {
   jest.useFakeTimers({ doNotFake: ['performance'] });
   jest.setSystemTime(FIXED_NOW);
   jest.clearAllMocks();
-  mock.mockReturnValue(successQuery(makePage([])));
+  mockIsWide.mockReturnValue(false);
+  mockSessions.mockReturnValue(asHookResult(successQuery(makePage([]))));
+  // A user with routines but no history: keeps the new-user state out of the way
+  // of every test that is not about it.
+  givenRoutines(makeRoutine());
 });
 
 afterEach(() => jest.useRealTimers());
@@ -61,6 +102,13 @@ describe('greeting', () => {
     expect(screen.queryByLabelText('Profile')).toBeNull();
   });
 
+  // Canvas 02 pairs the greeting with a prompt, not just the time of day.
+  it('carries the canvas subline', async () => {
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('Ready for 30 minutes?')).toBeTruthy();
+  });
+
   it.each([
     ['2026-09-09T06:00:00.000Z', 'Morning'],
     ['2026-09-09T11:59:00.000Z', 'Morning'],
@@ -77,7 +125,7 @@ describe('greeting', () => {
 
 describe('this week', () => {
   it('shows a skeleton while the summary loads', async () => {
-    mock.mockReturnValue(pendingQuery());
+    mockSessions.mockReturnValue(asHookResult(pendingQuery()));
     await render(withGluestack(<HomeScreen />));
 
     expect(screen.getByText('This week')).toBeTruthy();
@@ -96,8 +144,8 @@ describe('this week', () => {
   });
 
   it('sums minutes and counts sessions inside the current week', async () => {
-    mock.mockReturnValue(
-      successQuery(makePage([thisWeekSession('s1', 20), thisWeekSession('s2', 25)])),
+    mockSessions.mockReturnValue(
+      asHookResult(successQuery(makePage([thisWeekSession('s1', 20), thisWeekSession('s2', 25)]))),
     );
     await render(withGluestack(<HomeScreen />));
 
@@ -108,16 +156,18 @@ describe('this week', () => {
   });
 
   it('excludes a session from before this week from the totals', async () => {
-    mock.mockReturnValue(
-      successQuery(
-        makePage([
-          thisWeekSession('s1', 20),
-          makeSession({
-            id: 'old',
-            createdAt: '2026-08-20T10:00:00.000Z',
-            sessionTasks: [makeSessionTask({ durationMinutes: 500 })],
-          }),
-        ]),
+    mockSessions.mockReturnValue(
+      asHookResult(
+        successQuery(
+          makePage([
+            thisWeekSession('s1', 20),
+            makeSession({
+              id: 'old',
+              createdAt: '2026-08-20T10:00:00.000Z',
+              sessionTasks: [makeSessionTask({ durationMinutes: 500 })],
+            }),
+          ]),
+        ),
       ),
     );
     await render(withGluestack(<HomeScreen />));
@@ -128,7 +178,129 @@ describe('this week', () => {
   });
 });
 
-describe('recent session', () => {
+/**
+ * The backend has no scheduled-routine concept, so which routine appears here is
+ * derived — see `use-todays-practice.ts`. These pin that derivation.
+ */
+describe("today's practice", () => {
+  it('shows the routine behind the most recent session', async () => {
+    const practised = makeRoutine({ id: 'r-practised', title: 'Blues in A' });
+    mockSessions.mockReturnValue(
+      asHookResult(successQuery(makePage([makeSession({ id: 's1', routineId: 'r-practised' })]))),
+    );
+    mockRoutines.mockReturnValue(
+      asHookResult(infinitePages([makePage([makeRoutine({ id: 'r-other', title: 'Other' })])])),
+    );
+    mockRoutine.mockReturnValue(asHookResult(successQuery(practised)));
+    mockRoutineTasks.mockReturnValue(asHookResult(successQuery([])));
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(useRoutine).toHaveBeenCalledWith('r-practised');
+    expect(screen.getByText("Today's practice")).toBeTruthy();
+    expect(screen.getByText('Blues in A')).toBeTruthy();
+  });
+
+  it('falls back to the newest active routine for someone who has never practised', async () => {
+    givenRoutines(makeRoutine({ id: 'r-newest', title: 'Warm-up routine' }));
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(useRoutine).toHaveBeenCalledWith('r-newest');
+    // Twice: the sole active routine is both the day's pick and the only strip card.
+    expect(screen.getAllByText('Warm-up routine')).toHaveLength(2);
+  });
+
+  // Sessions can be blank — a blank session has no routineId — so the pick has to
+  // skip past them rather than give up at the newest row.
+  it('skips sessions that were not run from a routine', async () => {
+    mockSessions.mockReturnValue(
+      asHookResult(
+        successQuery(
+          makePage([
+            makeSession({ id: 'blank', routineId: null }),
+            makeSession({ id: 's2', routineId: 'r-practised' }),
+          ]),
+        ),
+      ),
+    );
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(useRoutine).toHaveBeenCalledWith('r-practised');
+  });
+
+  it('lists the task titles and the routine meta from the backend totals', async () => {
+    givenRoutines(
+      makeRoutine({ id: 'r1', title: 'Warm-up', taskCount: 2, totalTargetDurationMinutes: 45 }),
+    );
+    mockRoutineTasks.mockReturnValue(
+      asHookResult(
+        successQuery([
+          makeRoutineTaskWithTask({ taskId: 't1', task: makeTask({ title: 'Major scale' }) }),
+          makeRoutineTaskWithTask({ taskId: 't2', task: makeTask({ title: 'Barre chords' }) }),
+        ]),
+      ),
+    );
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('Major scale · Barre chords')).toBeTruthy();
+    // The card's badge and the strip card's meta line, both off the same
+    // backend totals rather than a recount of the task list.
+    expect(screen.getAllByText('2 tasks · 45 min')).toHaveLength(2);
+  });
+
+  it('adds the View routine action only on the wide layout', async () => {
+    await render(withGluestack(<HomeScreen />));
+    expect(screen.queryByText('View routine')).toBeNull();
+
+    mockIsWide.mockReturnValue(true);
+    await render(withGluestack(<HomeScreen />));
+    expect(screen.getByText('View routine')).toBeTruthy();
+  });
+});
+
+describe('active routines', () => {
+  it('lists each active routine with its task count and duration', async () => {
+    givenRoutines(
+      makeRoutine({ id: 'r1', title: 'Warm-up', taskCount: 4, totalTargetDurationMinutes: 45 }),
+      makeRoutine({
+        id: 'r2',
+        title: 'Fingerstyle focus',
+        taskCount: 2,
+        totalTargetDurationMinutes: 35,
+      }),
+    );
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('Active routines')).toBeTruthy();
+    expect(screen.getByText('Fingerstyle focus')).toBeTruthy();
+    expect(screen.getByText('2 tasks · 35 min')).toBeTruthy();
+  });
+
+  // Canvas 02 labels the link "All"; 2a has room for "All routines".
+  it('shortens the link label on the narrow layout', async () => {
+    await render(withGluestack(<HomeScreen />));
+    expect(screen.getByText('All')).toBeTruthy();
+
+    mockIsWide.mockReturnValue(true);
+    await render(withGluestack(<HomeScreen />));
+    expect(screen.getByText('All routines')).toBeTruthy();
+  });
+
+  it('gives each card a Start action only on the wide grid', async () => {
+    await render(withGluestack(<HomeScreen />));
+    expect(screen.queryByText('Start')).toBeNull();
+
+    mockIsWide.mockReturnValue(true);
+    await render(withGluestack(<HomeScreen />));
+    expect(screen.getByText('Start')).toBeTruthy();
+  });
+});
+
+describe('recent sessions', () => {
   it('is omitted entirely when there is no history', async () => {
     await render(withGluestack(<HomeScreen />));
 
@@ -137,12 +309,140 @@ describe('recent session', () => {
   });
 
   it('shows the first session the API returned, with a link to the rest', async () => {
-    mock.mockReturnValue(successQuery(makePage([makeSession({ id: 's1', title: 'Blues in A' })])));
+    mockSessions.mockReturnValue(
+      asHookResult(successQuery(makePage([makeSession({ id: 's1', title: 'Blues in A' })]))),
+    );
     await render(withGluestack(<HomeScreen />));
 
     expect(screen.getByText('Recent session')).toBeTruthy();
     expect(screen.getByText('Blues in A')).toBeTruthy();
     expect(screen.getByText('See all')).toBeTruthy();
+  });
+
+  // Canvas 2a collapses the stacked cards into a table and pluralises the heading.
+  it('becomes a multi-row table on the wide layout', async () => {
+    mockIsWide.mockReturnValue(true);
+    mockSessions.mockReturnValue(
+      asHookResult(
+        successQuery(
+          makePage([
+            makeSession({ id: 's1', title: 'Evening practice' }),
+            makeSession({ id: 's2', title: 'Quick theory review' }),
+          ]),
+        ),
+      ),
+    );
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('Recent sessions')).toBeTruthy();
+    expect(screen.getByText('History')).toBeTruthy();
+    expect(screen.getByText('Evening practice')).toBeTruthy();
+    expect(screen.getByText('Quick theory review')).toBeTruthy();
+  });
+
+  it('badges each wide row with its minutes and completion', async () => {
+    mockIsWide.mockReturnValue(true);
+    mockSessions.mockReturnValue(
+      asHookResult(
+        successQuery(
+          makePage([
+            makeSession({
+              id: 's1',
+              title: 'Evening practice',
+              sessionTasks: [
+                makeSessionTask({ taskId: 'a', durationMinutes: 20, completed: true }),
+                makeSessionTask({ taskId: 'b', durationMinutes: 18, completed: false }),
+              ],
+            }),
+          ]),
+        ),
+      ),
+    );
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('38 min')).toBeTruthy();
+    expect(screen.getByText('1 of 2')).toBeTruthy();
+  });
+
+  /**
+   * Per-task minutes and the completed flag are both optional on the API, and a
+   * session can carry no tasks at all — so an unbadged row is a real state.
+   */
+  it('drops both badges from a session with nothing to report', async () => {
+    mockIsWide.mockReturnValue(true);
+    mockSessions.mockReturnValue(
+      asHookResult(
+        successQuery(makePage([makeSession({ id: 's1', title: 'Untracked', sessionTasks: [] })])),
+      ),
+    );
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('Untracked')).toBeTruthy();
+    expect(screen.queryByText(/min$/)).toBeNull();
+    expect(screen.queryByText(/ of /)).toBeNull();
+  });
+
+  // Untitled sessions are allowed — `title` is optional on the API.
+  it('falls back to a generic label for an untitled wide row', async () => {
+    mockIsWide.mockReturnValue(true);
+    mockSessions.mockReturnValue(
+      asHookResult(successQuery(makePage([makeSession({ id: 's1', title: null })]))),
+    );
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('Practice session')).toBeTruthy();
+  });
+});
+
+/** Canvas 02c — no routines and no history. */
+describe('new user', () => {
+  beforeEach(givenNoRoutines);
+
+  it('welcomes rather than greeting by time of day', async () => {
+    useSessionStore.setState({ status: 'authenticated', user: makeUser({ name: 'Jordan' }) });
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('Welcome, Jordan')).toBeTruthy();
+    expect(screen.getByText("Let's set up your first routine.")).toBeTruthy();
+    expect(screen.queryByText('Evening, Jordan')).toBeNull();
+  });
+
+  it('keeps all three entry points visible', async () => {
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('No routines yet')).toBeTruthy();
+    expect(screen.getByText('Browse Tasks')).toBeTruthy();
+    expect(screen.getByText('Ask AI Coach')).toBeTruthy();
+    expect(screen.getByText('Or just play')).toBeTruthy();
+  });
+
+  // The stat card stays in place so the layout does not jump once data arrives.
+  it('keeps the This week card', async () => {
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('This week')).toBeTruthy();
+  });
+
+  it("does not offer today's practice or the routines strip", async () => {
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.queryByText("Today's practice")).toBeNull();
+    expect(screen.queryByText('Active routines')).toBeNull();
+  });
+
+  /**
+   * Gated on the lists having resolved, not on `isPending` alone — otherwise the
+   * new-user state flashes on every cold start before the routines arrive.
+   */
+  it('does not flash while the routine list is still loading', async () => {
+    mockRoutines.mockReturnValue(asHookResult({ ...infinitePages([]), isPending: true }));
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.queryByText('No routines yet')).toBeNull();
   });
 });
 
@@ -211,7 +511,9 @@ describe('resume prompt', () => {
 });
 
 describe('primary actions', () => {
-  it('routes Start Practice through routines, since that is where practice begins', async () => {
+  // Canvas 02 puts Start Practice inside the Today's practice card rather than
+  // standing alone, and keeps Ask AI Coach as the one full-width button.
+  it('offers Start Practice and Ask AI Coach', async () => {
     await render(withGluestack(<HomeScreen />));
 
     expect(screen.getByText('Start Practice')).toBeTruthy();
@@ -229,6 +531,17 @@ describe('layout', () => {
 
     expect(screen.getByTestId('home-safe-area')).toHaveStyle({
       width: '100%',
+      maxWidth: MaxContentWidth,
+    });
+  });
+
+  // Canvas 2a's pane fills the width beside the rail, so the mobile cap is lifted.
+  it('drops the content cap on the wide layout', async () => {
+    mockIsWide.mockReturnValue(true);
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByTestId('home-safe-area')).toHaveStyle({ width: '100%' });
+    expect(screen.getByTestId('home-safe-area')).not.toHaveStyle({
       maxWidth: MaxContentWidth,
     });
   });

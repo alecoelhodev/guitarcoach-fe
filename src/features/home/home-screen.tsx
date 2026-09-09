@@ -6,14 +6,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSessionsSummary } from '@/api/sessions.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Button, ButtonText } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Skeleton } from '@/components/ui/skeleton';
-import { SessionCard } from '@/features/history/session-card';
+import { ActiveRoutines } from '@/features/home/active-routines';
+import { HomeEmptyState } from '@/features/home/home-empty-state';
+import { RecentSessions } from '@/features/home/recent-sessions';
+import { ThisWeekCard } from '@/features/home/this-week-card';
+import { TodaysPracticeCard, TodaysPracticeSkeleton } from '@/features/home/todays-practice-card';
+import { useTodaysPractice } from '@/features/home/use-todays-practice';
 import { useActiveSessionStore } from '@/features/session/session-store';
+import { useIsWide } from '@/hooks/use-is-wide';
 import { filterThisWeek } from '@/lib/date-grouping';
-import { sumSessionMinutes } from '@/lib/duration';
 import { useSessionStore } from '@/stores/session-store';
 import { TabBarInset } from '@/theme/platform';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/theme/tokens';
@@ -27,8 +30,10 @@ function partOfDay(hour = new Date().getHours()) {
 
 export function HomeScreen() {
   const router = useRouter();
+  const isWide = useIsWide();
   const user = useSessionStore((state) => state.user);
   const { data, isPending } = useSessionsSummary();
+  const { routine, taskTitles, activeRoutines, hasLoaded } = useTodaysPractice();
 
   const activeSessionTasks = useActiveSessionStore((state) => state.tasks);
   const resetActiveSession = useActiveSessionStore((state) => state.reset);
@@ -40,17 +45,37 @@ export function HomeScreen() {
 
   const sessions = data?.data ?? [];
   const thisWeek = filterThisWeek(sessions);
-  const totalMinutes = thisWeek.reduce((sum, session) => sum + sumSessionMinutes(session), 0);
-  const recent = sessions[0];
+
+  // Canvas 02c. Gated on `hasLoaded` rather than `!isPending` alone, or the
+  // new-user state flashes on every cold start before the lists resolve.
+  const isNewUser = hasLoaded && activeRoutines.length === 0 && sessions.length === 0;
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']} testID="home-safe-area">
+      <SafeAreaView
+        style={isWide ? styles.safeAreaWide : styles.safeArea}
+        edges={['top']}
+        testID="home-safe-area"
+      >
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.header}>
-            <ThemedText type="h3" style={styles.greeting}>
-              {user ? `${partOfDay()}, ${user.name}` : partOfDay()}
-            </ThemedText>
+            <View style={styles.greeting}>
+              <ThemedText type="h3">
+                {user
+                  ? `${isNewUser ? 'Welcome' : partOfDay()}, ${user.name}`
+                  : isNewUser
+                    ? 'Welcome'
+                    : partOfDay()}
+              </ThemedText>
+              <ThemedText type="body" color="textMuted">
+                {isNewUser ? "Let's set up your first routine." : 'Ready for 30 minutes?'}
+              </ThemedText>
+            </View>
+
+            {/* Canvas 2a promotes the AI Coach CTA into the header, where the
+                width allows it; mobile keeps it as a full-width button below. */}
+            {isWide && !isNewUser && <AskCoachButton />}
+
             {user && (
               <Link href="/(app)/(main)/(tabs)/profile" asChild>
                 <View style={styles.avatar} accessibilityRole="button" accessibilityLabel="Profile">
@@ -62,60 +87,39 @@ export function HomeScreen() {
             )}
           </View>
 
-          {/* Canvas is explicit that minutes and session count are the only two
-              progress numbers the backend can honestly support. */}
-          {isPending ? (
-            <Card>
-              <ThemedText type="overline" color="textMuted">
-                This week
-              </ThemedText>
-              <Skeleton width="45%" />
-            </Card>
-          ) : thisWeek.length === 0 ? (
-            <Card quiet>
-              <ThemedText type="overline" color="textMuted">
-                This week
-              </ThemedText>
-              <ThemedText type="body" color="textMuted">
-                Nothing logged yet. Your minutes and sessions appear here after your first practice.
-              </ThemedText>
-            </Card>
-          ) : (
-            <Card>
-              <ThemedText type="overline" color="textMuted">
-                This week
-              </ThemedText>
-              <View style={styles.figures}>
-                <Figure value={totalMinutes} label="minutes" />
-                <View style={styles.figureDivider} />
-                <Figure value={thisWeek.length} label="sessions" />
-              </View>
-            </Card>
-          )}
-
-          <Link href="/(app)/(main)/(tabs)/routines" asChild>
-            <Button block>Start Practice</Button>
-          </Link>
-
-          <Link href="/(app)/(main)/coach" asChild>
-            <Button variant="ghost" block>
-              Ask AI Coach
-            </Button>
-          </Link>
-
-          {recent && (
+          {isNewUser ? (
             <>
-              <View style={styles.sectionHeader}>
-                <ThemedText type="overline" color="textMuted">
-                  Recent session
-                </ThemedText>
-                <Link href="/(app)/(main)/history" asChild>
-                  <ThemedText type="label" style={styles.link}>
-                    See all
-                  </ThemedText>
-                </Link>
+              <HomeEmptyState />
+              <ThisWeekCard sessions={thisWeek} isPending={isPending} />
+            </>
+          ) : (
+            <>
+              <View style={isWide ? styles.columns : undefined}>
+                <View style={isWide ? styles.primaryColumn : undefined}>
+                  {routine ? (
+                    <TodaysPracticeCard
+                      routine={routine}
+                      taskTitles={taskTitles}
+                      showViewRoutine={isWide}
+                    />
+                  ) : (
+                    !hasLoaded && <TodaysPracticeSkeleton />
+                  )}
+                </View>
+
+                <View style={isWide ? styles.secondaryColumn : undefined}>
+                  <ThisWeekCard
+                    sessions={thisWeek}
+                    isPending={isPending}
+                    figureSize={isWide ? 38 : 34}
+                  />
+                </View>
               </View>
-              <SessionCard session={recent} />
+
+              {!isWide && <AskCoachButton block />}
+
+              <ActiveRoutines routines={activeRoutines} isWide={isWide} />
+              <RecentSessions sessions={sessions} isWide={isWide} />
             </>
           )}
         </ScrollView>
@@ -140,23 +144,23 @@ export function HomeScreen() {
   );
 }
 
-/** Canvas `.big` — the only oversized numerals in the app outside the session clock. */
-function Figure({ value, label }: { value: number; label: string }) {
+function AskCoachButton({ block = false }: { block?: boolean }) {
   return (
-    <View>
-      <ThemedText type="display" style={styles.figureValue}>
-        {value}
-      </ThemedText>
-      <ThemedText type="body" color="textMuted">
-        {label}
-      </ThemedText>
-    </View>
+    <Link href="/(app)/(main)/coach" asChild>
+      <Button variant="ghost" block={block}>
+        <ButtonText>Ask AI Coach</ButtonText>
+      </Button>
+    </Link>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  // The width cap has to sit on a node that is also capped at 100% of the screen,
+  // or the ScrollView lays out at the full cap on a narrower phone.
   safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
+  // Canvas 2a's pane fills the width beside the rail — no content cap there.
+  safeAreaWide: { flex: 1, width: '100%' },
   scroll: {
     padding: Spacing[4],
     paddingBottom: TabBarInset + Spacing[4],
@@ -167,7 +171,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing[3],
   },
-  greeting: { flex: 1 },
+  greeting: { flex: 1, gap: Spacing[1] },
   avatar: {
     width: 40,
     height: 40,
@@ -178,25 +182,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  figures: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: Spacing[4],
-  },
-  figureValue: {
-    fontSize: 34,
-    lineHeight: 34,
-  },
-  figureDivider: {
-    width: 1,
-    height: 34,
-    backgroundColor: Colors.neutral[300],
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  // Canvas uses accent-700 for links and small accent text, never the base accent.
-  link: { color: Colors.accentRamp[700] },
+  // Canvas 2a: grid-template-columns 1.5fr 1fr.
+  columns: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing[3] },
+  primaryColumn: { flex: 1.5 },
+  secondaryColumn: { flex: 1 },
 });

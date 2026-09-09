@@ -118,5 +118,11 @@ export const Interaction = {
 // Canvas 1h: one content column capped at 560px on mobile and tablet.
 export const MaxContentWidth = 560;
 
+/**
+ * Canvas 1h / 2g: at 768px the bottom nav becomes the left rail and Home gains
+ * its second column. (1024px, where list/detail becomes two panes, is not built.)
+ */
+export const Breakpoint = { wide: 768 } as const;
+
 // Canvas 2f: the AI Coach conversation caps tighter than the rest of the app.
 export const ConversationMaxWidth = 640;
