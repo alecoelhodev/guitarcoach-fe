@@ -56,6 +56,27 @@ Routing is structured around a two-level gate plus a chrome-wrapping group:
 - **`(tabs)`** — the four bottom-tab screens (home, library, routines, profile), with a
   `.web.tsx` variant of the tabs layout that renders a left rail instead of a bottom bar.
 
+### Web nav chrome and the 768px breakpoint
+
+Native gets the real OS tab bar from `NativeTabs` (`components/nav/app-nav.tsx`) plus the
+floating `PracticeFab`, so `components/nav/app-shell.tsx` is a passthrough. Web has neither,
+so `app-shell.web.tsx` draws the chrome itself and switches on `useIsWide()`
+(`src/hooks/use-is-wide.ts`, `Breakpoint.wide = 768` from `theme/tokens.ts`), per canvas 1h:
+
+- **768px and up** — `Rail` (`rail.web.tsx`), 198px, Practice first as a filled action, then
+  Home / Routines / Library / History, with AI Coach and Profile pushed to the bottom.
+- **Below 768px** — `BottomBar` (`bottom-bar.web.tsx`), the canvas `.bn`: four tabs around a
+  58px Practice circle. It is a flex sibling of the content rather than an overlay, which is
+  why screens need no bottom inset and `TabBarInset` is 0 on web.
+
+Both read `components/nav/destinations.ts`, the single source for hrefs, labels, icons and
+the active-route rule, so the two shells cannot drift. History and AI Coach are rail-only:
+the canvas gives the narrow viewport a four-tab budget and reaches both from Home.
+
+`useIsWide` is a separate module so consumer suites can `jest.mock` it; mocking
+`react-native` itself needs `jest.requireActual` spreading, which is unreliable under the
+New Architecture. Its own suite drives the real hook by spying on `Dimensions.get`.
+
 ## State management
 
 Three Zustand stores, split by lifetime and ownership:
@@ -157,6 +178,27 @@ equivalent for them: `badge`, `banner`, `card`, `checklist-row`, `chip`, `confir
 
 `checklist-row`, `confirm-dialog` and `query-state` are compositions over the Gluestack
 pieces rather than replacements for them.
+
+## Home
+
+`src/features/home/` composes canvas 02 (mobile), 02c (new user) and 2a (web) from one
+`home-screen.tsx` branching on `useIsWide()` rather than a `.web.tsx` fork, since the
+sections are shared: `todays-practice-card`, `this-week-card`, `active-routines`,
+`recent-sessions` and `home-empty-state`.
+
+Two derivations are worth knowing, because neither is a backend concept:
+
+- **"Today's practice"** (`use-todays-practice.ts`) picks the routine behind the most recent
+  session, falling back to the newest active routine when there is no history. The session
+  and routine lists are already mounted for "This week" and the routines strip, so only the
+  chosen routine's task list is an extra request.
+- **"This week"** is a client-side sum over `useSessionsSummary()` — there is no analytics
+  endpoint and no total-duration field, so minutes and session count are the only two
+  figures the data supports.
+
+`RoutineResponseDto.taskCount` and `.totalTargetDurationMinutes` are computed server-side
+precisely so the routine cards can render "4 tasks · 45 min" without a request per card;
+`src/lib/routine-meta.ts` formats them.
 
 ## Cross-cutting mechanisms
 

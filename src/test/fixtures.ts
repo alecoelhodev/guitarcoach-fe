@@ -1,6 +1,6 @@
 import type { Paginated } from '@/types/pagination';
 import type { Recording } from '@/types/recording';
-import type { Routine } from '@/types/routine';
+import type { Routine, RoutineTaskWithTask } from '@/types/routine';
 import type { PracticeSession, PracticeSessionTask } from '@/types/session';
 import type { Task } from '@/types/task';
 import type { User } from '@/types/user';
@@ -44,6 +44,24 @@ export function makeRoutine(overrides: Partial<Routine> = {}): Routine {
     userId: 'u1',
     title: 'Morning warm-up',
     status: 'active',
+    taskCount: 0,
+    totalTargetDurationMinutes: 0,
+    createdAt: TIMESTAMP,
+    updatedAt: TIMESTAMP,
+    ...overrides,
+  };
+}
+
+/** What `useRoutineTasks` returns: the join row with its task expanded. */
+export function makeRoutineTaskWithTask(
+  overrides: Partial<RoutineTaskWithTask> = {},
+): RoutineTaskWithTask {
+  return {
+    routineId: 'routine-1',
+    taskId: 'task-1',
+    position: 1,
+    targetDurationMinutes: null,
+    task: makeTask(),
     createdAt: TIMESTAMP,
     updatedAt: TIMESTAMP,
     ...overrides,

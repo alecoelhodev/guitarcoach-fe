@@ -79,8 +79,14 @@ library search + filter chips · "Add to Routine" · the routine builder (rename
 editing, status, Add Tasks, Archive, Delete) · Active/Archived routine segments · the
 Practice choice sheet · blank sessions · the current-task Complete/Previous/Next model
 (canvas 07) · session notes editing · recording upload, delete and the web drop zone ·
-Home's "Today's practice" and "Active routines" · Profile's inert "Coming later" rows ·
-the web two-pane list/detail layouts.
+Profile's inert "Coming later" rows · the web two-pane list/detail layouts.
+
+**Since built.** Home's "Today's practice" and "Active routines" (canvas 02), the new-user
+Home (02c) and the web Home layout (2a) landed once `RoutineResponseDto` gained `taskCount`
+and `totalTargetDurationMinutes` — the missing API fields that had blocked them. The same
+change added the sub-768px web bottom bar, closing the gap between `rail.web.tsx`'s
+"shown at 768px+" comment and a rail that actually rendered at every width. See
+`docs/ARCHITECTURE.md` § Web nav chrome and § Home.
 
 ## Known gaps, unchanged by this work
 

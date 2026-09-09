@@ -1,57 +1,26 @@
 import { Link, usePathname } from 'expo-router';
-import {
-  BookOpen,
-  History,
-  House,
-  ListMusic,
-  MessageCircle,
-  Play,
-  User,
-} from 'lucide-react-native';
+import { Play } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
+import {
+  type Destination,
+  isRouteActive,
+  PRACTICE_HREF,
+  PRIMARY,
+  SECONDARY,
+} from '@/components/nav/destinations';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
-/** Destinations above the spacer (canvas 2a). */
-const PRIMARY = [
-  { href: '/(app)/(main)/(tabs)', label: 'Home', match: '/', Icon: House },
-  {
-    href: '/(app)/(main)/(tabs)/routines',
-    label: 'Routines',
-    match: '/routines',
-    Icon: ListMusic,
-  },
-  {
-    href: '/(app)/(main)/(tabs)/library',
-    label: 'Library',
-    match: '/library',
-    Icon: BookOpen,
-  },
-  { href: '/(app)/(main)/history', label: 'History', match: '/history', Icon: History },
-] as const;
-
-/** Pushed to the bottom of the rail (canvas 2a). */
-const SECONDARY = [
-  { href: '/(app)/(main)/coach', label: 'AI Coach', match: '/coach', Icon: MessageCircle },
-  {
-    href: '/(app)/(main)/(tabs)/profile',
-    label: 'Profile',
-    match: '/profile',
-    Icon: User,
-  },
-] as const;
-
 /**
- * Left rail, shown at 768px+ per the web wireframes (canvas 2a).
+ * Left rail, shown at 768px+ per the web wireframes (canvas 2a). Below that
+ * `app-shell.web.tsx` swaps it for the bottom bar.
  *
  * Practice leads the rail as a filled action rather than a destination — it is the
  * web counterpart of the mobile centre FAB, so it carries no active state.
  */
 export function Rail() {
   const pathname = usePathname();
-  const isActive = (match: string) =>
-    match === '/' ? pathname === '/' : pathname.startsWith(match);
 
   return (
     <View style={styles.rail}>
@@ -59,7 +28,7 @@ export function Rail() {
         Guitar Coach
       </ThemedText>
 
-      <Link href="/(app)/(main)/(tabs)/routines" asChild>
+      <Link href={PRACTICE_HREF} asChild>
         <View style={practiceItemStyle}>
           <Play color="#ffffff" size={18} strokeWidth={2.75} fill="#ffffff" />
           <ThemedText type="button" style={styles.practiceLabel}>
@@ -71,24 +40,19 @@ export function Rail() {
       <View style={styles.gap} />
 
       {PRIMARY.map((entry) => (
-        <RailLink key={entry.href} {...entry} active={isActive(entry.match)} />
+        <RailLink key={entry.href} {...entry} active={isRouteActive(pathname, entry.match)} />
       ))}
 
       <View style={styles.spacer} />
 
       {SECONDARY.map((entry) => (
-        <RailLink key={entry.href} {...entry} active={isActive(entry.match)} />
+        <RailLink key={entry.href} {...entry} active={isRouteActive(pathname, entry.match)} />
       ))}
     </View>
   );
 }
 
-// Derived from the const arrays so `href` keeps expo-router's typed-route literals.
-type RailLinkProps = ((typeof PRIMARY)[number] | (typeof SECONDARY)[number]) & {
-  active: boolean;
-};
-
-function RailLink({ href, label, active, Icon }: RailLinkProps) {
+function RailLink({ href, label, active, Icon }: Destination & { active: boolean }) {
   return (
     <Link href={href} asChild>
       <View style={active ? activeItemStyle : styles.item}>

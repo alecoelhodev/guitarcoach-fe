@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { formatRoutineMeta } from '@/lib/routine-meta';
 import { Colors } from '@/theme/tokens';
 import type { Routine } from '@/types/routine';
 
@@ -20,6 +21,10 @@ export function RoutineCard({ routine }: { routine: Routine }) {
           {routine.status === 'archived' && <Badge label="Archived" />}
           <ChevronRight color={Colors.neutral[700]} size={16} strokeWidth={2.75} />
         </View>
+
+        <ThemedText type="body" color="textMuted">
+          {formatRoutineMeta(routine)}
+        </ThemedText>
 
         {routine.notes && (
           <ThemedText type="body" color="textMuted" numberOfLines={2}>

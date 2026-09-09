@@ -418,6 +418,8 @@ export interface components {
       id: string;
       userId: string;
       title: string;
+      taskCount: number;
+      totalTargetDurationMinutes: number;
       /** Format: date-time */
       createdAt: string;
       /** Format: date-time */

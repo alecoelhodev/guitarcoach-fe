@@ -164,7 +164,8 @@ src/api/        <resource>.ts = transport; <resource>.queries.ts = TanStack Quer
 src/features/   screen-level composition, one folder per feature
 src/components/ ui/ = 21 shared primitives (4 Gluestack-backed) + the provider; nav/ = chrome
 src/stores/     app-wide Zustand state (session, toast)
-src/lib/        storage, date-grouping, duration, file-validation
+src/hooks/      cross-cutting hooks (use-is-wide — the 768px web breakpoint)
+src/lib/        storage, date-grouping, duration, file-validation, routine-meta
 src/test/       shared test helpers (fixtures, query client, router mock, store reset)
 src/theme/      canvas design tokens (tokens.ts is RN-free; platform.ts holds Platform)
 src/types/      generated api.d.ts + per-resource re-exports
@@ -172,8 +173,11 @@ src/types/      generated api.d.ts + per-resource re-exports
 
 - **Never give an `asChild` child an array style.** `<Link asChild>` renders through
   expo-router's Slot, which _throws_ on `style={[a, b]}` — but only in development, so
-  production builds hide it. Flatten with `StyleSheet.flatten` (see `rail.web.tsx`) or pass
-  a single object. `src/components/nav/__tests__/rail.web.test.tsx` guards the rail.
+  production builds hide it. Flatten with `StyleSheet.flatten` at module scope (see the foot
+  of `rail.web.tsx` and `bottom-bar.web.tsx`) or pass a single object. The shared
+  `src/test/expo-router.tsx` mock reproduces the throw, so every suite rendering a
+  `Link asChild` guards the rule; `rail.web.test.tsx` and `bottom-bar.web.test.tsx` are the
+  dedicated ones.
 - Route groups matter: the real path is `/(app)/(main)/(tabs)/routines`, not
   `/(app)/(tabs)/routines`. Detail routes resolve bare: `/routines/[id]`.
 - Components consume `*.queries.ts` hooks; don't call `useQuery` with an inline key from a

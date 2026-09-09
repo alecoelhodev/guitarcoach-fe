@@ -16,17 +16,24 @@ export function useRoutines(filters: RoutineFilters = {}) {
   });
 }
 
-export function useRoutine(routineId: string) {
+/**
+ * `routineId` is optional because Home derives it — it has no routine to show
+ * until the session and routine lists resolve. Without the `enabled` guard the
+ * empty id would be pasted straight into the URL and request `/routines/`.
+ */
+export function useRoutine(routineId: string | undefined) {
   return useQuery({
-    queryKey: queryKeys.routine(routineId),
-    queryFn: () => getRoutine(routineId),
+    queryKey: queryKeys.routine(routineId ?? ''),
+    queryFn: () => getRoutine(routineId as string),
+    enabled: !!routineId,
   });
 }
 
-export function useRoutineTasks(routineId: string) {
+export function useRoutineTasks(routineId: string | undefined) {
   return useQuery({
-    queryKey: queryKeys.routineTasks(routineId),
-    queryFn: () => listRoutineTasks(routineId),
+    queryKey: queryKeys.routineTasks(routineId ?? ''),
+    queryFn: () => listRoutineTasks(routineId as string),
+    enabled: !!routineId,
   });
 }
 
