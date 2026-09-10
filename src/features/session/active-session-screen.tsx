@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { describeError } from '@/api/errors';
 import { useCreateSession } from '@/api/sessions.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -61,15 +62,25 @@ function ActiveSessionScreenBody() {
   const showToast = useToastStore((state) => state.show);
 
   async function handleFinish() {
-    await createSessionMutation.mutateAsync({
-      routineId,
-      title,
-      tasks: tasks.map((t) => ({
-        taskId: t.taskId,
-        durationMinutes: t.durationMinutes,
-        completed: t.completed,
-      })),
-    });
+    try {
+      await createSessionMutation.mutateAsync({
+        routineId,
+        title,
+        tasks: tasks.map((t) => ({
+          taskId: t.taskId,
+          // 0 is the local "nothing logged" value — a routine task carries no target
+          // duration by default and the stepper floors at 0 — but the API takes minutes as
+          // optional and rejects anything below 1. So an unlogged task omits the field.
+          durationMinutes: t.durationMinutes > 0 ? t.durationMinutes : undefined,
+          completed: t.completed,
+        })),
+      });
+    } catch (error) {
+      // A session is written once, on Finish. Keeping the local state on failure is the
+      // only thing standing between a failed request and a lost practice session.
+      showToast(describeError(error, "Couldn't save this session").title, 'error');
+      return;
+    }
     reset();
     router.back();
     showToast('Session saved', 'success');
