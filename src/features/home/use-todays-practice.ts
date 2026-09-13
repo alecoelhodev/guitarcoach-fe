@@ -16,9 +16,21 @@ export function useTodaysPractice() {
   const sessions = useSessionsSummary();
   const routines = useRoutines({ status: 'active', limit: ACTIVE_ROUTINE_LIMIT });
 
-  const lastPractisedId = sessions.data?.data.find((session) => session.routineId)?.routineId;
+  // `routineId` is nullable on the session DTO; normalise so the `enabled` guards below see
+  // a plain `string | undefined`.
+  const lastPractisedId =
+    sessions.data?.data.find((session) => session.routineId)?.routineId ?? undefined;
   const activeRoutines = routines.data?.pages.flatMap((page) => page.data) ?? [];
-  const routineId = lastPractisedId ?? activeRoutines[0]?.id;
+
+  // Canvas 839: archived routines are reviewable but never surfaced as today's
+  // recommendation, and the most recent session may well point at one. The two
+  // `useRoutine` calls share a cache key whenever the pick stands, so resolving
+  // the status costs no extra request in the common case.
+  const lastPractised = useRoutine(lastPractisedId);
+  const routineId =
+    lastPractisedId && lastPractised.data?.status === 'active'
+      ? lastPractisedId
+      : activeRoutines[0]?.id;
 
   // Both hooks no-op until an id exists, and key on it, so the routine detail
   // screen shares these cache entries rather than refetching them.
@@ -27,12 +39,24 @@ export function useTodaysPractice() {
 
   return {
     routine: routineId ? routine.data : undefined,
+    /** The card joins these with " · "; `routineTasks` is what starting the session needs. */
     taskTitles: (tasks.data ?? []).map((routineTask) => routineTask.task.title),
+    routineTasks: tasks.data,
     activeRoutines,
-    // Only the two list queries gate the card: without a routineId there is
-    // nothing to show, and waiting on a query that never runs would hang it.
-    isPending: sessions.isPending || routines.isPending || (!!routineId && routine.isPending),
-    hasLoaded: !sessions.isPending && !routines.isPending,
+    // A failed list query leaves both arrays empty, which is indistinguishable from a
+    // genuinely new account — Home has to know the difference before it renders 02c.
+    isError: sessions.isError || routines.isError,
+    /** Passed to `describeError` so Home says "No connection" rather than a generic panel. */
+    error: sessions.error ?? routines.error,
+    retry: () => {
+      if (sessions.isError) sessions.refetch();
+      if (routines.isError) routines.refetch();
+    },
+    // Only the list queries gate the card: without a routineId there is nothing to show,
+    // and waiting on a query that never runs would hang it. The archived check is part of
+    // the gate, or the card paints the archived routine before swapping it out.
+    hasLoaded:
+      !sessions.isPending && !routines.isPending && !(lastPractisedId && lastPractised.isPending),
   };
 }
 

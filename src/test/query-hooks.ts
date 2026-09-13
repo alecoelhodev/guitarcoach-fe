@@ -84,10 +84,13 @@ export function errorInfinite<T>(error: Error): InfiniteQueryLike<T> {
 }
 
 /** A `useMutation` result. `mutateAsync` resolves so `await` in a handler completes. */
-export function mutationStub<TData = unknown>(data?: TData) {
+export function mutationStub<TData = unknown, TVariables = unknown>(data?: TData) {
   return {
     mutate: jest.fn(),
     mutateAsync: jest.fn(async () => data as TData),
+    // Read by screens that label a per-row pending state, e.g. Home's routine grid keying
+    // its "Starting…" button off `variables.routine.id`.
+    variables: undefined as TVariables | undefined,
     isPending: false,
     isError: false,
     error: null,

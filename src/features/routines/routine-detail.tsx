@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,14 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useActiveSessionStore } from '@/features/session/session-store';
+import { useStartPractice } from '@/features/session/use-start-practice';
 import { TabBarInset } from '@/theme/platform';
 import { MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { RoutineTaskWithTask } from '@/types/routine';
 
 export function RoutineDetail({ routineId }: { routineId: string }) {
-  const router = useRouter();
-  const startSession = useActiveSessionStore((state) => state.start);
+  const startPractice = useStartPractice();
 
   const routineQuery = useRoutine(routineId);
   const tasksQuery = useRoutineTasks(routineId);
@@ -62,21 +60,6 @@ export function RoutineDetail({ routineId }: { routineId: string }) {
     const reordered = [...tasks];
     [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
     reorderMutation.mutate(reordered.map((t) => t.taskId));
-  }
-
-  function handleStartPractice() {
-    startSession({
-      routineId,
-      title: routine.title,
-      tasks: tasks.map((t: RoutineTaskWithTask) => ({
-        taskId: t.taskId,
-        title: t.task.title,
-        targetDurationMinutes: t.targetDurationMinutes ?? undefined,
-        durationMinutes: t.targetDurationMinutes ?? 0,
-        completed: false,
-      })),
-    });
-    router.push('/session/active');
   }
 
   return (
@@ -132,7 +115,12 @@ export function RoutineDetail({ routineId }: { routineId: string }) {
             ))}
           </View>
 
-          <Button block onPress={handleStartPractice}>
+          <Button
+            block
+            onPress={() => startPractice.mutate({ routine, tasks })}
+            loading={startPractice.isPending}
+            loadingLabel="Starting…"
+          >
             Start Practice
           </Button>
         </ScrollView>

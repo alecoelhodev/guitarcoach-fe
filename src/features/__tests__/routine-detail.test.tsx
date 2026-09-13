@@ -4,13 +4,16 @@ jest.mock('@/api/routines.queries', () => ({
   useRoutine: jest.fn(),
   useRoutineTasks: jest.fn(),
 }));
+// The seed-and-navigate behaviour belongs to the shared hook and is covered by its own
+// suite against a real QueryClient; this screen only has to hand it the right input.
+jest.mock('@/features/session/use-start-practice', () => ({ useStartPractice: jest.fn() }));
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { useReorderRoutineTasks, useRoutine, useRoutineTasks } from '@/api/routines.queries';
 import { RoutineDetail } from '@/features/routines/routine-detail';
-import { useActiveSessionStore } from '@/features/session/session-store';
+import { useStartPractice } from '@/features/session/use-start-practice';
 import { mockRouter } from '@/test/expo-router';
 import { makeRoutine } from '@/test/fixtures';
 import { errorQuery, mutationStub, pendingQuery, successQuery } from '@/test/query-hooks';
@@ -27,6 +30,7 @@ type AnyHook = jest.MockedFunction<(...args: never[]) => unknown>;
 const routineHook = useRoutine as unknown as AnyHook;
 const tasksHook = useRoutineTasks as unknown as AnyHook;
 const reorderHook = useReorderRoutineTasks as unknown as AnyHook;
+const startPracticeHook = useStartPractice as unknown as AnyHook;
 
 const ROUTINE_ID = 'r1';
 
@@ -52,6 +56,7 @@ function ready(tasks = TASKS, routine = makeRoutine({ title: 'Morning warm-up' }
 beforeEach(() => {
   jest.clearAllMocks();
   reorderHook.mockReturnValue(mutationStub());
+  startPracticeHook.mockReturnValue(mutationStub());
   ready();
 });
 
@@ -180,39 +185,19 @@ describe('reordering', () => {
 });
 
 describe('starting practice', () => {
-  it('seeds the local session from the routine and navigates to it', async () => {
-    await render(<RoutineDetail routineId={ROUTINE_ID} />);
+  it('hands the shared starter this routine and its already-loaded tasks', async () => {
+    const startPractice = mutationStub();
+    startPracticeHook.mockReturnValue(startPractice);
 
+    await render(<RoutineDetail routineId={ROUTINE_ID} />);
     await fireEvent.press(screen.getByText('Start Practice'));
 
-    expect(useActiveSessionStore.getState()).toMatchObject({
-      routineId: ROUTINE_ID,
-      title: 'Morning warm-up',
-      tasks: [
-        {
-          taskId: 'a',
-          title: 'Alternate picking',
-          targetDurationMinutes: 10,
-          durationMinutes: 10,
-          completed: false,
-        },
-        {
-          taskId: 'b',
-          title: 'Barre chords',
-          targetDurationMinutes: 15,
-          durationMinutes: 15,
-          completed: false,
-        },
-        // No target, so minutes start at 0 rather than undefined — the Stepper needs a number.
-        {
-          taskId: 'c',
-          title: 'Modes',
-          targetDurationMinutes: undefined,
-          durationMinutes: 0,
-          completed: false,
-        },
-      ],
+    // Tasks are passed rather than re-fetched: this screen already has them on screen.
+    expect(startPractice.mutate).toHaveBeenCalledWith({
+      // The fetched routine itself, not the id prop — that is what carries the title.
+      routine: expect.objectContaining({ title: 'Morning warm-up' }),
+      tasks: expect.arrayContaining([expect.objectContaining({ taskId: 'a' })]),
     });
-    expect(mockRouter.push).toHaveBeenCalledWith('/session/active');
+    expect(mockRouter.push).not.toHaveBeenCalled();
   });
 });
