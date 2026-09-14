@@ -12,8 +12,8 @@ to draft or instantly create a practice routine.
   `src/app/`).
 - **TanStack Query v5** for all server-state (fetching, caching, pagination, mutations).
 - **Zustand v5** for local/client state (auth session, active practice session, toasts).
-- **react-native-mmkv v4** for fast key-value storage, used as the persistence layer under
-  Zustand's `persist` middleware.
+- **@react-native-async-storage/async-storage** for key-value storage, used as the persistence
+  layer under Zustand's `persist` middleware and under the query-cache persister.
 - **react-hook-form + zod** for form state and validation.
 - **react-native-web** so the same app runs in a browser, with `.web.tsx`/`.web.ts` platform
   files where native and web behavior genuinely diverge (nav chrome, storage).
@@ -83,13 +83,13 @@ Three Zustand stores, split by lifetime and ownership:
 
 - **`src/stores/session-store.ts`** — auth/session status (`'loading' | 'authenticated' |
 'unauthenticated'`) plus the current `user`. The real session lives server-side in an
-  httpOnly cookie; this store only caches the last-known `user` in MMKV (`src/lib/storage.ts`) so the
+  httpOnly cookie; this store only caches the last-known `user` in AsyncStorage (`src/lib/storage.ts`) so the
   UI can render instantly on boot. `hydrate()` reads that cache first, then calls
   `getSession()` to reconcile: on success it updates the cache/status, on network failure it
   falls back to `authenticated` if a cached user exists, otherwise `unauthenticated`.
 - **`src/features/session/session-store.ts`** — the in-progress practice session (routine id,
   title, per-task target/actual duration and completion). Persisted via Zustand's `persist`
-  middleware backed by MMKV, solely so backgrounding or killing the app doesn't lose in-flight
+  middleware backed by AsyncStorage, solely so backgrounding or killing the app doesn't lose in-flight
   progress. The actual session record is still written to the server exactly once, on Finish
   — this store never performs that write itself.
 - **`src/stores/toast-store.ts`** — a single `{ message, variant } | null`, unpersisted,
@@ -135,7 +135,7 @@ Mutations that write session-critical data (e.g. Finish Session) intentionally h
 optimistic update — the user should keep seeing their in-progress numbers on screen until the
 write actually succeeds.
 
-The cache is persisted to MMKV (`src/api/persist.ts`) and restored through
+The cache is persisted to AsyncStorage (`src/api/persist.ts`) and restored through
 `PersistQueryClientProvider`, so lists render offline from the last snapshot. Both caches are
 dropped on sign-out and on a 401.
 
@@ -144,14 +144,28 @@ copy comes from `describeError` in `src/api/errors.ts`.
 
 See [`api-integration.md`](api-integration.md) for the conventions a new screen should follow.
 
-## MMKV storage adapter
+## AsyncStorage adapter
 
-`src/lib/storage.ts` creates one MMKV instance via `react-native-mmkv`'s `createMMKV({ id:
-'guitar-coach' })`, then exposes a thin Zustand `StateStorage` adapter (`setItem`/`getItem`/
-`removeItem`) over `storage.set` / `storage.getString` / `storage.remove`, for use with
-`persist(..., { storage: createJSONStorage(() => mmkvStorage) })`. `createMMKV` resolves to a
-real MMKV store on native and an automatic `localStorage`-backed shim on web — no separate
-`.web.ts` file is needed for storage.
+`src/lib/storage.ts` exposes a thin Zustand `StateStorage` adapter (`getItem`/`setItem`/
+`removeItem`) over `@react-native-async-storage/async-storage`, for use with
+`persist(..., { storage: createJSONStorage(() => storage) })`. AsyncStorage is part of the Expo Go
+runtime and falls back to `localStorage` on web, so no `.web.ts` file is needed for storage.
+
+It replaced `react-native-mmkv`, which cannot run in Expo Go: MMKV v4 is a Nitro module, and
+`react-native-nitro-modules` throws from **module scope**, so one unsatisfied native import takes
+down every route that transitively imports it. See `AGENTS.md` for the failure signature.
+
+**The consequence that matters: this storage is asynchronous.** `persist` rehydration is therefore
+not complete on the first render, so anything reading persisted state during render must gate on
+hydration rather than latch it into a `useState(() => …)` initialiser — that initialiser runs once
+and would capture the pre-hydration value forever. `src/features/session/active-session-screen.tsx`
+shows the gate (`persist.hasHydrated()` + `onFinishHydration`, body in a child component);
+`src/features/home/home-screen.tsx` shows the cheaper alternative of deriving the value each
+render. Both have a regression test that fails if the gate is removed.
+
+The adapter uses `satisfies` rather than a `:` annotation — an annotation would widen the return
+types to `StateStorage`'s `unknown`, and `createAsyncStoragePersister` needs the precise
+`Promise<void>` its own `AsyncStorage<string>` declares.
 
 ## UI system
 
@@ -167,10 +181,10 @@ outside a RN runtime and derive its colors, spacing and radii from it — one so
 for both `StyleSheet` and `className`. Platform-dependent values live in
 `src/theme/platform.ts` (`TabBarInset`).
 
-`src/components/ui/` is the primitive library. Five primitives are Gluestack-backed —
+`src/components/ui/` is the primitive library. Four primitives are Gluestack-backed —
 components the CLI copied into the repo and which we then restyled to the canvas, kept for
 the focus, overlay and a11y behaviour that is genuinely hard to hand-roll: `button`,
-`progress`, `checkbox`, `actionsheet`, `alert-dialog` (plus `gluestack-ui-provider`). The
+`progress`, `checkbox`, `alert-dialog` (plus `gluestack-ui-provider`). The
 rest are hand-written `StyleSheet` over the same tokens, because Gluestack v5 has no
 equivalent for them: `badge`, `banner`, `card`, `checklist-row`, `chip`, `confirm-dialog`,
 `empty-state`, `error-panel`, `field-label`, `input`, `password-input`, `query-state`,

@@ -30,7 +30,7 @@ command-by-command flow: [`docs/api-contract-workflow.md`](docs/api-contract-wor
 npx tsc --noEmit      # no `typecheck` script exists; run the compiler directly
 npx expo lint
 npx biome ci .        # formatting + import order; `npm run format` fixes both
-npm test              # 43 suites; `npm run test:coverage` adds the coverage floor
+npm test              # 46 suites; `npm run test:coverage` adds the coverage floor
 ```
 
 All four should be **clean**. `expo lint` used to carry one known error in
@@ -109,7 +109,7 @@ conveniences; removing one breaks whole suites with an error that names the wron
 | `expo-audio`                                | Ships no `mocks/` dir for jest-expo to find and dereferences `AudioModule.AudioPlayer.prototype` at import, so `recording-row.tsx` cannot even be loaded. Re-point the two hooks per test.                                                                                                                                                                                                          |
 | `@react-native-community/netinfo`           | `api/query-client.ts` registers a listener at module scope. Unmocked it does not fail a test — it **kills the worker process** from inside NetInfo's async reachability polling.                                                                                                                                                                                                                    |
 | `@react-native-async-storage/async-storage` | Its native module is absent under Node, and `src/lib/storage.ts` is reached by every store. Hand-rolled over one `Map` rather than the package's `jest/async-storage-mock`, so `resetStores()` can clear it. The methods must return **resolved promises** — a mock that returns undefined leaves `persist` rehydration permanently unsettled.                                                      |
-| `react-native-safe-area-context`            | Twelve files render `SafeAreaView`. It works unmocked; the package's own `jest/mock` just pins deterministic metrics.                                                                                                                                                                                                                                                                               |
+| `react-native-safe-area-context`            | Thirteen files render `SafeAreaView`. It works unmocked; the package's own `jest/mock` just pins deterministic metrics.                                                                                                                                                                                                                                                                             |
 
 **Gluestack overlays render nothing without a provider above them.** `ConfirmDialog` portals
 through `OverlayProvider`, so a bare `render(<ConfirmDialog visible … />)` produces _empty_
@@ -270,6 +270,8 @@ Verified against the committed OpenAPI schema:
 | Doc                                          | What it is                                                                                 |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `wireframes/Guitar Coach Wireframes.dc.html` | **The design authority.** Every colour, radius and type size comes from its `:root` block. |
+| `specs/`                                     | **The MVP completion plan.** Start at `specs/README.md`; `specs/00-…` is the API contract. |
+| `docs/ARCHITECTURE.md`                       | Stack, state boundaries, storage, UI system                                                |
 | `docs/MIGRATION-PLAN.md`                     | Record of the Organic → canvas UI migration                                                |
 | `docs/api-contract-workflow.md`              | Living runbook: BE↔FE type sync commands + flow                                            |
 | `docs/api-integration.md`                    | How a screen talks to the API: hooks, keys, errors                                         |
@@ -278,5 +280,6 @@ Verified against the committed OpenAPI schema:
 | `plan/API-CONTRACT-SYNC.md`                  | Original plan for the contract pipeline (built)                                            |
 | `plan/SETUP-PLAN.md`                         | Initial build plan                                                                         |
 
-`plan/` holds plans and proposals; `docs/` holds living operational docs. Keep new runbooks
-in `docs/`.
+`plan/` holds plans and proposals — some of it is a historical record whose recommendations were
+later reversed, so prefer `docs/` and `AGENTS.md` when they disagree. `docs/` holds living
+operational docs; keep new runbooks there. `specs/` holds the open MVP work.

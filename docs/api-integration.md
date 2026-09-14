@@ -113,7 +113,8 @@ Four rules, in the order they matter:
 
 ## Offline
 
-`src/api/persist.ts` persists the query cache to MMKV, restored via
+`src/api/persist.ts` persists the query cache to AsyncStorage (via
+`@tanstack/query-async-storage-persister`), restored through
 `PersistQueryClientProvider`, so lists render from the last snapshot when the app opens
 offline.
 
@@ -125,8 +126,8 @@ offline.
   on disk survives it. `purgePersistedCache()` handles the rest, and both are already wired
   into `useSignOut` and the unauthorized handler. If you add another sign-out path, it must
   do both, or the next person to open the app offline reads the previous user's data.
-- MMKV here is unencrypted, so the persisted cache holds practice content only. No credential
-  is involved — auth is an httpOnly cookie and never enters the query cache.
+- AsyncStorage here is unencrypted, so the persisted cache holds practice content only. No
+  credential is involved — auth is an httpOnly cookie and never enters the query cache.
 
 ## Two deliberate exceptions
 
