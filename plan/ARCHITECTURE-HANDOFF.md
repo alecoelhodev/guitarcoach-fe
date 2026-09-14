@@ -12,6 +12,13 @@ follows is wiring and discipline rather than new surface.
 https://docs.expo.dev/versions/v57.0.0/ first. Every version claim below is marked
 _verify_ where I could not confirm it against SDK 57 from here.
 
+> **This is a historical record, not a current description.** Several recommendations below
+> were later overturned in practice; each is marked inline where that happened. The two big
+> ones: **§3's MMKV recommendation was reversed** — MMKV is a Nitro module and cannot run in
+> Expo Go, so persistence is AsyncStorage throughout (`src/lib/storage.ts`), and **§5's
+> `actionsheet` never shipped**. For the current state, read `AGENTS.md` and
+> `docs/ARCHITECTURE.md`; for the open work, read `specs/README.md`.
+
 ---
 
 ## Verdict up front
@@ -336,9 +343,23 @@ store would make the library and routines readable offline — the "You're offli
 the tasks loaded earlier" state in wireframe 03b. Worth doing after §3 lands, since it
 shares the MMKV instance.
 
+> **Shipped, with AsyncStorage instead of MMKV** (`src/api/persist.ts`). See the §3 note.
+
 ---
 
 ## 3. Zustand — correct scoping, one data-loss bug
+
+> **Overturned — do not copy the code in §3.1/§3.2.** The data-loss bug was real and is fixed,
+> but **not** with MMKV. `react-native-mmkv` v4 is a Nitro module and
+> `react-native-nitro-modules` throws from module scope, which takes down every route that
+> transitively imports it; `expo-dev-client` is also deliberately **not** a dependency here, so
+> Expo Go is the target and MMKV was removed. Persistence is AsyncStorage
+> (`src/lib/storage.ts`), which is **asynchronous** — the resulting hydration-gating rule is the
+> important part and is documented in `AGENTS.md` and `docs/ARCHITECTURE.md`.
+>
+> The store paths below are also stale: it is `src/stores/session-store.ts` (AsyncStorage, not
+> SecureStore) and `src/features/session/session-store.ts`. The resume-or-discard state
+> suggested at the end of §3.1 did ship, on the home screen.
 
 Both stores are well-judged. `features/auth/session-store.ts` caches the last-known user in
 SecureStore and reconciles against `getSession()`, with a deliberate fallback to the cached
@@ -439,12 +460,15 @@ a sprint. Generate `tailwind.config.js` from `tokens.ts` so the tokens stay sing
 
 ## 5. UI libraries — don't
 
-> **Decided 2026-09-04: partly overturned.** Gluestack v5 was adopted for the five
-> behaviour-heavy primitives (`button`, `progress`, `checkbox`, `actionsheet`,
-> `alert-dialog`); everything else stayed hand-written, which is closer to this
-> section's advice than to a wholesale kit adoption. `@gorhom/bottom-sheet` is still
-> installed per the recommendation below, though `sheet.tsx` now uses Actionsheet.
-> Drag-reorder remains unresolved; Move up / Move down shipped as suggested.
+> **Decided 2026-09-04: partly overturned.** Gluestack v5 was adopted for four
+> behaviour-heavy primitives (`button`, `progress`, `checkbox`, `alert-dialog`);
+> everything else stayed hand-written, which is closer to this section's advice than to a
+> wholesale kit adoption. `@gorhom/bottom-sheet` is still installed per the recommendation
+> below. Drag-reorder remains unresolved; Move up / Move down shipped as suggested.
+>
+> **Correction:** an earlier revision of this note listed `actionsheet` as a fifth adopted
+> primitive and said `sheet.tsx` used it. Neither is true — the unused actionsheet
+> scaffolding was deleted (see `docs/MIGRATION-PLAN.md`) and no `sheet.tsx` exists.
 
 You listed Tamagui and Gluestack. Both are good. Neither fits here, for the same reason as
 before: Organic is prescriptive down to hover tints and focus rings, and you have already
