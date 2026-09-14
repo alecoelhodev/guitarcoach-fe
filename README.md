@@ -34,30 +34,43 @@ the order to merge in.
 
 ## Running against the deployed backend
 
-`EXPO_PUBLIC_API_BASE_URL` defaults to `http://localhost:3000` (the local Docker backend).
-That does not work on a **physical phone in Expo Go**, where `localhost` resolves to the phone
-itself rather than your machine. Point it at the deployed Cloud Run service instead, in
-`.env.local` — which overrides `.env`, is gitignored, and can be deleted to switch back:
+`EXPO_PUBLIC_API_BASE_URL` defaults to `http://localhost:3000` (the local Docker backend) and
+is what the **browser** uses. It does not work on a **physical phone in Expo Go**: the value is
+resolved on your Mac at dev-server start and shipped to the device in the manifest, so the
+phone receives the literal string `localhost` and resolves it to itself.
+
+`EXPO_PUBLIC_API_BASE_URL_NATIVE` overrides it on **iOS/Android only**, so the phone can hit
+the deployed Cloud Run service while the browser keeps hitting local Docker, from one dev
+server:
 
 ```bash
-echo 'EXPO_PUBLIC_API_BASE_URL=https://guitarcoach-685026468764.us-east1.run.app' > .env.local
-npx expo start --clear    # the var is read at dev-server start, so restart is required
+echo 'EXPO_PUBLIC_API_BASE_URL_NATIVE=https://guitarcoach-685026468764.us-east1.run.app' > .env.local
+npx expo start --clear    # the config is read at dev-server start, so a restart is required
 ```
 
-Three things to expect, none of them bugs in this app:
+`.env.local` overrides `.env`, is gitignored, and can be deleted to put native back on
+localhost. Only `.env`, `.env.local`, `.env.[mode]` and `.env.[mode].local` are loaded — a file
+named anything else is ignored, silently.
 
-- **Web stops working against it.** The deployed backend's `CORS_ORIGINS` trusts only its own
+Four things to expect, none of them bugs in this app:
+
+- **The two platforms are signed in to different databases.** With the split running, the phone
+  authenticates against the deployed backend and the browser against your local one, so you
+  need an account on each. There is no separate staging service; the deployed one is
+  pre-production and not serving real traffic (see the backend's `docs/deployment.md`).
+- **Don't point the browser at the deployed backend.** Its `CORS_ORIGINS` trusts only its own
   origin, so a browser's real `Origin` (`http://localhost:8081`) is rejected at preflight, and
   better-auth's `SameSite=Lax` cookie would not be stored cross-site anyway. Native is fine —
-  `src/api/client.ts` synthesizes a matching `Origin` on iOS/Android. Keep `.env` on localhost
-  for web work, or have the backend add `http://localhost:8081` to `CORS_ORIGINS`.
+  `src/api/client.ts` synthesizes a matching `Origin` on iOS/Android. That is the whole reason
+  the override is native-only.
 - **The first launch after a cold start may bounce you to sign-in.** `getSession()` is capped
   at 5s (`src/api/auth.ts`) because the splash waits on it, and a Cloud Run cold start can take
   ~14s. Reopen the app and the session holds. The fix is backend side
   (`gcloud run services update guitarcoach --min-instances=1`), not a longer timeout.
-- **It is a different database from your local one**, so you need an account created there.
-  There is no separate staging service; this one is pre-production and not serving real
-  traffic (see the backend's `docs/deployment.md`).
+- **EAS builds do not read `.env.local`.** Local env files are never uploaded to EAS Build, so a
+  native binary built without `EXPO_PUBLIC_API_BASE_URL_NATIVE` set as an EAS environment
+  variable falls back to `apiBaseUrl` — i.e. `localhost` — and fails on device with no error
+  beyond "No connection". Set it with `eas env:create` for the profile you build.
 
 ## Get a fresh project
 

@@ -3,18 +3,25 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { describeError } from '@/api/errors';
 import { useSessionsSummary } from '@/api/sessions.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button, ButtonText } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ErrorPanel } from '@/components/ui/error-panel';
 import { ActiveRoutines } from '@/features/home/active-routines';
 import { HomeEmptyState } from '@/features/home/home-empty-state';
 import { RecentSessions } from '@/features/home/recent-sessions';
 import { ThisWeekCard } from '@/features/home/this-week-card';
-import { TodaysPracticeCard, TodaysPracticeSkeleton } from '@/features/home/todays-practice-card';
+import {
+  TodaysPracticeCard,
+  TodaysPracticeEmpty,
+  TodaysPracticeSkeleton,
+} from '@/features/home/todays-practice-card';
 import { useTodaysPractice } from '@/features/home/use-todays-practice';
 import { useActiveSessionStore } from '@/features/session/session-store';
+import { useStartPractice } from '@/features/session/use-start-practice';
 import { useIsWide } from '@/hooks/use-is-wide';
 import { filterThisWeek } from '@/lib/date-grouping';
 import { useSessionStore } from '@/stores/session-store';
@@ -33,7 +40,12 @@ export function HomeScreen() {
   const isWide = useIsWide();
   const user = useSessionStore((state) => state.user);
   const { data, isPending } = useSessionsSummary();
-  const { routine, taskTitles, activeRoutines, hasLoaded } = useTodaysPractice();
+  const { routine, taskTitles, routineTasks, activeRoutines, hasLoaded, isError, error, retry } =
+    useTodaysPractice();
+  const startPractice = useStartPractice();
+  const startingRoutineId = startPractice.isPending
+    ? startPractice.variables?.routine.id
+    : undefined;
 
   const activeSessionTasks = useActiveSessionStore((state) => state.tasks);
   const resetActiveSession = useActiveSessionStore((state) => state.reset);
@@ -47,8 +59,10 @@ export function HomeScreen() {
   const thisWeek = filterThisWeek(sessions);
 
   // Canvas 02c. Gated on `hasLoaded` rather than `!isPending` alone, or the
-  // new-user state flashes on every cold start before the lists resolve.
-  const isNewUser = hasLoaded && activeRoutines.length === 0 && sessions.length === 0;
+  // new-user state flashes on every cold start before the lists resolve — and on
+  // `!isError`, because a failed list leaves both arrays empty too, which would
+  // otherwise tell an established user they have nothing.
+  const isNewUser = hasLoaded && !isError && activeRoutines.length === 0 && sessions.length === 0;
 
   return (
     <ThemedView style={styles.container}>
@@ -87,7 +101,9 @@ export function HomeScreen() {
             )}
           </View>
 
-          {isNewUser ? (
+          {isError ? (
+            <ErrorPanel {...describeError(error, "Couldn't load your practice")} onRetry={retry} />
+          ) : isNewUser ? (
             <>
               <HomeEmptyState />
               <ThisWeekCard sessions={thisWeek} isPending={isPending} />
@@ -101,9 +117,13 @@ export function HomeScreen() {
                       routine={routine}
                       taskTitles={taskTitles}
                       showViewRoutine={isWide}
+                      onStartPractice={() => startPractice.mutate({ routine, tasks: routineTasks })}
+                      isStarting={startingRoutineId === routine.id}
                     />
+                  ) : hasLoaded ? (
+                    <TodaysPracticeEmpty />
                   ) : (
-                    !hasLoaded && <TodaysPracticeSkeleton />
+                    <TodaysPracticeSkeleton />
                   )}
                 </View>
 
@@ -118,7 +138,12 @@ export function HomeScreen() {
 
               {!isWide && <AskCoachButton block />}
 
-              <ActiveRoutines routines={activeRoutines} isWide={isWide} />
+              <ActiveRoutines
+                routines={activeRoutines}
+                isWide={isWide}
+                onStart={isWide ? (target) => startPractice.mutate({ routine: target }) : undefined}
+                startingRoutineId={startingRoutineId}
+              />
               <RecentSessions sessions={sessions} isWide={isWide} />
             </>
           )}

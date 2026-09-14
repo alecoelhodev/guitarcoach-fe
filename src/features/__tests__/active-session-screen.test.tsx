@@ -3,6 +3,7 @@ jest.mock('@/api/sessions.queries', () => ({ useCreateSession: jest.fn() }));
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { ApiError } from '@/api/client';
 import { useCreateSession } from '@/api/sessions.queries';
 import { ActiveSessionScreen } from '@/features/session/active-session-screen';
 import { useActiveSessionStore } from '@/features/session/session-store';
@@ -218,6 +219,60 @@ describe('with an active session', () => {
         tasks: [{ taskId: 't1', durationMinutes: 11, completed: true }],
       }),
     );
+  });
+
+  /**
+   * `CreatePracticeSessionTaskDto.durationMinutes` is optional but `@Min(1)`, while 0 is the
+   * local "nothing logged" value — every task of a routine with no target durations starts
+   * there. Sending the zero made Finish fail with
+   * "tasks.0.durationMinutes must not be less than 1".
+   */
+  it('omits minutes for a task that logged none, rather than sending a zero', async () => {
+    const mutation = mutationStub();
+    useCreateSessionMock.mockReturnValue(mutation);
+    useActiveSessionStore.getState().start({
+      routineId: 'r1',
+      title: 'Morning warm-up',
+      tasks: [
+        { taskId: 't1', title: 'Untimed', durationMinutes: 0, completed: false },
+        { taskId: 't2', title: 'Timed', durationMinutes: 15, completed: true },
+      ],
+    });
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(mutation.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tasks: [
+          { taskId: 't1', durationMinutes: undefined, completed: false },
+          { taskId: 't2', durationMinutes: 15, completed: true },
+        ],
+      }),
+    );
+  });
+
+  it('keeps the session and says so when the write fails', async () => {
+    const mutation = {
+      ...mutationStub(),
+      mutateAsync: jest.fn(async () => {
+        throw new ApiError('Bad Request', 400);
+      }),
+    };
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(useToastStore.getState().toast).toMatchObject({ variant: 'error' });
+    // A session is written once. Clearing it here would lose the practice outright.
+    expect(useActiveSessionStore.getState().tasks).toHaveLength(1);
+    expect(mockRouter.back).not.toHaveBeenCalled();
   });
 
   it('says it is saving and blocks a second finish while the write is in flight', async () => {

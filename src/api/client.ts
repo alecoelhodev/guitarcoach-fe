@@ -3,7 +3,17 @@ import { Platform } from 'react-native';
 
 const API_PREFIX = '/api/v1';
 
-const baseUrl = Constants.expoConfig?.extra?.apiBaseUrl as string | undefined;
+const extra = Constants.expoConfig?.extra;
+
+/**
+ * Both values are resolved by the CLI on the dev machine and shipped to the device in the
+ * manifest, so a phone receives whatever `localhost` meant on the Mac — i.e. itself. Setting
+ * `EXPO_PUBLIC_API_BASE_URL_NATIVE` points iOS/Android at a reachable host while the browser
+ * keeps using the local one. Unset, both platforms share `apiBaseUrl`.
+ */
+const baseUrl = (
+  Platform.OS === 'web' ? extra?.apiBaseUrl : (extra?.apiBaseUrlNative ?? extra?.apiBaseUrl)
+) as string | undefined;
 
 if (!baseUrl) {
   throw new Error('EXPO_PUBLIC_API_BASE_URL is not set — check your .env file.');
