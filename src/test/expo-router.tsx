@@ -31,6 +31,16 @@ export const mockRouter = {
   canGoBack: jest.fn(() => true),
 };
 
+/**
+ * `useNavigation`'s surface, for the screens that dispatch a navigation action directly —
+ * `routine-builder`'s unsaved-changes guard resumes the back it interrupted this way.
+ */
+export const mockNavigation = {
+  dispatch: jest.fn(),
+  addListener: jest.fn(() => jest.fn()),
+  setOptions: jest.fn(),
+};
+
 /** Every `href` a `Link` was rendered with, in render order. */
 export const linkHrefs: unknown[] = [];
 
@@ -75,6 +85,7 @@ function MockLink({ href, asChild, onPress, children }: LinkProps) {
 export function expoRouterMock() {
   return {
     useRouter: () => mockRouter,
+    useNavigation: () => mockNavigation,
     usePathname: () => pathname,
     Link: MockLink,
   };
@@ -86,4 +97,5 @@ beforeEach(() => {
   linkHrefs.length = 0;
   pathname = '/';
   for (const fn of Object.values(mockRouter)) fn.mockClear();
+  for (const fn of Object.values(mockNavigation)) fn.mockClear();
 });

@@ -7,6 +7,7 @@ export default function MainLayout() {
     <AppShell>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="routines/new" />
         <Stack.Screen name="routines/[id]" />
         <Stack.Screen name="library/[id]" />
         <Stack.Screen name="history/index" />

@@ -1,5 +1,12 @@
 jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
-jest.mock('@/api/routines.queries', () => ({ useRoutines: jest.fn() }));
+jest.mock('@/api/routines.queries', () => ({
+  useRoutines: jest.fn(),
+  // RoutineCard's Start Practice and Restore actions reach for these; the card's own
+  // behaviour is covered in cards.test.tsx, so here they only need to not explode.
+  useFetchRoutineTasks: jest.fn(() => jest.fn(async () => [])),
+  // `require` rather than the import: a jest.mock factory cannot close over imported bindings.
+  useUpdateRoutine: jest.fn(() => require('@/test/query-hooks').mutationStub()),
+}));
 jest.mock('@/api/sessions.queries', () => ({ useSessions: jest.fn() }));
 jest.mock('@/api/tasks.queries', () => ({ useTasks: jest.fn() }));
 
@@ -50,7 +57,52 @@ describe('RoutinesList', () => {
     await render(<RoutinesList />);
 
     expect(screen.getByText('No routines yet')).toBeTruthy();
-    expect(screen.getByText('Ask the AI Coach to build your first one.')).toBeTruthy();
+    expect(screen.getByText('Build one from the library or ask the coach.')).toBeTruthy();
+  });
+
+  it('asks for active routines first, since that is the segment it opens on', async () => {
+    mock.mockReturnValue(infinitePages([makePage([makeRoutine()])]));
+    await render(<RoutinesList />);
+
+    expect(useRoutinesMock).toHaveBeenCalledWith({ status: 'active' });
+  });
+
+  /**
+   * The segment is the whole point of this screen: a backend job archives every routine left
+   * active from before the current week, so without it routines simply vanish. The status has
+   * to reach the hook — `queryKeys.routines(filters)` then makes each tab its own cache entry
+   * rather than re-showing the other tab's rows.
+   */
+  it('refetches with the archived status when the segment changes', async () => {
+    mock.mockReturnValue(infinitePages([makePage([makeRoutine()])]));
+    await render(<RoutinesList />);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Archived' }));
+
+    expect(useRoutinesMock).toHaveBeenLastCalledWith({ status: 'archived' });
+  });
+
+  it('shows a quieter empty state on Archived, with no way to create from it', async () => {
+    mock.mockReturnValue(infinitePages([makePage([])]));
+    await render(<RoutinesList />);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Archived' }));
+
+    expect(screen.getByText('Nothing archived yet.')).toBeTruthy();
+    expect(screen.queryByText('No routines yet')).toBeNull();
+    // Creating from here would land the user back on Active with no explanation.
+    expect(screen.queryByText('Ask AI Coach to draft one')).toBeNull();
+  });
+
+  it('keeps the coach out of the Archived footer even when it has content', async () => {
+    mock.mockReturnValue(infinitePages([makePage([makeRoutine({ status: 'archived' })])]));
+    await render(<RoutinesList />);
+
+    expect(screen.getByText('Ask AI Coach to draft one')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Archived' }));
+
+    expect(screen.queryByText('Ask AI Coach to draft one')).toBeNull();
+    expect(screen.queryByText('Create Routine')).toBeNull();
   });
 
   it('surfaces an offline error rather than the generic title', async () => {
@@ -80,6 +132,16 @@ describe('RoutinesList', () => {
 
     expect(screen.getByText('Ask AI Coach to draft one')).toBeTruthy();
     expect(linkHrefs).toContain('/(app)/(main)/coach');
+  });
+
+  // `/routines/new` is a static sibling of `/routines/[id]`; expo-router sorts static
+  // segments first (build/sortRoutes.js), so it reaches the builder rather than the detail.
+  it('offers a hand-built routine alongside the coach', async () => {
+    mock.mockReturnValue(infinitePages([makePage([makeRoutine()])]));
+    await render(<RoutinesList />);
+
+    expect(screen.getByText('Create Routine')).toBeTruthy();
+    expect(linkHrefs).toContain('/routines/new');
   });
 
   it('hides "Load more" on the last page and fetches the next when there is one', async () => {

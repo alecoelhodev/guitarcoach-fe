@@ -1,14 +1,49 @@
 jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
+jest.mock('@/api/routines.queries', () => ({
+  useFetchRoutineTasks: jest.fn(),
+  useUpdateRoutine: jest.fn(),
+}));
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { ApiError } from '@/api/client';
+import { useFetchRoutineTasks, useUpdateRoutine } from '@/api/routines.queries';
 import { PlanPreviewCard } from '@/features/coach/plan-preview-card';
 import { SessionCard } from '@/features/history/session-card';
 import { TaskCard } from '@/features/library/task-card';
 import { RoutineCard } from '@/features/routines/routine-card';
-import { linkHrefs } from '@/test/expo-router';
-import { makeRoutine, makeSession, makeSessionTask, makeTask } from '@/test/fixtures';
+import { useActiveSessionStore } from '@/features/session/session-store';
+import { useToastStore } from '@/stores/toast-store';
+import { linkHrefs, mockRouter } from '@/test/expo-router';
+import {
+  makeRoutine,
+  makeRoutineTaskWithTask,
+  makeSession,
+  makeSessionTask,
+  makeTask,
+} from '@/test/fixtures';
+import { mutationStub } from '@/test/query-hooks';
 import type { PracticePlan } from '@/types/coach';
+
+const useFetchRoutineTasksMock = useFetchRoutineTasks as jest.MockedFunction<
+  typeof useFetchRoutineTasks
+>;
+const useUpdateRoutineMock = useUpdateRoutine as jest.MockedFunction<typeof useUpdateRoutine>;
+
+// The hooks are typed against TanStack's full result; the card reads only a slice of it.
+type AnyHook = jest.MockedFunction<(...args: never[]) => unknown>;
+
+/** Hands the card a resolved task list and reports what it was asked for. */
+function stubRoutineTasks(tasks = [makeRoutineTaskWithTask()]) {
+  const fetchTasks = jest.fn(async () => tasks);
+  useFetchRoutineTasksMock.mockReturnValue(fetchTasks);
+  return fetchTasks;
+}
+
+beforeEach(() => {
+  stubRoutineTasks();
+  (useUpdateRoutineMock as unknown as AnyHook).mockReturnValue(mutationStub());
+});
 
 /**
  * The four list-row cards. Each one is a stack of independent optional-field branches, so
@@ -37,6 +72,74 @@ describe('RoutineCard', () => {
     await render(<RoutineCard routine={makeRoutine({ status: 'archived' })} />);
 
     expect(screen.getByText('Archived')).toBeTruthy();
+  });
+
+  it('offers Start Practice on an active routine and no restore', async () => {
+    await render(<RoutineCard routine={makeRoutine({ status: 'active' })} />);
+
+    expect(screen.getByText('Start Practice')).toBeTruthy();
+    expect(screen.queryByText('Restore to active')).toBeNull();
+  });
+
+  // Canvas 05b: archived routines are reviewable and restorable, never startable.
+  it('offers Restore to active on an archived routine and no Start Practice', async () => {
+    await render(<RoutineCard routine={makeRoutine({ status: 'archived' })} />);
+
+    expect(screen.getByText('Restore to active')).toBeTruthy();
+    expect(screen.queryByText('Start Practice')).toBeNull();
+  });
+
+  /**
+   * A list card carries no task data, so Start has to fetch the routine's tasks before it can
+   * seed the session. The whole point of doing it on press is that nothing is requested for
+   * the routines the user never starts.
+   */
+  it('fetches the routine tasks on press, then seeds the session and navigates', async () => {
+    const fetchTasks = stubRoutineTasks([
+      makeRoutineTaskWithTask({ taskId: 't1', targetDurationMinutes: 10 }),
+    ]);
+    await render(<RoutineCard routine={makeRoutine({ id: 'r3', title: 'Morning warm-up' })} />);
+
+    expect(fetchTasks).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByText('Start Practice'));
+
+    await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith('/session/active'));
+    expect(fetchTasks).toHaveBeenCalledWith('r3');
+    expect(useActiveSessionStore.getState()).toMatchObject({
+      routineId: 'r3',
+      title: 'Morning warm-up',
+      tasks: [{ taskId: 't1', durationMinutes: 10, completed: false }],
+    });
+  });
+
+  it('toasts rather than opening an empty session when the task fetch fails', async () => {
+    useFetchRoutineTasksMock.mockReturnValue(
+      jest.fn(async () => {
+        throw new ApiError('boom', 500);
+      }),
+    );
+    await render(<RoutineCard routine={makeRoutine()} />);
+
+    await fireEvent.press(screen.getByText('Start Practice'));
+
+    await waitFor(() =>
+      expect(useToastStore.getState().toast).toEqual({
+        message: 'Something went wrong on our end',
+        variant: 'error',
+      }),
+    );
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  it('restores an archived routine by patching it back to active', async () => {
+    const restore = mutationStub();
+    (useUpdateRoutineMock as unknown as AnyHook).mockReturnValue(restore);
+    await render(<RoutineCard routine={makeRoutine({ id: 'r4', status: 'archived' })} />);
+
+    await fireEvent.press(screen.getByText('Restore to active'));
+
+    expect(useUpdateRoutineMock).toHaveBeenCalledWith('r4');
+    expect(restore.mutate).toHaveBeenCalledWith({ status: 'active' }, expect.anything());
   });
 
   it('shows notes only when the routine has them', async () => {
