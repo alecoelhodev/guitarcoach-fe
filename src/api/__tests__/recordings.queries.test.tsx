@@ -1,14 +1,34 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 
+import { ApiError } from '@/api/client';
 import { queryKeys } from '@/api/query-keys';
-import { listRecordings } from '@/api/recordings';
-import { useRecordings } from '@/api/recordings.queries';
+import { deleteRecording, listRecordings, uploadRecording } from '@/api/recordings';
+import { useDeleteRecording, useRecordings, useUploadRecording } from '@/api/recordings.queries';
 import { makeRecording } from '@/test/fixtures';
 import { withQueryClient } from '@/test/query-client';
 
-jest.mock('@/api/recordings', () => ({ listRecordings: jest.fn() }));
+jest.mock('@/api/recordings', () => ({
+  deleteRecording: jest.fn(),
+  listRecordings: jest.fn(),
+  uploadRecording: jest.fn(),
+}));
 
 const listMock = listRecordings as jest.MockedFunction<typeof listRecordings>;
+const uploadMock = uploadRecording as jest.MockedFunction<typeof uploadRecording>;
+const deleteMock = deleteRecording as jest.MockedFunction<typeof deleteRecording>;
+
+const FILE = { uri: 'file:///take-1.m4a', name: 'take-1.m4a', mimeType: 'audio/m4a' };
+
+/** Seeds the list the write hooks are supposed to stale, and reads back whether they did. */
+function seedRecordings(sessionId: string) {
+  const { queryClient, wrapper } = withQueryClient();
+  queryClient.setQueryData(queryKeys.recordings(sessionId), [makeRecording({ id: 'r1' })]);
+
+  const isStale = (id = sessionId) =>
+    queryClient.getQueryState(queryKeys.recordings(id))?.isInvalidated;
+
+  return { queryClient, wrapper, isStale };
+}
 
 afterEach(() => jest.resetAllMocks());
 
@@ -45,5 +65,57 @@ describe('useRecordings', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(queryClient.getQueryData(queryKeys.recordings('session-2'))).toBeUndefined();
+  });
+});
+
+describe('useUploadRecording', () => {
+  it('uploads against its session and stales that session recordings', async () => {
+    uploadMock.mockResolvedValue(makeRecording({ id: 'r2' }));
+    const { wrapper, isStale } = seedRecordings('session-1');
+
+    const { result } = await renderHook(() => useUploadRecording('session-1'), { wrapper });
+    result.current.mutate(FILE);
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(uploadMock).toHaveBeenCalledWith('session-1', FILE);
+    expect(isStale()).toBe(true);
+  });
+
+  it('leaves the list intact when the upload fails', async () => {
+    uploadMock.mockRejectedValue(new ApiError('File too large', 413));
+    const { wrapper, isStale } = seedRecordings('session-1');
+
+    const { result } = await renderHook(() => useUploadRecording('session-1'), { wrapper });
+    result.current.mutate(FILE);
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(isStale()).toBe(false);
+  });
+});
+
+describe('useDeleteRecording', () => {
+  // The endpoint is keyed by recording; only the cache key needs the session.
+  it('deletes by recording id and stales the session it was bound to', async () => {
+    deleteMock.mockResolvedValue(undefined);
+    const { wrapper, isStale } = seedRecordings('session-1');
+
+    const { result } = await renderHook(() => useDeleteRecording('session-1'), { wrapper });
+    result.current.mutate('r1');
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(deleteMock).toHaveBeenCalledWith('r1');
+    expect(isStale()).toBe(true);
+  });
+
+  it('stales only the session it was given, not every session recordings', async () => {
+    deleteMock.mockResolvedValue(undefined);
+    const { queryClient, wrapper, isStale } = seedRecordings('session-1');
+    queryClient.setQueryData(queryKeys.recordings('session-2'), [makeRecording({ id: 'r9' })]);
+
+    const { result } = await renderHook(() => useDeleteRecording('session-1'), { wrapper });
+    result.current.mutate('r1');
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(isStale('session-2')).toBe(false);
   });
 });
