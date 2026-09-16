@@ -5,10 +5,12 @@ jest.mock('expo-router/react-navigation', () => ({
 jest.mock('@/api/routines.queries', () => ({
   useCreateRoutine: jest.fn(),
   useDeleteRoutine: jest.fn(),
+  useRemoveRoutineTask: jest.fn(),
   useReorderRoutineTasks: jest.fn(),
   useRoutine: jest.fn(),
   useRoutineTasks: jest.fn(),
   useUpdateRoutine: jest.fn(),
+  useUpdateRoutineTask: jest.fn(),
 }));
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
@@ -18,15 +20,17 @@ import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import {
   useCreateRoutine,
   useDeleteRoutine,
+  useRemoveRoutineTask,
   useReorderRoutineTasks,
   useRoutine,
   useRoutineTasks,
   useUpdateRoutine,
+  useUpdateRoutineTask,
 } from '@/api/routines.queries';
 import { RoutineBuilder } from '@/features/routines/routine-builder';
 import { useActiveSessionStore } from '@/features/session/session-store';
 import { useToastStore } from '@/stores/toast-store';
-import { mockNavigation, mockRouter } from '@/test/expo-router';
+import { linkHrefs, mockNavigation, mockRouter } from '@/test/expo-router';
 import { makeRoutine } from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
 import { errorQuery, mutationStub, pendingQuery, successQuery } from '@/test/query-hooks';
@@ -51,6 +55,8 @@ const reorderHook = useReorderRoutineTasks as unknown as AnyHook;
 const createHook = useCreateRoutine as unknown as AnyHook;
 const updateHook = useUpdateRoutine as unknown as AnyHook;
 const deleteHook = useDeleteRoutine as unknown as AnyHook;
+const updateTaskHook = useUpdateRoutineTask as unknown as AnyHook;
+const removeTaskHook = useRemoveRoutineTask as unknown as AnyHook;
 const preventRemoveMock = usePreventRemove as jest.MockedFunction<typeof usePreventRemove>;
 
 const ROUTINE_ID = 'r1';
@@ -92,6 +98,9 @@ const BLOCKED_ACTION = { type: 'POP' } as Parameters<
 >[0]['data']['action'];
 
 const editing = () => withGluestack(<RoutineBuilder routineId={ROUTINE_ID} />);
+
+/** Canvas 06 hides a task's controls until its row is tapped. */
+const expand = (title: string) => fireEvent.press(screen.getByLabelText(title));
 const creating = () => withGluestack(<RoutineBuilder />);
 
 beforeEach(() => {
@@ -100,6 +109,8 @@ beforeEach(() => {
   createHook.mockReturnValue(mutationStub(makeRoutine({ id: 'new-1' })));
   updateHook.mockReturnValue(mutationStub());
   deleteHook.mockReturnValue(mutationStub());
+  updateTaskHook.mockReturnValue(mutationStub());
+  removeTaskHook.mockReturnValue(mutationStub());
   ready();
 });
 
@@ -412,14 +423,116 @@ describe('unsaved-changes guard', () => {
   });
 });
 
+describe('task duration and removal', () => {
+  it('keeps the controls on a row hidden until it is tapped', async () => {
+    await render(editing());
+
+    expect(screen.queryByText('Remove')).toBeNull();
+    await expand('Alternate picking');
+
+    expect(screen.getByText('Remove')).toBeTruthy();
+  });
+
+  it('expands one row at a time, so the list never becomes a wall of buttons', async () => {
+    await render(editing());
+
+    await expand('Alternate picking');
+    await expand('Modes');
+
+    // One Remove on screen means only the second row stayed open.
+    expect(screen.getAllByText('Remove')).toHaveLength(1);
+  });
+
+  // A task with no target is valid; rendering it as "0 min" would claim it had one.
+  it('shows an em-dash for a task with no target, not zero', async () => {
+    await render(editing());
+
+    expect(screen.getByText('—')).toBeTruthy();
+    expect(screen.queryByText('0 min')).toBeNull();
+  });
+
+  it('offers a starting duration for a task that has none', async () => {
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Modes');
+    await fireEvent.press(screen.getByText('Add duration'));
+
+    expect(update.mutate).toHaveBeenCalledWith(
+      { taskId: 'c', input: { targetDurationMinutes: 15 } },
+      expect.anything(),
+    );
+  });
+
+  it('steps an existing duration up', async () => {
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Alternate picking');
+    await fireEvent.press(screen.getByLabelText('Increase minutes'));
+
+    expect(update.mutate).toHaveBeenCalledWith(
+      { taskId: 'a', input: { targetDurationMinutes: 11 } },
+      expect.anything(),
+    );
+  });
+
+  /**
+   * `targetDurationMinutes` is `@Min(1)` on the backend, so the stepper must never produce 0.
+   * Decrementing at the floor clears instead — the field is optional by design.
+   */
+  it('clears rather than reaching zero at the floor', async () => {
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(update);
+    ready([routineTask('a', 'Alternate picking', 1)]);
+    await render(editing());
+
+    await expand('Alternate picking');
+    await fireEvent.press(screen.getByLabelText('Clear duration'));
+
+    expect(update.mutate).toHaveBeenCalledWith(
+      { taskId: 'a', input: { targetDurationMinutes: undefined } },
+      expect.anything(),
+    );
+  });
+
+  it('removes a task without asking, since re-adding it is one tap', async () => {
+    const remove = mutationStub();
+    removeTaskHook.mockReturnValue(remove);
+    await render(editing());
+
+    await expand('Barre chords');
+    await fireEvent.press(screen.getByText('Remove'));
+
+    expect(remove.mutate).toHaveBeenCalledWith('b', expect.anything());
+    // The row collapses, so the controls do not linger over a task that is gone.
+    expect(screen.queryByText('Remove')).toBeNull();
+  });
+
+  it('links to the picker for this routine', async () => {
+    await render(editing());
+
+    expect(screen.getByText('Add Tasks')).toBeTruthy();
+    expect(linkHrefs).toContainEqual({
+      pathname: '/routines/[id]/add-tasks',
+      params: { id: ROUTINE_ID },
+    });
+  });
+});
+
 describe('reordering', () => {
   it('disables up on the first row and down on the last', async () => {
     await render(editing());
 
-    expect(screen.getByLabelText('Move Alternate picking up')).toBeDisabled();
-    expect(screen.getByLabelText('Move Alternate picking down')).not.toBeDisabled();
-    expect(screen.getByLabelText('Move Modes up')).not.toBeDisabled();
-    expect(screen.getByLabelText('Move Modes down')).toBeDisabled();
+    await expand('Alternate picking');
+    expect(screen.getByText('Move up')).toBeDisabled();
+    expect(screen.getByText('Move down')).not.toBeDisabled();
+
+    await expand('Modes');
+    expect(screen.getByText('Move up')).not.toBeDisabled();
+    expect(screen.getByText('Move down')).toBeDisabled();
   });
 
   it('sends the whole new order when a task moves down', async () => {
@@ -427,7 +540,8 @@ describe('reordering', () => {
     reorderHook.mockReturnValue(reorder);
     await render(editing());
 
-    await fireEvent.press(screen.getByLabelText('Move Alternate picking down'));
+    await expand('Alternate picking');
+    await fireEvent.press(screen.getByText('Move down'));
 
     expect(reorder.mutate).toHaveBeenCalledWith(['b', 'a', 'c']);
   });
@@ -437,7 +551,8 @@ describe('reordering', () => {
     reorderHook.mockReturnValue(reorder);
     await render(editing());
 
-    await fireEvent.press(screen.getByLabelText('Move Modes up'));
+    await expand('Modes');
+    await fireEvent.press(screen.getByText('Move up'));
 
     expect(reorder.mutate).toHaveBeenCalledWith(['a', 'c', 'b']);
   });
@@ -448,8 +563,9 @@ describe('reordering', () => {
     ready([routineTask('a', 'Only task')]);
     await render(editing());
 
-    expect(screen.getByLabelText('Move Only task up')).toBeDisabled();
-    expect(screen.getByLabelText('Move Only task down')).toBeDisabled();
+    await expand('Only task');
+    expect(screen.getByText('Move up')).toBeDisabled();
+    expect(screen.getByText('Move down')).toBeDisabled();
     expect(reorder.mutate).not.toHaveBeenCalled();
   });
 

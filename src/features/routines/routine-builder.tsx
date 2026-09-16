@@ -1,21 +1,24 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigation, useRouter } from 'expo-router';
+import { Link, useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
-import { ChevronDown, ChevronLeft, ChevronUp } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { z } from 'zod';
 
+import { ApiError } from '@/api/client';
 import { describeError } from '@/api/errors';
 import {
   useCreateRoutine,
   useDeleteRoutine,
+  useRemoveRoutineTask,
   useReorderRoutineTasks,
   useRoutine,
   useRoutineTasks,
   useUpdateRoutine,
+  useUpdateRoutineTask,
 } from '@/api/routines.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -29,6 +32,7 @@ import { Input } from '@/components/ui/input';
 import { Segmented, type SegmentedOption } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ValidationMessage } from '@/components/ui/validation-message';
+import { RoutineTaskRow } from '@/features/routines/routine-task-row';
 import { UnsavedChangesDialog } from '@/features/routines/unsaved-changes-dialog';
 import { useStartPractice } from '@/features/routines/use-start-practice';
 import { useToastStore } from '@/stores/toast-store';
@@ -186,9 +190,12 @@ function EditRoutineBody({
   const updateRoutine = useUpdateRoutine(routineId);
   const deleteRoutine = useDeleteRoutine();
   const reorderMutation = useReorderRoutineTasks(routineId);
+  const updateRoutineTask = useUpdateRoutineTask(routineId);
+  const removeRoutineTask = useRemoveRoutineTask(routineId);
 
   const [status, setStatus] = useState<RoutineStatus>(routine.status);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
   const form = useRoutineForm({ title: routine.title, notes: routine.notes ?? '' });
@@ -206,7 +213,32 @@ function EditRoutineBody({
     if (target < 0 || target >= tasks.length) return;
     const reordered = [...tasks];
     [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    // The backend 400s unless `taskIds` carries every assigned task exactly once — this is a
+    // full reorder, never a partial move.
     reorderMutation.mutate(reordered.map((t) => t.taskId));
+  }
+
+  function setTaskMinutes(taskId: string, targetDurationMinutes: number | undefined) {
+    setFailure(null);
+    updateRoutineTask.mutate(
+      { taskId, input: { targetDurationMinutes } },
+      {
+        onError: (error) => setFailure(describeError(error, "Couldn't update this task").title),
+      },
+    );
+  }
+
+  /**
+   * Removing leaves a gap in `position`, which is fine — the backend only needs positions
+   * unique per routine and sorts by them. Closing the gap would be an extra reorder write
+   * that can 409 against the per-routine lock for no user-visible gain.
+   */
+  function removeTask(taskId: string) {
+    setFailure(null);
+    setExpandedTaskId(null);
+    removeRoutineTask.mutate(taskId, {
+      onError: (error) => setFailure(describeError(error, "Couldn't remove this task").title),
+    });
   }
 
   /** PATCH takes a partial body, so send only what moved. */
@@ -260,6 +292,8 @@ function EditRoutineBody({
   }
 
   const busy = updateRoutine.isPending || deleteRoutine.isPending;
+  const taskBusy =
+    updateRoutineTask.isPending || removeRoutineTask.isPending || reorderMutation.isPending;
   // DELETE /routines/{id} is a 409 while any task is still attached. Rather than cascade —
   // which can strip the tasks and still fail to delete — the action states its precondition.
   const deletable = routine.taskCount === 0;
@@ -298,46 +332,42 @@ function EditRoutineBody({
       {reorderMutation.isError && (
         <ErrorPanel
           title="Order not saved"
-          message="Another change was in progress. The list is back to the last saved order."
+          message={
+            reorderMutation.error instanceof ApiError && reorderMutation.error.status === 503
+              ? 'Reordering is unavailable right now. The list is back to the last saved order.'
+              : 'Another change was in progress. The list is back to the last saved order.'
+          }
           onRetry={() => reorderMutation.reset()}
         />
       )}
 
       <View style={styles.taskList}>
         {tasks.map((routineTask: RoutineTaskWithTask, index: number) => (
-          <Card key={routineTask.taskId} style={styles.taskRow}>
-            <ThemedText type="body" color="textMuted" style={styles.index}>
-              {index + 1}
-            </ThemedText>
-            <View style={styles.taskInfo}>
-              <ThemedText type="label">{routineTask.task.title}</ThemedText>
-              {routineTask.targetDurationMinutes != null && (
-                <ThemedText type="body" color="textMuted">
-                  {routineTask.targetDurationMinutes} min
-                </ThemedText>
-              )}
-            </View>
-            <View style={styles.moveButtons}>
-              <Button
-                variant="icon"
-                accessibilityLabel={`Move ${routineTask.task.title} up`}
-                onPress={() => move(index, -1)}
-                disabled={index === 0}
-              >
-                <ChevronUp size={18} strokeWidth={2.75} />
-              </Button>
-              <Button
-                variant="icon"
-                accessibilityLabel={`Move ${routineTask.task.title} down`}
-                onPress={() => move(index, 1)}
-                disabled={index === tasks.length - 1}
-              >
-                <ChevronDown size={18} strokeWidth={2.75} />
-              </Button>
-            </View>
-          </Card>
+          <RoutineTaskRow
+            key={routineTask.taskId}
+            routineTask={routineTask}
+            index={index}
+            isFirst={index === 0}
+            isLast={index === tasks.length - 1}
+            expanded={expandedTaskId === routineTask.taskId}
+            busy={taskBusy}
+            onToggleExpanded={() =>
+              setExpandedTaskId((current) =>
+                current === routineTask.taskId ? null : routineTask.taskId,
+              )
+            }
+            onMove={(direction) => move(index, direction)}
+            onSetMinutes={(minutes) => setTaskMinutes(routineTask.taskId, minutes)}
+            onRemove={() => removeTask(routineTask.taskId)}
+          />
         ))}
       </View>
+
+      <Link href={{ pathname: '/routines/[id]/add-tasks', params: { id: routineId } }} asChild>
+        <Button variant="secondary" block>
+          Add Tasks
+        </Button>
+      </Link>
 
       <Button block onPress={() => startPractice({ id: routineId, title: routine.title }, tasks)}>
         Start Practice
