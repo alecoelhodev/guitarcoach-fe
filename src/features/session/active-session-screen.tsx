@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { describeError, type ErrorDescription } from '@/api/errors';
 import { useCreateSession } from '@/api/sessions.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChecklistRow } from '@/components/ui/checklist-row';
@@ -59,17 +61,30 @@ function ActiveSessionScreenBody() {
   const [startedWithNoTasks] = useState(() => tasks.length === 0);
   const createSessionMutation = useCreateSession();
   const showToast = useToastStore((state) => state.show);
+  const [failure, setFailure] = useState<ErrorDescription | null>(null);
 
   async function handleFinish() {
-    await createSessionMutation.mutateAsync({
-      routineId,
-      title,
-      tasks: tasks.map((t) => ({
-        taskId: t.taskId,
-        durationMinutes: t.durationMinutes,
-        completed: t.completed,
-      })),
-    });
+    setFailure(null);
+    try {
+      await createSessionMutation.mutateAsync({
+        routineId,
+        title,
+        tasks: tasks.map((task) => ({
+          taskId: task.taskId,
+          // `CreatePracticeSessionTaskDto.durationMinutes` is `@Min(1)` on the backend and
+          // that bound does not survive into the generated `api.d.ts`, so sending the 0 a
+          // task starts at is a 400. Minutes are optional by design — omit, don't zero.
+          ...(task.durationMinutes >= 1 ? { durationMinutes: task.durationMinutes } : {}),
+          completed: task.completed,
+        })),
+      });
+    } catch (error) {
+      // Deliberately no `reset()` and no navigation: the minutes exist only here until this
+      // write lands, so discarding them on a failed save loses the user's whole session.
+      setFailure(describeError(error, "Couldn't save this session"));
+      return;
+    }
+
     reset();
     router.back();
     showToast('Session saved', 'success');
@@ -148,11 +163,13 @@ function ActiveSessionScreenBody() {
           ))}
         </ScrollView>
 
+        {failure && <Banner tone="error" title={failure.title} message={failure.message} />}
+
         <Button
           block
           loading={createSessionMutation.isPending}
           loadingLabel="Saving session…"
-          onPress={handleFinish}
+          onPress={() => void handleFinish()}
         >
           Finish Session
         </Button>

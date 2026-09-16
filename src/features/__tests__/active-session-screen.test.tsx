@@ -3,9 +3,10 @@ jest.mock('@/api/sessions.queries', () => ({ useCreateSession: jest.fn() }));
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { useCreateSession } from '@/api/sessions.queries';
 import { ActiveSessionScreen } from '@/features/session/active-session-screen';
-import { useActiveSessionStore } from '@/features/session/session-store';
+import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { storage } from '@/lib/storage';
 import { useToastStore } from '@/stores/toast-store';
 import { mockRouter } from '@/test/expo-router';
@@ -24,7 +25,11 @@ const useCreateSessionMock = useCreateSession as unknown as jest.MockedFunction<
   (...args: never[]) => unknown
 >;
 
-function startSession(tasks = [{ taskId: 't1', title: 'Alternate picking' }]) {
+function startSession(
+  tasks: (Partial<ActiveSessionTask> & { taskId: string; title: string })[] = [
+    { taskId: 't1', title: 'Alternate picking' },
+  ],
+) {
   useActiveSessionStore.getState().start({
     routineId: 'r1',
     title: 'Morning warm-up',
@@ -218,6 +223,90 @@ describe('with an active session', () => {
         tasks: [{ taskId: 't1', durationMinutes: 11, completed: true }],
       }),
     );
+  });
+
+  /**
+   * The backend's `CreatePracticeSessionTaskDto.durationMinutes` is `@Min(1)`, and that bound
+   * does not survive into the generated `api.d.ts` — so nothing but this test stops a task
+   * that was never given minutes from making every Finish a 400.
+   */
+  it('omits the minutes of a task left at zero rather than sending 0', async () => {
+    const mutation = mutationStub();
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession([
+      { taskId: 't1', title: 'Modes', targetDurationMinutes: undefined, durationMinutes: 0 },
+    ]);
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(mutation.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ tasks: [{ taskId: 't1', completed: false }] }),
+    );
+  });
+
+  it('keeps sending the minutes of a task that has them', async () => {
+    const mutation = mutationStub();
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(mutation.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ tasks: [{ taskId: 't1', durationMinutes: 10, completed: false }] }),
+    );
+  });
+
+  /**
+   * The minutes exist only in local state until this write lands, so a failed save that still
+   * reset the store would destroy the user's whole session. It also must not be an unhandled
+   * rejection — that surfaces as a red screen rather than a message.
+   */
+  it('keeps the session and shows why when the write fails', async () => {
+    const mutation = mutationStub();
+    mutation.mutateAsync = jest.fn(async () => {
+      throw new ApiError('boom', OFFLINE_STATUS);
+    });
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(screen.getByText('No connection')).toBeTruthy();
+    expect(useActiveSessionStore.getState().tasks).toHaveLength(1);
+    expect(mockRouter.back).not.toHaveBeenCalled();
+    expect(useToastStore.getState().toast).toBeNull();
+  });
+
+  it('clears the failure when a retry succeeds', async () => {
+    const mutation = mutationStub();
+    mutation.mutateAsync = jest
+      .fn<Promise<unknown>, []>()
+      .mockRejectedValueOnce(new ApiError('boom', OFFLINE_STATUS))
+      .mockResolvedValueOnce(undefined);
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+    expect(screen.getByText('No connection')).toBeTruthy();
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(screen.queryByText('No connection')).toBeNull();
+    expect(mockRouter.back).toHaveBeenCalledTimes(1);
   });
 
   it('says it is saving and blocks a second finish while the write is in flight', async () => {
