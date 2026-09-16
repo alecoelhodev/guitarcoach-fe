@@ -1,4 +1,9 @@
-jest.mock('@/api/recordings.queries', () => ({ useRecordings: jest.fn() }));
+jest.mock('@/api/recordings.queries', () => ({
+  useRecordings: jest.fn(),
+  useDeleteRecording: jest.fn(() => require('@/test/query-hooks').mutationStub()),
+  useUploadRecording: jest.fn(() => require('@/test/query-hooks').mutationStub()),
+}));
+jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 jest.mock('@/api/sessions.queries', () => ({ useSession: jest.fn() }));
 jest.mock('@/api/tasks.queries', () => ({ useTask: jest.fn() }));
 jest.mock('@/api/recordings', () => ({ getRecordingDownloadUrl: jest.fn() }));
@@ -168,11 +173,19 @@ describe('task rows', () => {
 });
 
 describe('recordings', () => {
-  it('omits the section entirely when there are none', async () => {
+  it('offers uploads and explains an empty recordings list', async () => {
     sessionHook.mockReturnValue(successQuery(makeSession()));
     await render(<SessionDetail sessionId={SESSION_ID} />);
 
-    expect(screen.queryByText('Recordings')).toBeNull();
+    expect(screen.getByText('Recordings')).toBeTruthy();
+  });
+
+  it('offers retry for recordings errors without hiding the session', async () => {
+    sessionHook.mockReturnValue(successQuery(makeSession()));
+    recordingsHook.mockReturnValue(errorQuery(new Error('unavailable')));
+    await render(<SessionDetail sessionId={SESSION_ID} />);
+    expect(screen.getByText("Couldn't load recordings")).toBeTruthy();
+    expect(screen.getByText('Upload recording')).toBeTruthy();
   });
 
   it('counts one recording in the singular', async () => {
@@ -205,6 +218,6 @@ describe('recordings', () => {
     await render(<SessionDetail sessionId={SESSION_ID} />);
 
     expect(screen.getByText('Blues in A')).toBeTruthy();
-    expect(screen.queryByText('Recordings')).toBeNull();
+    expect(screen.getByText('Recordings')).toBeTruthy();
   });
 });

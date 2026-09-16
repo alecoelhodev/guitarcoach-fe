@@ -1,15 +1,18 @@
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Pause, Play } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { getRecordingDownloadUrl } from '@/api/recordings';
+import { useDeleteRecording } from '@/api/recordings.queries';
 import { ThemedText } from '@/components/themed-text';
-import { Button } from '@/components/ui/button';
+import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ErrorPanel } from '@/components/ui/error-panel';
 import { Progress, ProgressFilledTrack } from '@/components/ui/progress';
 import { formatClock } from '@/lib/duration';
-import { Spacing } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 import type { Recording } from '@/types/recording';
 
 /** Canvas 09 labels the file by format: "M4A · 4.2 MB · today 8:44 PM". */
@@ -26,24 +29,83 @@ function describeFile(recording: Recording) {
 export function RecordingRow({ recording }: { recording: Recording }) {
   const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
-  const [error, setError] = useState<string>();
+  const deletion = useDeleteRecording(recording.practiceSessionId);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
+  const requestId = useRef(0);
+  const fetching = useRef(false);
+  const removing = useRef(false);
+  const resumeAt = useRef(0);
 
-  async function togglePlay() {
-    setError(undefined);
-    if (status.playing) {
-      player.pause();
-      return;
-    }
+  useEffect(
+    () => () => {
+      requestId.current += 1;
+    },
+    [],
+  );
+  useEffect(() => {
+    if (status.didJustFinish) resumeAt.current = 0;
+    else if (status.currentTime > 0) resumeAt.current = status.currentTime;
+  }, [status.currentTime, status.didJustFinish]);
+
+  async function playFresh() {
+    if (fetching.current || removing.current) return;
+    fetching.current = true;
+    const attempt = ++requestId.current;
+    setError(false);
+    setLoading(true);
     try {
-      // Requested fresh per play — the URL is temporary and can expire between plays.
+      // URLs are requested only on intent to play. Preserve the position when refreshing.
+      const position = resumeAt.current;
       const { url } = await getRecordingDownloadUrl(recording.id);
+      if (attempt !== requestId.current) return;
       player.replace(url);
+      if (position > 0) await player.seekTo(position);
+      if (attempt !== requestId.current) return;
       player.play();
     } catch {
-      setError('This recording link has expired.');
+      if (attempt === requestId.current) setError(true);
+    } finally {
+      if (attempt === requestId.current) {
+        fetching.current = false;
+        setLoading(false);
+      }
     }
   }
 
+  function togglePlay() {
+    if (status.playing) player.pause();
+    else void playFresh();
+  }
+
+  async function deleteFile() {
+    if (removing.current) return;
+    removing.current = true;
+    // A late signed-URL response must never start playing a deleted recording.
+    requestId.current += 1;
+    fetching.current = false;
+    setLoading(false);
+    setConfirming(false);
+    setDeleting(true);
+    setDeleteError(false);
+    try {
+      player.pause();
+      await deletion.mutateAsync(recording.id);
+      setDeleted(true);
+    } catch {
+      setDeleteError(true);
+    } finally {
+      removing.current = false;
+      setDeleting(false);
+    }
+  }
+
+  if (deleted) return null;
+  const playbackError = error || Boolean(status.error);
   const progress = status.duration > 0 ? (status.currentTime / status.duration) * 100 : 0;
 
   return (
@@ -56,6 +118,7 @@ export function RecordingRow({ recording }: { recording: Recording }) {
           variant="tertiary"
           className="h-[44px] w-[44px] rounded-pill px-0"
           accessibilityLabel={status.playing ? 'Pause recording' : 'Play recording'}
+          disabled={loading || deleting || confirming}
           onPress={togglePlay}
         >
           {status.playing ? (
@@ -81,11 +144,49 @@ export function RecordingRow({ recording }: { recording: Recording }) {
         </View>
       )}
 
-      {error && (
+      {loading && (
         <ThemedText type="caption" color="textMuted">
-          {error}
+          Getting playback link…
         </ThemedText>
       )}
+      {playbackError && (
+        <View accessibilityRole="alert" style={styles.error}>
+          <ThemedText type="caption" style={{ color: Colors.dangerRamp[700] }}>
+            This playback link has expired.
+          </ThemedText>
+          <Button
+            variant="secondary"
+            disabled={loading || deleting || confirming}
+            onPress={() => {
+              void playFresh();
+            }}
+          >
+            Get a new link
+          </Button>
+        </View>
+      )}
+      {deleteError && (
+        <ErrorPanel title="Couldn't delete recording" message="Try deleting it again." />
+      )}
+      <Button
+        variant="tertiary"
+        disabled={deleting}
+        accessibilityLabel={`Delete ${recording.originalFileName}`}
+        onPress={() => setConfirming(true)}
+      >
+        <ButtonText className="text-danger-700">{deleting ? 'Deleting…' : 'Delete'}</ButtonText>
+      </Button>
+      <ConfirmDialog
+        visible={confirming}
+        title={`Delete '${recording.originalFileName}'?`}
+        message="The audio is removed for good."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          void deleteFile();
+        }}
+        onCancel={() => setConfirming(false)}
+      />
     </Card>
   );
 }
@@ -95,4 +196,5 @@ const styles = StyleSheet.create({
   name: { flex: 1 },
   scrubber: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
   track: { flex: 1 },
+  error: { gap: Spacing[2] },
 });

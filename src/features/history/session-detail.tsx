@@ -8,9 +8,12 @@ import { useTask } from '@/api/tasks.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorPanel } from '@/components/ui/error-panel';
+import { QueryState } from '@/components/ui/query-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RecordingRow } from '@/features/history/recording-row';
+import { RecordingUpload } from '@/features/history/recording-upload';
 import { formatMinutes, sumSessionMinutes } from '@/lib/duration';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/theme/tokens';
 import type { PracticeSessionTask } from '@/types/session';
@@ -107,21 +110,29 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
             </Card>
           )}
 
-          {recordings.length > 0 && (
-            <>
-              <View style={styles.sectionHeader}>
-                <ThemedText type="overline" color="textMuted">
-                  Recordings
-                </ThemedText>
-                <ThemedText type="body" color="textMuted">
-                  {recordings.length} {recordings.length === 1 ? 'file' : 'files'}
-                </ThemedText>
-              </View>
-              {recordings.map((recording) => (
-                <RecordingRow key={recording.id} recording={recording} />
-              ))}
-            </>
-          )}
+          <View style={styles.sectionHeader}>
+            <ThemedText type="overline" color="textMuted">
+              Recordings
+            </ThemedText>
+            {recordingsQuery.data && (
+              <ThemedText type="body" color="textMuted">
+                {recordings.length} {recordings.length === 1 ? 'file' : 'files'}
+              </ThemedText>
+            )}
+          </View>
+          <RecordingUpload key={sessionId} sessionId={sessionId} />
+          <QueryState
+            query={recordingsQuery}
+            errorTitle="Couldn't load recordings"
+            isEmpty={recordings.length === 0}
+            empty={
+              <EmptyState title="No recordings for this session. Upload one to hear it back later." />
+            }
+          >
+            {(items) =>
+              items.map((recording) => <RecordingRow key={recording.id} recording={recording} />)
+            }
+          </QueryState>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
