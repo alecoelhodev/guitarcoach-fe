@@ -186,7 +186,7 @@ describe('LibraryList', () => {
     expect(screen.getByText('No tasks yet')).toBeTruthy();
   });
 
-  it('counts the tasks it has loaded, singular and plural', async () => {
+  it('uses the catalog total, singular and plural', async () => {
     mock.mockReturnValue(infinitePages([makePage([makeTask({ id: 't1' })])]));
 
     const single = await render(<LibraryList />);
@@ -194,11 +194,11 @@ describe('LibraryList', () => {
     await single.unmount();
 
     mock.mockReturnValue(
-      infinitePages([makePage([makeTask({ id: 't1' }), makeTask({ id: 't2' })])]),
+      infinitePages([makePage([makeTask({ id: 't1' }), makeTask({ id: 't2' })], { total: 80 })]),
     );
     await render(<LibraryList />);
 
-    expect(screen.getByText('2 tasks')).toBeTruthy();
+    expect(screen.getByText('80 tasks')).toBeTruthy();
   });
 
   it('renders a card per task', async () => {
@@ -231,6 +231,71 @@ describe('LibraryList', () => {
     await fireEvent.press(screen.getByText('Load more'));
 
     expect(query.fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+  it('combines filters, toggles each off, and clears both', async () => {
+    mock.mockReturnValue(infinitePages([makePage([makeTask()], { total: 8 })]));
+    await render(<LibraryList />);
+    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+    for (const name of ['Technique', 'Theory', 'Repertoire']) {
+      await fireEvent.press(screen.getByRole('button', { name }));
+      expect(useTasksMock).toHaveBeenLastCalledWith({
+        category: name.toLowerCase(),
+        difficulty: undefined,
+      });
+      expect(screen.getByRole('button', { name })).toBeSelected();
+    }
+    await fireEvent.press(screen.getByRole('button', { name: 'Technique' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Medium' }));
+    expect(useTasksMock).toHaveBeenLastCalledWith({ category: 'technique', difficulty: 'medium' });
+    expect(screen.getByText('8 tasks · Technique · Medium')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Technique' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Medium' }));
+    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+    for (const name of ['Easy', 'Hard']) {
+      await fireEvent.press(screen.getByRole('button', { name }));
+      expect(useTasksMock).toHaveBeenLastCalledWith({
+        category: undefined,
+        difficulty: name.toLowerCase(),
+      });
+    }
+    await fireEvent.press(screen.getByRole('button', { name: 'Theory' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Clear' }));
+    expect(useTasksMock).toHaveBeenLastCalledWith({ category: undefined, difficulty: undefined });
+  });
+
+  it('distinguishes filtered emptiness and clears it', async () => {
+    mock.mockReturnValue(infinitePages([makePage([])]));
+    await render(<LibraryList />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Hard' }));
+    expect(screen.getByText('No tasks match these filters')).toBeTruthy();
+    expect(screen.queryByText('No tasks yet')).toBeNull();
+    await fireEvent.press(screen.getByText('Clear filters'));
+    expect(screen.getByText('No tasks yet')).toBeTruthy();
+  });
+
+  it('keeps filters through loading, failure and retry', async () => {
+    mock.mockReturnValue(pendingInfinite());
+    const view = await render(<LibraryList />);
+    expect(screen.queryByText('No tasks yet')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Theory' }));
+    const failed = errorInfinite(new Error('offline'));
+    mock.mockReturnValue(failed);
+    await view.rerender(<LibraryList />);
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(failed.refetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Theory' })).toBeSelected();
+    expect(useTasksMock).toHaveBeenLastCalledWith({ category: 'theory', difficulty: undefined });
+  });
+
+  it('disables pagination while fetching the next page', async () => {
+    const query = infinitePages([makePage([makeTask()])], {
+      hasNextPage: true,
+      isFetchingNextPage: true,
+    });
+    mock.mockReturnValue(query);
+    await render(<LibraryList />);
+    await fireEvent.press(screen.getByText('Loading…'));
+    expect(query.fetchNextPage).not.toHaveBeenCalled();
   });
 });
 

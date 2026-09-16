@@ -1,11 +1,16 @@
+jest.mock('@/api/recordings.queries', () => ({ useDeleteRecording: jest.fn() }));
+
 jest.mock('@/api/recordings', () => ({ getRecordingDownloadUrl: jest.fn() }));
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 
 import { getRecordingDownloadUrl } from '@/api/recordings';
+import { useDeleteRecording } from '@/api/recordings.queries';
 import { RecordingRow } from '@/features/history/recording-row';
 import { makeRecording } from '@/test/fixtures';
+import { withGluestack } from '@/test/gluestack';
+import { mutationStub } from '@/test/query-hooks';
 
 /**
  * `expo-audio` is mocked globally in `jest.setup.ts` — it ships no `mocks/` directory for
@@ -23,13 +28,20 @@ const useAudioPlayerStatusMock = useAudioPlayerStatus as jest.MockedFunction<
   typeof useAudioPlayerStatus
 >;
 
-const player = { play: jest.fn(), pause: jest.fn(), replace: jest.fn() };
+const player = {
+  play: jest.fn(),
+  pause: jest.fn(),
+  replace: jest.fn(),
+  seekTo: jest.fn().mockResolvedValue(undefined),
+};
 
 type Status = {
   playing?: boolean;
   isLoaded?: boolean;
   currentTime?: number;
   duration?: number;
+  error?: string | null;
+  didJustFinish?: boolean;
 };
 
 function setStatus(status: Status = {}) {
@@ -42,8 +54,12 @@ function setStatus(status: Status = {}) {
   } as never);
 }
 
+let deletion: ReturnType<typeof mutationStub>;
+
 beforeEach(() => {
   jest.clearAllMocks();
+  deletion = mutationStub();
+  (useDeleteRecording as jest.Mock).mockReturnValue(deletion);
   useAudioPlayerMock.mockReturnValue(player as never);
   setStatus();
   getUrlMock.mockResolvedValue({ url: 'https://cdn.example.com/take-1.m4a' });
@@ -103,7 +119,7 @@ describe('RecordingRow', () => {
 
     await fireEvent.press(screen.getByLabelText('Play recording'));
 
-    expect(await screen.findByText('This recording link has expired.')).toBeTruthy();
+    expect(await screen.findByText('This playback link has expired.')).toBeTruthy();
     expect(player.play).not.toHaveBeenCalled();
   });
 
@@ -134,5 +150,164 @@ describe('RecordingRow', () => {
     await render(<RecordingRow recording={makeRecording()} />);
 
     expect(screen.getByLabelText('Pause recording')).toBeTruthy();
+  });
+});
+
+describe('playback recovery', () => {
+  it('does not request any URL until play is pressed', async () => {
+    await render(<RecordingRow recording={makeRecording()} />);
+    expect(getUrlMock).not.toHaveBeenCalled();
+  });
+
+  it('renews a failed URL and resumes from the previous position', async () => {
+    setStatus({ currentTime: 72, duration: 180, isLoaded: true, error: 'HTTP 403' });
+    const view = await render(<RecordingRow recording={makeRecording()} />);
+    expect(screen.getByText('This playback link has expired.')).toBeTruthy();
+    getUrlMock.mockResolvedValueOnce({ url: 'https://cdn.example.com/fresh' });
+    await fireEvent.press(screen.getByText('Get a new link'));
+    await waitFor(() => expect(player.play).toHaveBeenCalledTimes(1));
+    expect(player.replace).toHaveBeenCalledWith('https://cdn.example.com/fresh');
+    expect(player.seekTo).toHaveBeenCalledWith(72);
+    setStatus({ currentTime: 72, duration: 180, isLoaded: true, playing: true, error: null });
+    await view.rerender(<RecordingRow recording={makeRecording()} />);
+    expect(screen.queryByText('Get a new link')).toBeNull();
+  });
+
+  it('recovers a download request failure without a seek on first play', async () => {
+    getUrlMock.mockRejectedValueOnce(new Error('offline'));
+    await render(<RecordingRow recording={makeRecording()} />);
+    await fireEvent.press(screen.getByLabelText('Play recording'));
+    await fireEvent.press(await screen.findByText('Get a new link'));
+    await waitFor(() => expect(player.play).toHaveBeenCalledTimes(1));
+    expect(getUrlMock).toHaveBeenCalledTimes(2);
+    expect(player.seekTo).not.toHaveBeenCalled();
+    expect(screen.queryByText('This playback link has expired.')).toBeNull();
+  });
+
+  it('shows asynchronous playback failures after a successful URL request', async () => {
+    const view = await render(<RecordingRow recording={makeRecording()} />);
+    await fireEvent.press(screen.getByLabelText('Play recording'));
+    setStatus({ error: 'Media load failed' });
+    await view.rerender(<RecordingRow recording={makeRecording()} />);
+    expect(screen.getByText('Get a new link')).toBeTruthy();
+  });
+
+  it('handles a failed source replacement', async () => {
+    player.replace.mockImplementationOnce(() => {
+      throw new Error('invalid source');
+    });
+    await render(<RecordingRow recording={makeRecording()} />);
+    await fireEvent.press(screen.getByLabelText('Play recording'));
+    expect(await screen.findByText('Get a new link')).toBeTruthy();
+    expect(player.play).not.toHaveBeenCalled();
+  });
+
+  it('restarts a completed recording at the beginning', async () => {
+    setStatus({ currentTime: 180, duration: 180, didJustFinish: true });
+    await render(<RecordingRow recording={makeRecording()} />);
+    await fireEvent.press(screen.getByLabelText('Play recording'));
+    await waitFor(() => expect(player.play).toHaveBeenCalledTimes(1));
+    expect(player.seekTo).not.toHaveBeenCalled();
+  });
+
+  it('prevents duplicate requests and ignores a URL received after unmount', async () => {
+    let resolve!: (result: { url: string }) => void;
+    getUrlMock.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    const view = await render(<RecordingRow recording={makeRecording()} />);
+    await fireEvent.press(screen.getByLabelText('Play recording'));
+    expect(screen.getByText('Getting playback link…')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Play recording'));
+    expect(getUrlMock).toHaveBeenCalledTimes(1);
+    await view.unmount();
+    await act(async () => {
+      resolve({ url: 'https://cdn.example.com/late' });
+    });
+    expect(player.replace).not.toHaveBeenCalled();
+    expect(player.play).not.toHaveBeenCalled();
+  });
+});
+
+describe('recording deletion', () => {
+  const recording = makeRecording({
+    id: 'rec-delete',
+    practiceSessionId: 'session-42',
+    originalFileName: 'take.m4a',
+  });
+  const renderRow = () => render(withGluestack(<RecordingRow recording={recording} />));
+
+  it('requires confirmation, stops playback and removes the row on success', async () => {
+    setStatus({ playing: true });
+    await renderRow();
+    await fireEvent.press(screen.getByLabelText('Delete take.m4a'));
+    expect(screen.getByText("Delete 'take.m4a'?")).toBeTruthy();
+    expect(screen.getByText('The audio is removed for good.')).toBeTruthy();
+    expect(deletion.mutateAsync).not.toHaveBeenCalled();
+    expect(player.pause).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole('button', { name: /^Delete$/ }));
+    expect(useDeleteRecording).toHaveBeenCalledWith('session-42');
+    expect(deletion.mutateAsync).toHaveBeenCalledWith('rec-delete');
+    expect(player.pause).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('take.m4a')).toBeNull();
+  });
+
+  it('keeps the file and playback unchanged when confirmation is cancelled', async () => {
+    await renderRow();
+    await fireEvent.press(screen.getByLabelText('Delete take.m4a'));
+    expect(screen.getByText('The audio is removed for good.')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Cancel'));
+    expect(screen.queryByText('The audio is removed for good.')).toBeNull();
+    expect(screen.getByText('take.m4a')).toBeTruthy();
+    expect(deletion.mutateAsync).not.toHaveBeenCalled();
+    expect(player.pause).not.toHaveBeenCalled();
+  });
+
+  it('retains the row after failure and requires confirmation again to retry', async () => {
+    deletion.mutateAsync.mockRejectedValueOnce(new Error('offline'));
+    await renderRow();
+    await fireEvent.press(screen.getByLabelText('Delete take.m4a'));
+    await fireEvent.press(screen.getByRole('button', { name: /^Delete$/ }));
+    expect(screen.getByText("Couldn't delete recording")).toBeTruthy();
+    expect(screen.getByText('take.m4a')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Delete take.m4a'));
+    await fireEvent.press(screen.getByRole('button', { name: /^Delete$/ }));
+    expect(deletion.mutateAsync).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('take.m4a')).toBeNull();
+  });
+
+  it('disables actions while deleting and prevents a late URL from starting playback', async () => {
+    let resolveUrl!: (value: { url: string }) => void;
+    let finishDelete!: () => void;
+    getUrlMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUrl = resolve;
+        }),
+    );
+    deletion.mutateAsync.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDelete = resolve;
+        }),
+    );
+    await renderRow();
+    await fireEvent.press(screen.getByLabelText('Play recording'));
+    await fireEvent.press(screen.getByLabelText('Delete take.m4a'));
+    await fireEvent.press(screen.getByRole('button', { name: /^Delete$/ }));
+    expect(screen.getByText('Deleting…')).toBeTruthy();
+    expect(screen.getByLabelText('Delete take.m4a')).toBeDisabled();
+    expect(screen.getByLabelText('Play recording')).toBeDisabled();
+    await act(async () => {
+      resolveUrl({ url: 'https://cdn.example.com/late' });
+    });
+    expect(player.play).not.toHaveBeenCalled();
+    await act(async () => {
+      finishDelete();
+    });
+    expect(screen.queryByText('take.m4a')).toBeNull();
   });
 });
