@@ -52,6 +52,8 @@ export function useStartPractice() {
     onSuccess: (tasks, { routine }) => {
       startSession({
         routineId: routine.id,
+        routineTitle: routine.title,
+        // Seeded from the routine, then the user's to rename — canvas 07's "Evening practice".
         title: routine.title,
         tasks: tasks.map(toActiveSessionTask),
       });
