@@ -226,15 +226,19 @@ describe('with an active session', () => {
   });
 
   /**
-   * The backend's `CreatePracticeSessionTaskDto.durationMinutes` is `@Min(1)`, and that bound
-   * does not survive into the generated `api.d.ts` — so nothing but this test stops a task
-   * that was never given minutes from making every Finish a 400.
+   * `CreatePracticeSessionTaskDto.durationMinutes` is optional but `@Min(1)`, while 0 is the
+   * local "nothing logged" value — every task of a routine with no target durations starts
+   * there. That bound does not survive into the generated `api.d.ts`, so nothing but this test
+   * stops it making every Finish a 400 with
+   * "tasks.0.durationMinutes must not be less than 1". Both tasks in one payload: the untimed
+   * one must lose the key, the timed one must keep it.
    */
-  it('omits the minutes of a task left at zero rather than sending 0', async () => {
+  it('omits minutes for a task that logged none, rather than sending a zero', async () => {
     const mutation = mutationStub();
     useCreateSessionMock.mockReturnValue(mutation);
     startSession([
-      { taskId: 't1', title: 'Modes', targetDurationMinutes: undefined, durationMinutes: 0 },
+      { taskId: 't1', title: 'Untimed', targetDurationMinutes: undefined, durationMinutes: 0 },
+      { taskId: 't2', title: 'Timed', durationMinutes: 15, completed: true },
     ]);
     await render(withGluestack(<ActiveSessionScreen />));
 
@@ -243,22 +247,12 @@ describe('with an active session', () => {
     });
 
     expect(mutation.mutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ tasks: [{ taskId: 't1', completed: false }] }),
-    );
-  });
-
-  it('keeps sending the minutes of a task that has them', async () => {
-    const mutation = mutationStub();
-    useCreateSessionMock.mockReturnValue(mutation);
-    startSession();
-    await render(withGluestack(<ActiveSessionScreen />));
-
-    await act(async () => {
-      await fireEvent.press(screen.getByText('Finish Session'));
-    });
-
-    expect(mutation.mutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ tasks: [{ taskId: 't1', durationMinutes: 10, completed: false }] }),
+      expect.objectContaining({
+        tasks: [
+          { taskId: 't1', completed: false },
+          { taskId: 't2', durationMinutes: 15, completed: true },
+        ],
+      }),
     );
   });
 

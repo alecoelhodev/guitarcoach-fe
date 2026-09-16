@@ -1,11 +1,14 @@
 jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
 jest.mock('@/api/routines.queries', () => ({
   useRoutines: jest.fn(),
-  // RoutineCard's Start Practice and Restore actions reach for these; the card's own
-  // behaviour is covered in cards.test.tsx, so here they only need to not explode.
-  useFetchRoutineTasks: jest.fn(() => jest.fn(async () => [])),
+  // RoutineCard's Restore action reaches for this; the card's own behaviour is covered in
+  // cards.test.tsx, so here it only needs to not explode.
   // `require` rather than the import: a jest.mock factory cannot close over imported bindings.
   useUpdateRoutine: jest.fn(() => require('@/test/query-hooks').mutationStub()),
+}));
+// RoutineCard's Start Practice; same reasoning.
+jest.mock('@/features/session/use-start-practice', () => ({
+  useStartPractice: jest.fn(() => require('@/test/query-hooks').mutationStub()),
 }));
 jest.mock('@/api/sessions.queries', () => ({ useSessions: jest.fn() }));
 jest.mock('@/api/tasks.queries', () => ({ useTasks: jest.fn() }));

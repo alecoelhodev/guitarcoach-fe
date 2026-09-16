@@ -34,7 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ValidationMessage } from '@/components/ui/validation-message';
 import { RoutineTaskRow } from '@/features/routines/routine-task-row';
 import { UnsavedChangesDialog } from '@/features/routines/unsaved-changes-dialog';
-import { useStartPractice } from '@/features/routines/use-start-practice';
+import { useStartPractice } from '@/features/session/use-start-practice';
 import { useToastStore } from '@/stores/toast-store';
 import { TabBarInset } from '@/theme/platform';
 import { Colors, MaxContentWidth, Spacing } from '@/theme/tokens';
@@ -369,7 +369,15 @@ function EditRoutineBody({
         </Button>
       </Link>
 
-      <Button block onPress={() => startPractice({ id: routineId, title: routine.title }, tasks)}>
+      {/* The tasks are already loaded here, so they are passed rather than refetched. */}
+      <Button
+        block
+        loading={startPractice.isPending}
+        loadingLabel="Starting…"
+        onPress={() =>
+          startPractice.mutate({ routine: { id: routineId, title: routine.title }, tasks })
+        }
+      >
         Start Practice
       </Button>
 

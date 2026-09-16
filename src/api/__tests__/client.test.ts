@@ -1,9 +1,20 @@
 type Client = typeof import('@/api/client');
 
-/** `client.ts` reads `Platform.OS` once at module load, so each platform needs a fresh copy. */
-function loadClient(platform: 'ios' | 'web'): Client {
+/**
+ * `client.ts` reads `Platform.OS` and the config once at module load, so each platform — and
+ * each `extra` — needs a fresh copy. The default mirrors `jest.setup.ts`, so a caller that
+ * does not care about the base URL gets the same value every other suite sees.
+ */
+function loadClient(
+  platform: 'ios' | 'web',
+  extra: Record<string, string> = { apiBaseUrl: 'http://localhost:3000' },
+): Client {
   jest.resetModules();
   jest.doMock('react-native', () => ({ Platform: { OS: platform } }));
+  jest.doMock('expo-constants', () => ({
+    __esModule: true,
+    default: { expoConfig: { extra } },
+  }));
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return require('@/api/client') as Client;
 }
@@ -32,6 +43,36 @@ describe('request', () => {
 
     const [, init] = fetchMock.mock.calls[0];
     expect(init.headers.Origin).toBe('http://localhost:3000');
+  });
+
+  it('prefers the native base URL on iOS, where localhost would mean the phone itself', async () => {
+    const { request } = loadClient('ios', {
+      apiBaseUrl: 'http://localhost:3000',
+      apiBaseUrlNative: 'https://api.example.com',
+    });
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(200));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await request('/routines');
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.example.com/api/v1/routines');
+    // The synthesized Origin has to follow the base URL, or better-auth rejects every
+    // cookie-bearing call against the deployed backend.
+    expect(init.headers.Origin).toBe('https://api.example.com');
+  });
+
+  it('ignores the native base URL on web, which reaches the local backend directly', async () => {
+    const { request } = loadClient('web', {
+      apiBaseUrl: 'http://localhost:3000',
+      apiBaseUrlNative: 'https://api.example.com',
+    });
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(200));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await request('/routines');
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:3000/api/v1/routines');
   });
 
   it('omits Origin on web, where the browser owns it', async () => {

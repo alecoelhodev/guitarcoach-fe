@@ -54,6 +54,9 @@ const config: ExpoConfig = {
   extra: {
     router: {},
     apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
+    // iOS/Android only, where `localhost` resolves to the phone rather than the dev
+    // machine. Unset is the normal case — both platforms then share `apiBaseUrl`.
+    apiBaseUrlNative: process.env.EXPO_PUBLIC_API_BASE_URL_NATIVE,
     eas: {
       projectId: '54c693c8-66cc-46ee-b412-55cc201d6973',
     },

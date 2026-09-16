@@ -1,15 +1,14 @@
 import { Link } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
-import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { describeError } from '@/api/errors';
-import { useFetchRoutineTasks, useUpdateRoutine } from '@/api/routines.queries';
+import { useUpdateRoutine } from '@/api/routines.queries';
 import { ThemedText } from '@/components/themed-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useStartPractice } from '@/features/routines/use-start-practice';
+import { useStartPractice } from '@/features/session/use-start-practice';
 import { formatRoutineMeta } from '@/lib/routine-meta';
 import { useToastStore } from '@/stores/toast-store';
 import { Colors, Spacing } from '@/theme/tokens';
@@ -56,24 +55,17 @@ export function RoutineCard({ routine }: { routine: Routine }) {
 }
 
 function StartPracticeButton({ routine }: { routine: Routine }) {
-  const [starting, setStarting] = useState(false);
-  const fetchRoutineTasks = useFetchRoutineTasks();
   const startPractice = useStartPractice();
-  const showToast = useToastStore((state) => state.show);
 
-  async function handlePress() {
-    setStarting(true);
-    try {
-      startPractice(routine, await fetchRoutineTasks(routine.id));
-    } catch (error) {
-      showToast(describeError(error, "Couldn't start this routine").title, 'error');
-    } finally {
-      setStarting(false);
-    }
-  }
-
+  // No tasks passed: the list response carries counts, not the tasks themselves, so the hook
+  // pays one fetch on press rather than one per card on every render of the list.
   return (
-    <Button block loading={starting} loadingLabel="Loading…" onPress={handlePress}>
+    <Button
+      block
+      loading={startPractice.isPending}
+      loadingLabel="Loading…"
+      onPress={() => startPractice.mutate({ routine })}
+    >
       Start Practice
     </Button>
   );

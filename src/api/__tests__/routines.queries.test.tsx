@@ -18,7 +18,6 @@ import {
   useAddRoutineTask,
   useCreateRoutine,
   useDeleteRoutine,
-  useFetchRoutineTasks,
   useRemoveRoutineTask,
   useReorderRoutineTasks,
   useRoutine,
@@ -363,51 +362,5 @@ describe('useRemoveRoutineTask', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(removeRoutineTaskMock).toHaveBeenCalledWith(ROUTINE_ID, 'task-9');
     expect(staleness()).toEqual(ALL_STALE);
-  });
-});
-
-describe('useFetchRoutineTasks', () => {
-  afterEach(() => jest.resetAllMocks());
-
-  it('fetches on demand and writes into the same key useRoutineTasks reads', async () => {
-    listRoutineTasksMock.mockResolvedValue([task('a')]);
-    const { queryClient, wrapper } = withQueryClient();
-
-    const { result } = await renderHook(() => useFetchRoutineTasks(), { wrapper });
-    const tasks = await result.current(ROUTINE_ID);
-
-    expect(listRoutineTasksMock).toHaveBeenCalledWith(ROUTINE_ID);
-    expect(tasks.map((t) => t.taskId)).toEqual(['a']);
-    expect(queryClient.getQueryData(queryKeys.routineTasks(ROUTINE_ID))).toHaveLength(1);
-  });
-
-  // The reason a list card can afford a Start button: opening the routine first makes the
-  // press cost nothing.
-  it('serves a fresh cached task list without going back to the transport', async () => {
-    // `makeTestQueryClient` leaves staleTime at 0, where `fetchQuery` always refetches. The
-    // app's client (src/api/query-client.ts) uses 30s, and that is what makes an
-    // already-loaded list free — so mirror it rather than assert behaviour the app lacks.
-    const client = makeTestQueryClient();
-    client.setDefaultOptions({
-      queries: { ...client.getDefaultOptions().queries, staleTime: 30_000 },
-    });
-
-    const { queryClient, wrapper } = withQueryClient(client);
-    queryClient.setQueryData(queryKeys.routineTasks(ROUTINE_ID), [task('a'), task('b')]);
-
-    const { result } = await renderHook(() => useFetchRoutineTasks(), { wrapper });
-    const tasks = await result.current(ROUTINE_ID);
-
-    expect(listRoutineTasksMock).not.toHaveBeenCalled();
-    expect(tasks).toHaveLength(2);
-  });
-
-  it('rejects rather than resolving empty when the fetch fails', async () => {
-    listRoutineTasksMock.mockRejectedValue(new ApiError('boom', 500));
-    const { wrapper } = withQueryClient();
-
-    const { result } = await renderHook(() => useFetchRoutineTasks(), { wrapper });
-
-    await expect(result.current(ROUTINE_ID)).rejects.toThrow('boom');
   });
 });

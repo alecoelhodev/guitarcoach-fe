@@ -71,16 +71,20 @@ function ActiveSessionScreenBody() {
         title,
         tasks: tasks.map((task) => ({
           taskId: task.taskId,
-          // `CreatePracticeSessionTaskDto.durationMinutes` is `@Min(1)` on the backend and
-          // that bound does not survive into the generated `api.d.ts`, so sending the 0 a
-          // task starts at is a 400. Minutes are optional by design — omit, don't zero.
+          // 0 is the local "nothing logged" value — a routine task carries no target duration
+          // by default — but `CreatePracticeSessionTaskDto.durationMinutes` is `@Min(1)` and
+          // that bound does not survive into the generated `api.d.ts`. Sending the zero failed
+          // Finish with "tasks.0.durationMinutes must not be less than 1". Minutes are optional
+          // by design, so omit the key rather than zeroing it.
           ...(task.durationMinutes >= 1 ? { durationMinutes: task.durationMinutes } : {}),
           completed: task.completed,
         })),
       });
     } catch (error) {
       // Deliberately no `reset()` and no navigation: the minutes exist only here until this
-      // write lands, so discarding them on a failed save loses the user's whole session.
+      // write lands, so discarding them on a failed save loses the user's whole session. A
+      // banner rather than a toast for the same reason — a message that vanishes after four
+      // seconds is one the user can miss while their practice is still unsaved.
       setFailure(describeError(error, "Couldn't save this session"));
       return;
     }

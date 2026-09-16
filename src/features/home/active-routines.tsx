@@ -15,6 +15,9 @@ export type ActiveRoutinesProps = {
   routines: Routine[];
   /** Canvas 2a lays these out as a three-column grid with a Start action per card. */
   isWide?: boolean;
+  /** Wide-only: the grid cards carry a real Start. The mobile strip has no such button. */
+  onStart?: (routine: Routine) => void;
+  startingRoutineId?: string;
 };
 
 /**
@@ -23,7 +26,12 @@ export type ActiveRoutinesProps = {
  * The section is omitted entirely when there are no active routines — canvas 02c
  * replaces the whole screen with the new-user state in that case.
  */
-export function ActiveRoutines({ routines, isWide = false }: ActiveRoutinesProps) {
+export function ActiveRoutines({
+  routines,
+  isWide = false,
+  onStart,
+  startingRoutineId,
+}: ActiveRoutinesProps) {
   if (routines.length === 0) return null;
 
   return (
@@ -43,7 +51,11 @@ export function ActiveRoutines({ routines, isWide = false }: ActiveRoutinesProps
         <View style={styles.grid}>
           {routines.map((routine) => (
             <View key={routine.id} style={styles.gridCell}>
-              <RoutineTile routine={routine} showStart />
+              <RoutineTile
+                routine={routine}
+                onStart={onStart}
+                isStarting={routine.id === startingRoutineId}
+              />
             </View>
           ))}
         </View>
@@ -64,12 +76,20 @@ export function ActiveRoutines({ routines, isWide = false }: ActiveRoutinesProps
   );
 }
 
-function RoutineTile({ routine, showStart = false }: { routine: Routine; showStart?: boolean }) {
+function RoutineTile({
+  routine,
+  onStart,
+  isStarting = false,
+}: {
+  routine: Routine;
+  onStart?: (routine: Routine) => void;
+  isStarting?: boolean;
+}) {
   const href = { pathname: '/routines/[id]', params: { id: routine.id } } as const;
 
   // Canvas 02's strip card is itself the affordance; 2a's grid card adds a Start
-  // button, so only that one nests a second link.
-  if (!showStart) {
+  // button, so only that one carries an action of its own.
+  if (!onStart) {
     return (
       <Link href={href} asChild>
         <Card style={styles.tile}>
@@ -92,11 +112,16 @@ function RoutineTile({ routine, showStart = false }: { routine: Routine; showSta
       <ThemedText type="body" color="textMuted">
         {formatRoutineMeta(routine)}
       </ThemedText>
-      <Link href={href} asChild>
-        <Button variant="tertiary">
-          <ButtonText>Start</ButtonText>
-        </Button>
-      </Link>
+      {/* Canvas 840: Start opens the Active Session pre-loaded; it writes nothing. The
+          tasks are not in hand here, so they are fetched on press rather than per card. */}
+      <Button
+        variant="tertiary"
+        onPress={() => onStart(routine)}
+        loading={isStarting}
+        loadingLabel="Starting…"
+      >
+        <ButtonText>Start</ButtonText>
+      </Button>
     </Card>
   );
 }

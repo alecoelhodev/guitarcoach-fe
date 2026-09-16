@@ -6,13 +6,19 @@ jest.mock('@/api/routines.queries', () => ({
   useRoutineTasks: jest.fn(),
 }));
 jest.mock('@/hooks/use-is-wide', () => ({ useIsWide: jest.fn() }));
+// Mocked for the same reason the query hooks are: `useStartPractice` needs a real
+// QueryClient, and its own suite covers the seed-and-navigate behaviour. Here the screen
+// only has to hand it the right routine and tasks.
+jest.mock('@/features/session/use-start-practice', () => ({ useStartPractice: jest.fn() }));
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { useRoutine, useRoutines, useRoutineTasks } from '@/api/routines.queries';
 import { useSessionsSummary } from '@/api/sessions.queries';
 import { HomeScreen } from '@/features/home/home-screen';
 import { useActiveSessionStore } from '@/features/session/session-store';
+import { useStartPractice } from '@/features/session/use-start-practice';
 import { useIsWide } from '@/hooks/use-is-wide';
 import { storage } from '@/lib/storage';
 import { useSessionStore } from '@/stores/session-store';
@@ -27,7 +33,15 @@ import {
   makeUser,
 } from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
-import { emptyQuery, infinitePages, pendingQuery, successQuery } from '@/test/query-hooks';
+import {
+  emptyQuery,
+  errorInfinite,
+  errorQuery,
+  infinitePages,
+  mutationStub,
+  pendingQuery,
+  successQuery,
+} from '@/test/query-hooks';
 import { MaxContentWidth } from '@/theme/tokens';
 
 /**
@@ -46,6 +60,10 @@ const mockRoutines = useRoutines as jest.MockedFunction<typeof useRoutines>;
 const mockRoutine = useRoutine as jest.MockedFunction<typeof useRoutine>;
 const mockRoutineTasks = useRoutineTasks as jest.MockedFunction<typeof useRoutineTasks>;
 const mockIsWide = useIsWide as jest.MockedFunction<typeof useIsWide>;
+const mockStartPractice = useStartPractice as jest.MockedFunction<typeof useStartPractice>;
+
+/** Reassigned per test so assertions can read the `mutate` the screen actually called. */
+let startPractice: ReturnType<typeof mutationStub>;
 
 // The hooks are mocked, so their real generics are irrelevant here — the screen only reads
 // `data`/`isPending`, which is exactly what the query-hooks builders provide.
@@ -77,6 +95,8 @@ beforeEach(() => {
   jest.setSystemTime(FIXED_NOW);
   jest.clearAllMocks();
   mockIsWide.mockReturnValue(false);
+  startPractice = mutationStub();
+  mockStartPractice.mockReturnValue(asHookResult(startPractice));
   mockSessions.mockReturnValue(asHookResult(successQuery(makePage([]))));
   // A user with routines but no history: keeps the new-user state out of the way
   // of every test that is not about it.
@@ -518,6 +538,121 @@ describe('primary actions', () => {
 
     expect(screen.getByText('Start Practice')).toBeTruthy();
     expect(screen.getByText('Ask AI Coach')).toBeTruthy();
+  });
+
+  // Canvas 840: Start opens the session pre-loaded. It used to navigate to the routine
+  // detail screen instead, which made the user press Start twice.
+  it('starts the session from Home rather than routing to the routine', async () => {
+    const routine = makeRoutine({ id: 'r1', title: 'Morning warm-up' });
+    givenRoutines(routine);
+    const tasks = [makeRoutineTaskWithTask({ task: makeTask({ title: 'Scales' }) })];
+    mockRoutineTasks.mockReturnValue(asHookResult(successQuery(tasks)));
+
+    await render(withGluestack(<HomeScreen />));
+    await fireEvent.press(screen.getByText('Start Practice'));
+
+    expect(startPractice.mutate).toHaveBeenCalledWith({ routine, tasks });
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  it('starts from a wide routine-grid card, fetching its tasks on press', async () => {
+    mockIsWide.mockReturnValue(true);
+    const [first, second] = [
+      makeRoutine({ id: 'r1' }),
+      makeRoutine({ id: 'r2', title: 'Fingerstyle' }),
+    ];
+    givenRoutines(first, second);
+
+    await render(withGluestack(<HomeScreen />));
+    await fireEvent.press(screen.getAllByText('Start')[1]);
+
+    // No `tasks` — the grid does not hold them, so the hook fetches them itself.
+    expect(startPractice.mutate).toHaveBeenCalledWith({ routine: second });
+  });
+
+  it('labels only the routine being started, not every card', async () => {
+    mockIsWide.mockReturnValue(true);
+    const [first, second] = [
+      makeRoutine({ id: 'r1' }),
+      makeRoutine({ id: 'r2', title: 'Fingerstyle' }),
+    ];
+    givenRoutines(first, second);
+    startPractice.isPending = true;
+    startPractice.variables = { routine: second };
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getAllByText('Starting…')).toHaveLength(1);
+  });
+});
+
+describe('load failures', () => {
+  // A failed list leaves `sessions` and `activeRoutines` empty, which is indistinguishable
+  // from a new account — Home used to greet an established user with the onboarding card.
+  it('shows the error panel, not the new-user state, when the sessions query fails', async () => {
+    mockSessions.mockReturnValue(asHookResult(errorQuery(new ApiError('', OFFLINE_STATUS))));
+    givenNoRoutines();
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('No connection')).toBeTruthy();
+    expect(screen.queryByText('No routines yet')).toBeNull();
+  });
+
+  it('does the same when the routines query is the one that failed', async () => {
+    mockRoutines.mockReturnValue(asHookResult(errorInfinite(new ApiError('', OFFLINE_STATUS))));
+    mockRoutine.mockReturnValue(asHookResult(emptyQuery()));
+    mockRoutineTasks.mockReturnValue(asHookResult(emptyQuery()));
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.queryByText('No routines yet')).toBeNull();
+    expect(screen.getByText('Try again')).toBeTruthy();
+  });
+
+  it('retries the query that failed', async () => {
+    const failed = errorQuery(new ApiError('', OFFLINE_STATUS));
+    mockSessions.mockReturnValue(asHookResult(failed));
+    givenNoRoutines();
+
+    await render(withGluestack(<HomeScreen />));
+    await fireEvent.press(screen.getByText('Try again'));
+
+    expect(failed.refetch).toHaveBeenCalled();
+  });
+});
+
+describe("today's practice fallbacks", () => {
+  // Canvas 839: archived routines are reviewable but never surfaced as a recommendation.
+  it('skips an archived last-practised routine for the newest active one', async () => {
+    const archived = makeRoutine({ id: 'r-old', title: 'Retired drills', status: 'archived' });
+    const active = makeRoutine({ id: 'r-new', title: 'Current warm-up' });
+    mockSessions.mockReturnValue(
+      asHookResult(successQuery(makePage([makeSession({ id: 's1', routineId: 'r-old' })]))),
+    );
+    mockRoutines.mockReturnValue(asHookResult(infinitePages([makePage([active])])));
+    // Keyed by id in production; the mock stands in for both lookups.
+    mockRoutine.mockImplementation(((id: string | undefined) =>
+      successQuery(id === 'r-old' ? archived : active)) as never);
+    mockRoutineTasks.mockReturnValue(asHookResult(successQuery([])));
+
+    await render(withGluestack(<HomeScreen />));
+
+    // Twice over: the today's-practice card and the active-routines strip below it.
+    expect(screen.getAllByText('Current warm-up')).toHaveLength(2);
+    expect(screen.queryByText('Retired drills')).toBeNull();
+  });
+
+  // Loading has finished with nothing to recommend, but the account has history, so 02c
+  // does not apply. The slot used to render nothing at all.
+  it('keeps a quiet card when every routine is archived', async () => {
+    mockSessions.mockReturnValue(asHookResult(successQuery(makePage([makeSession({ id: 's1' })]))));
+    givenNoRoutines();
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('Go to routines')).toBeTruthy();
+    expect(screen.queryByText('Start Practice')).toBeNull();
   });
 });
 

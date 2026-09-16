@@ -12,6 +12,9 @@ jest.mock('@/api/routines.queries', () => ({
   useUpdateRoutine: jest.fn(),
   useUpdateRoutineTask: jest.fn(),
 }));
+// Its own suite covers seeding the session and navigating against a real QueryClient; the
+// builder only has to hand it the routine plus the tasks it already holds.
+jest.mock('@/features/session/use-start-practice', () => ({ useStartPractice: jest.fn() }));
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { usePreventRemove } from 'expo-router/react-navigation';
@@ -28,7 +31,7 @@ import {
   useUpdateRoutineTask,
 } from '@/api/routines.queries';
 import { RoutineBuilder } from '@/features/routines/routine-builder';
-import { useActiveSessionStore } from '@/features/session/session-store';
+import { useStartPractice } from '@/features/session/use-start-practice';
 import { useToastStore } from '@/stores/toast-store';
 import { linkHrefs, mockNavigation, mockRouter } from '@/test/expo-router';
 import { makeRoutine } from '@/test/fixtures';
@@ -58,6 +61,10 @@ const deleteHook = useDeleteRoutine as unknown as AnyHook;
 const updateTaskHook = useUpdateRoutineTask as unknown as AnyHook;
 const removeTaskHook = useRemoveRoutineTask as unknown as AnyHook;
 const preventRemoveMock = usePreventRemove as jest.MockedFunction<typeof usePreventRemove>;
+const useStartPracticeMock = useStartPractice as jest.MockedFunction<typeof useStartPractice>;
+
+/** Reassigned per test so assertions can read the `mutate` the builder actually called. */
+let startPractice: ReturnType<typeof mutationStub>;
 
 const ROUTINE_ID = 'r1';
 
@@ -105,6 +112,10 @@ const creating = () => withGluestack(<RoutineBuilder />);
 
 beforeEach(() => {
   jest.clearAllMocks();
+  startPractice = mutationStub();
+  (
+    useStartPracticeMock as unknown as jest.MockedFunction<(...a: never[]) => unknown>
+  ).mockReturnValue(startPractice);
   reorderHook.mockReturnValue(mutationStub());
   createHook.mockReturnValue(mutationStub(makeRoutine({ id: 'new-1' })));
   updateHook.mockReturnValue(mutationStub());
@@ -583,39 +594,23 @@ describe('reordering', () => {
 });
 
 describe('starting practice', () => {
-  it('seeds the local session from the routine and navigates to it', async () => {
+  // The builder already holds the routine's tasks, so it passes them rather than making the
+  // hook refetch what is on screen.
+  it('hands the hook the routine and the tasks it already has', async () => {
     await render(editing());
 
     await fireEvent.press(screen.getByText('Start Practice'));
 
-    expect(useActiveSessionStore.getState()).toMatchObject({
-      routineId: ROUTINE_ID,
-      title: 'Morning warm-up',
-      tasks: [
-        {
-          taskId: 'a',
-          title: 'Alternate picking',
-          targetDurationMinutes: 10,
-          durationMinutes: 10,
-          completed: false,
-        },
-        {
-          taskId: 'b',
-          title: 'Barre chords',
-          targetDurationMinutes: 15,
-          durationMinutes: 15,
-          completed: false,
-        },
-        // No target, so minutes start at 0 rather than undefined — the Stepper needs a number.
-        {
-          taskId: 'c',
-          title: 'Modes',
-          targetDurationMinutes: undefined,
-          durationMinutes: 0,
-          completed: false,
-        },
-      ],
+    expect(startPractice.mutate).toHaveBeenCalledWith({
+      routine: { id: ROUTINE_ID, title: 'Morning warm-up' },
+      tasks: TASKS,
     });
-    expect(mockRouter.push).toHaveBeenCalledWith('/session/active');
+  });
+
+  it('says it is starting while the session is being prepared', async () => {
+    startPractice.isPending = true;
+    await render(editing());
+
+    expect(screen.getByText('Starting…')).toBeTruthy();
   });
 });

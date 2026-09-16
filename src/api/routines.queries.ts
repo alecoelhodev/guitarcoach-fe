@@ -55,23 +55,6 @@ export function useRoutineTasks(routineId: string | undefined) {
   });
 }
 
-/**
- * The routines *list* has no task data on it, so a per-card Start Practice has to go and get
- * it. `fetchQuery` rather than a per-card `useRoutineTasks`: mounting one query per row would
- * fire a request for every routine on screen to serve a button most of them never get, and
- * the backend has no bulk endpoint to fold those into. This way it is one request on press,
- * served straight from cache if the user has already opened that routine.
- */
-export function useFetchRoutineTasks() {
-  const queryClient = useQueryClient();
-
-  return (routineId: string) =>
-    queryClient.fetchQuery({
-      queryKey: queryKeys.routineTasks(routineId),
-      queryFn: () => listRoutineTasks(routineId),
-    });
-}
-
 /** Optimistic reorder — the one place a rollback earns its keep (drag/move can fail mid-air). */
 export function useReorderRoutineTasks(routineId: string) {
   const queryClient = useQueryClient();
