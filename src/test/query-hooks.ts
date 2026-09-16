@@ -87,7 +87,12 @@ export function errorInfinite<T>(error: Error): InfiniteQueryLike<T> {
 export function mutationStub<TData = unknown, TVariables = unknown>(data?: TData) {
   return {
     mutate: jest.fn(),
-    mutateAsync: jest.fn(async () => data as TData),
+    /**
+     * Deliberately widened to `jest.Mock`. Every real `mutateAsync` takes variables, and
+     * suites re-point this one per case to assert on them or to reject — a zero-argument
+     * signature makes those assignments a type error for no safety gained in a stub.
+     */
+    mutateAsync: jest.fn(async () => data as TData) as jest.Mock,
     // Read by screens that label a per-row pending state, e.g. Home's routine grid keying
     // its "Starting…" button off `variables.routine.id`.
     variables: undefined as TVariables | undefined,

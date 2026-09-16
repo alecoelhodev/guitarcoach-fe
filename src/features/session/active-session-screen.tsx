@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { describeError } from '@/api/errors';
+import { describeError, type ErrorDescription } from '@/api/errors';
 import { useCreateSession } from '@/api/sessions.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChecklistRow } from '@/components/ui/checklist-row';
@@ -60,27 +61,34 @@ function ActiveSessionScreenBody() {
   const [startedWithNoTasks] = useState(() => tasks.length === 0);
   const createSessionMutation = useCreateSession();
   const showToast = useToastStore((state) => state.show);
+  const [failure, setFailure] = useState<ErrorDescription | null>(null);
 
   async function handleFinish() {
+    setFailure(null);
     try {
       await createSessionMutation.mutateAsync({
         routineId,
         title,
-        tasks: tasks.map((t) => ({
-          taskId: t.taskId,
-          // 0 is the local "nothing logged" value — a routine task carries no target
-          // duration by default and the stepper floors at 0 — but the API takes minutes as
-          // optional and rejects anything below 1. So an unlogged task omits the field.
-          durationMinutes: t.durationMinutes > 0 ? t.durationMinutes : undefined,
-          completed: t.completed,
+        tasks: tasks.map((task) => ({
+          taskId: task.taskId,
+          // 0 is the local "nothing logged" value — a routine task carries no target duration
+          // by default — but `CreatePracticeSessionTaskDto.durationMinutes` is `@Min(1)` and
+          // that bound does not survive into the generated `api.d.ts`. Sending the zero failed
+          // Finish with "tasks.0.durationMinutes must not be less than 1". Minutes are optional
+          // by design, so omit the key rather than zeroing it.
+          ...(task.durationMinutes >= 1 ? { durationMinutes: task.durationMinutes } : {}),
+          completed: task.completed,
         })),
       });
     } catch (error) {
-      // A session is written once, on Finish. Keeping the local state on failure is the
-      // only thing standing between a failed request and a lost practice session.
-      showToast(describeError(error, "Couldn't save this session").title, 'error');
+      // Deliberately no `reset()` and no navigation: the minutes exist only here until this
+      // write lands, so discarding them on a failed save loses the user's whole session. A
+      // banner rather than a toast for the same reason — a message that vanishes after four
+      // seconds is one the user can miss while their practice is still unsaved.
+      setFailure(describeError(error, "Couldn't save this session"));
       return;
     }
+
     reset();
     router.back();
     showToast('Session saved', 'success');
@@ -159,11 +167,13 @@ function ActiveSessionScreenBody() {
           ))}
         </ScrollView>
 
+        {failure && <Banner tone="error" title={failure.title} message={failure.message} />}
+
         <Button
           block
           loading={createSessionMutation.isPending}
           loadingLabel="Saving session…"
-          onPress={handleFinish}
+          onPress={() => void handleFinish()}
         >
           Finish Session
         </Button>

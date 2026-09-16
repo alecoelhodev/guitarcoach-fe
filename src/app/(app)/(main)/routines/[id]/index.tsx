@@ -1,8 +1,8 @@
 import { useLocalSearchParams } from 'expo-router';
 
-import { RoutineDetail } from '@/features/routines/routine-detail';
+import { RoutineBuilder } from '@/features/routines/routine-builder';
 
 export default function RoutineDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return <RoutineDetail routineId={id} />;
+  return <RoutineBuilder routineId={id} />;
 }

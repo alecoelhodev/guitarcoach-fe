@@ -135,6 +135,12 @@ Schema: `@@id([routineId, taskId])`, `@@unique([routineId, position])`.
   (`src/features/session/session-store.ts`). Finish is the last chance to correct the numbers.
 - **There is no total-elapsed field.** Every total is a client-side sum of per-task
   `durationMinutes`, which are **optional** — totals must render correctly when minutes are absent.
+- **`≥1` means `0` is a 400, and TypeScript will not catch it.** `class-validator`'s `@Min(1)` does
+  not survive into `src/types/api.d.ts` — the generated shape is a bare `durationMinutes?: number`.
+  The same applies to `position` and `targetDurationMinutes` on routine tasks. A minutes control
+  that can reach zero must **omit** the key, never send `0`; the field is optional precisely so it
+  can be left out. This shipped as a bug once: the active session seeded every untargeted task to
+  `0` and every Finish containing one was rejected.
 - `@@id([practiceSessionId, taskId])` — a task may appear at most once per session. **A duplicate
   `taskId` in the `tasks[]` array is not validated and surfaces as a generic 500**, unlike the
   clean 409s elsewhere. Dedupe client-side before sending.

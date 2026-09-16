@@ -1,8 +1,26 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { queryKeys } from '@/api/query-keys';
-import { getRoutine, listRoutines, listRoutineTasks, reorderRoutineTasks } from '@/api/routines';
-import type { RoutineStatus, RoutineTaskWithTask } from '@/types/routine';
+import {
+  addRoutineTask,
+  createRoutine,
+  deleteRoutine,
+  getRoutine,
+  listRoutines,
+  listRoutineTasks,
+  removeRoutineTask,
+  reorderRoutineTasks,
+  updateRoutine,
+  updateRoutineTask,
+} from '@/api/routines';
+import type {
+  AddRoutineTaskInput,
+  CreateRoutineInput,
+  RoutineStatus,
+  RoutineTaskWithTask,
+  UpdateRoutineInput,
+  UpdateRoutineTaskInput,
+} from '@/types/routine';
 
 type RoutineFilters = { status?: RoutineStatus; limit?: number };
 
@@ -62,5 +80,73 @@ export function useReorderRoutineTasks(routineId: string) {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
     },
+  });
+}
+
+/**
+ * One invalidation, not three. `routinesRoot` is the first segment of every routine key —
+ * list, detail and the detail's tasks — so a prefix invalidation over it reaches all of
+ * them; `query-keys.test.ts` pins that nesting. Three explicit calls would be the same
+ * work spelled twice more.
+ *
+ * Every routine write needs the root anyway: `taskCount` and `totalTargetDurationMinutes`
+ * are computed server-side and sit on the *list* response, so adding a task or editing its
+ * duration goes stale on the list cards too, not just on the routine being edited.
+ */
+function useInvalidateRoutines() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: queryKeys.routinesRoot });
+}
+
+export function useCreateRoutine() {
+  const invalidate = useInvalidateRoutines();
+  return useMutation({
+    mutationFn: (input: CreateRoutineInput) => createRoutine(input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateRoutine(routineId: string) {
+  const invalidate = useInvalidateRoutines();
+  return useMutation({
+    mutationFn: (input: UpdateRoutineInput) => updateRoutine(routineId, input),
+    onSuccess: invalidate,
+  });
+}
+
+/** Drops the detail outright: invalidating it would refetch an id the server just deleted. */
+export function useDeleteRoutine() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (routineId: string) => deleteRoutine(routineId),
+    onSuccess: (_data, routineId) => {
+      queryClient.removeQueries({ queryKey: queryKeys.routine(routineId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.routinesRoot });
+    },
+  });
+}
+
+export function useAddRoutineTask(routineId: string) {
+  const invalidate = useInvalidateRoutines();
+  return useMutation({
+    mutationFn: (input: AddRoutineTaskInput) => addRoutineTask(routineId, input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateRoutineTask(routineId: string) {
+  const invalidate = useInvalidateRoutines();
+  return useMutation({
+    mutationFn: ({ taskId, input }: { taskId: string; input: UpdateRoutineTaskInput }) =>
+      updateRoutineTask(routineId, taskId, input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRemoveRoutineTask(routineId: string) {
+  const invalidate = useInvalidateRoutines();
+  return useMutation({
+    mutationFn: (taskId: string) => removeRoutineTask(routineId, taskId),
+    onSuccess: invalidate,
   });
 }

@@ -1,14 +1,36 @@
 jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
+jest.mock('@/api/routines.queries', () => ({ useUpdateRoutine: jest.fn() }));
+// Its own suite covers seeding the session and navigating against a real QueryClient; the
+// card only has to hand it the right routine and reflect the pending state.
+jest.mock('@/features/session/use-start-practice', () => ({ useStartPractice: jest.fn() }));
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { useUpdateRoutine } from '@/api/routines.queries';
 import { PlanPreviewCard } from '@/features/coach/plan-preview-card';
 import { SessionCard } from '@/features/history/session-card';
 import { TaskCard } from '@/features/library/task-card';
 import { RoutineCard } from '@/features/routines/routine-card';
-import { linkHrefs } from '@/test/expo-router';
+import { useStartPractice } from '@/features/session/use-start-practice';
+import { linkHrefs, mockRouter } from '@/test/expo-router';
 import { makeRoutine, makeSession, makeSessionTask, makeTask } from '@/test/fixtures';
+import { mutationStub } from '@/test/query-hooks';
 import type { PracticePlan } from '@/types/coach';
+
+const useUpdateRoutineMock = useUpdateRoutine as jest.MockedFunction<typeof useUpdateRoutine>;
+const useStartPracticeMock = useStartPractice as jest.MockedFunction<typeof useStartPractice>;
+
+/** Reassigned per test so assertions can read the `mutate` the card actually called. */
+let startPractice: ReturnType<typeof mutationStub>;
+
+// The hooks are typed against TanStack's full result; the card reads only a slice of it.
+type AnyHook = jest.MockedFunction<(...args: never[]) => unknown>;
+
+beforeEach(() => {
+  startPractice = mutationStub();
+  (useStartPracticeMock as unknown as AnyHook).mockReturnValue(startPractice as never);
+  (useUpdateRoutineMock as unknown as AnyHook).mockReturnValue(mutationStub());
+});
 
 /**
  * The four list-row cards. Each one is a stack of independent optional-field branches, so
@@ -37,6 +59,54 @@ describe('RoutineCard', () => {
     await render(<RoutineCard routine={makeRoutine({ status: 'archived' })} />);
 
     expect(screen.getByText('Archived')).toBeTruthy();
+  });
+
+  it('offers Start Practice on an active routine and no restore', async () => {
+    await render(<RoutineCard routine={makeRoutine({ status: 'active' })} />);
+
+    expect(screen.getByText('Start Practice')).toBeTruthy();
+    expect(screen.queryByText('Restore to active')).toBeNull();
+  });
+
+  // Canvas 05b: archived routines are reviewable and restorable, never startable.
+  it('offers Restore to active on an archived routine and no Start Practice', async () => {
+    await render(<RoutineCard routine={makeRoutine({ status: 'archived' })} />);
+
+    expect(screen.getByText('Restore to active')).toBeTruthy();
+    expect(screen.queryByText('Start Practice')).toBeNull();
+  });
+
+  /**
+   * A list card carries no task data, so it deliberately passes no tasks — the hook fetches
+   * them on press, which is what keeps the routines the user never starts from requesting
+   * anything at all.
+   */
+  it('starts practice for its own routine, without prefetching any tasks', async () => {
+    const routine = makeRoutine({ id: 'r3', title: 'Morning warm-up' });
+    await render(<RoutineCard routine={routine} />);
+
+    expect(startPractice.mutate).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByText('Start Practice'));
+
+    expect(startPractice.mutate).toHaveBeenCalledWith({ routine });
+  });
+
+  it('says it is loading while the tasks are on their way', async () => {
+    startPractice.isPending = true;
+    await render(<RoutineCard routine={makeRoutine()} />);
+
+    expect(screen.getByText('Loading…')).toBeTruthy();
+  });
+
+  it('restores an archived routine by patching it back to active', async () => {
+    const restore = mutationStub();
+    (useUpdateRoutineMock as unknown as AnyHook).mockReturnValue(restore);
+    await render(<RoutineCard routine={makeRoutine({ id: 'r4', status: 'archived' })} />);
+
+    await fireEvent.press(screen.getByText('Restore to active'));
+
+    expect(useUpdateRoutineMock).toHaveBeenCalledWith('r4');
+    expect(restore.mutate).toHaveBeenCalledWith({ status: 'active' }, expect.anything());
   });
 
   it('shows notes only when the routine has them', async () => {

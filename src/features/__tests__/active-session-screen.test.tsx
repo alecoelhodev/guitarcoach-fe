@@ -3,10 +3,10 @@ jest.mock('@/api/sessions.queries', () => ({ useCreateSession: jest.fn() }));
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
-import { ApiError } from '@/api/client';
+import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { useCreateSession } from '@/api/sessions.queries';
 import { ActiveSessionScreen } from '@/features/session/active-session-screen';
-import { useActiveSessionStore } from '@/features/session/session-store';
+import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { storage } from '@/lib/storage';
 import { useToastStore } from '@/stores/toast-store';
 import { mockRouter } from '@/test/expo-router';
@@ -25,7 +25,11 @@ const useCreateSessionMock = useCreateSession as unknown as jest.MockedFunction<
   (...args: never[]) => unknown
 >;
 
-function startSession(tasks = [{ taskId: 't1', title: 'Alternate picking' }]) {
+function startSession(
+  tasks: (Partial<ActiveSessionTask> & { taskId: string; title: string })[] = [
+    { taskId: 't1', title: 'Alternate picking' },
+  ],
+) {
   useActiveSessionStore.getState().start({
     routineId: 'r1',
     title: 'Morning warm-up',
@@ -224,20 +228,18 @@ describe('with an active session', () => {
   /**
    * `CreatePracticeSessionTaskDto.durationMinutes` is optional but `@Min(1)`, while 0 is the
    * local "nothing logged" value — every task of a routine with no target durations starts
-   * there. Sending the zero made Finish fail with
-   * "tasks.0.durationMinutes must not be less than 1".
+   * there. That bound does not survive into the generated `api.d.ts`, so nothing but this test
+   * stops it making every Finish a 400 with
+   * "tasks.0.durationMinutes must not be less than 1". Both tasks in one payload: the untimed
+   * one must lose the key, the timed one must keep it.
    */
   it('omits minutes for a task that logged none, rather than sending a zero', async () => {
     const mutation = mutationStub();
     useCreateSessionMock.mockReturnValue(mutation);
-    useActiveSessionStore.getState().start({
-      routineId: 'r1',
-      title: 'Morning warm-up',
-      tasks: [
-        { taskId: 't1', title: 'Untimed', durationMinutes: 0, completed: false },
-        { taskId: 't2', title: 'Timed', durationMinutes: 15, completed: true },
-      ],
-    });
+    startSession([
+      { taskId: 't1', title: 'Untimed', targetDurationMinutes: undefined, durationMinutes: 0 },
+      { taskId: 't2', title: 'Timed', durationMinutes: 15, completed: true },
+    ]);
     await render(withGluestack(<ActiveSessionScreen />));
 
     await act(async () => {
@@ -247,20 +249,23 @@ describe('with an active session', () => {
     expect(mutation.mutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({
         tasks: [
-          { taskId: 't1', durationMinutes: undefined, completed: false },
+          { taskId: 't1', completed: false },
           { taskId: 't2', durationMinutes: 15, completed: true },
         ],
       }),
     );
   });
 
-  it('keeps the session and says so when the write fails', async () => {
-    const mutation = {
-      ...mutationStub(),
-      mutateAsync: jest.fn(async () => {
-        throw new ApiError('Bad Request', 400);
-      }),
-    };
+  /**
+   * The minutes exist only in local state until this write lands, so a failed save that still
+   * reset the store would destroy the user's whole session. It also must not be an unhandled
+   * rejection — that surfaces as a red screen rather than a message.
+   */
+  it('keeps the session and shows why when the write fails', async () => {
+    const mutation = mutationStub();
+    mutation.mutateAsync = jest.fn(async () => {
+      throw new ApiError('boom', OFFLINE_STATUS);
+    });
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -269,10 +274,33 @@ describe('with an active session', () => {
       await fireEvent.press(screen.getByText('Finish Session'));
     });
 
-    expect(useToastStore.getState().toast).toMatchObject({ variant: 'error' });
-    // A session is written once. Clearing it here would lose the practice outright.
+    expect(screen.getByText('No connection')).toBeTruthy();
     expect(useActiveSessionStore.getState().tasks).toHaveLength(1);
     expect(mockRouter.back).not.toHaveBeenCalled();
+    expect(useToastStore.getState().toast).toBeNull();
+  });
+
+  it('clears the failure when a retry succeeds', async () => {
+    const mutation = mutationStub();
+    mutation.mutateAsync = jest
+      .fn<Promise<unknown>, []>()
+      .mockRejectedValueOnce(new ApiError('boom', OFFLINE_STATUS))
+      .mockResolvedValueOnce(undefined);
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+    expect(screen.getByText('No connection')).toBeTruthy();
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(screen.queryByText('No connection')).toBeNull();
+    expect(mockRouter.back).toHaveBeenCalledTimes(1);
   });
 
   it('says it is saving and blocks a second finish while the write is in flight', async () => {
