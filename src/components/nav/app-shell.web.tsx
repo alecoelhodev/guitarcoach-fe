@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { BottomBar } from '@/components/nav/bottom-bar.web';
 import { Rail } from '@/components/nav/rail.web';
+import { PracticeSheetProvider } from '@/features/session/practice-sheet-provider';
 import { useIsWide } from '@/hooks/use-is-wide';
 
 /**
@@ -21,18 +22,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   if (!isWide) {
     return (
-      <View style={styles.column}>
-        <View style={styles.content}>{children}</View>
-        <BottomBar />
-      </View>
+      <PracticeSheetProvider>
+        <View style={styles.column}>
+          <View style={styles.content}>{children}</View>
+          <BottomBar />
+        </View>
+      </PracticeSheetProvider>
     );
   }
 
   return (
-    <View style={styles.row}>
-      <Rail />
-      <View style={styles.content}>{children}</View>
-    </View>
+    <PracticeSheetProvider>
+      <View style={styles.row}>
+        <Rail />
+        <View style={styles.content}>{children}</View>
+      </View>
+    </PracticeSheetProvider>
   );
 }
 

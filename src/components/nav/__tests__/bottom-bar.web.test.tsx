@@ -1,10 +1,9 @@
 jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
 
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { BottomBar } from '@/components/nav/bottom-bar.web';
-import { PRACTICE_HREF } from '@/components/nav/destinations';
-import { linkHrefs, setMockPathname } from '@/test/expo-router';
+import { linkHrefs, mockRouter, setMockPathname } from '@/test/expo-router';
 import { Colors } from '@/theme/tokens';
 
 /**
@@ -33,10 +32,19 @@ describe('BottomBar', () => {
     expect(screen.queryByText('AI Coach')).toBeNull();
   });
 
-  it('sends Practice to the routines list, where a session starts', async () => {
+  /**
+   * Canvas 02b: Practice is an action, not a destination. It used to navigate to the routines
+   * list, which made the most prominent control in the design a detour.
+   */
+  it('makes Practice an action rather than a link to a route', async () => {
     await render(<BottomBar />);
 
-    expect(linkHrefs).toContain(PRACTICE_HREF);
+    await fireEvent.press(screen.getByLabelText('Start practice'));
+
+    expect(mockRouter.push).not.toHaveBeenCalled();
+    // Four links for the four tabs. Practice sits among them but contributes none — the
+    // Routines tab's own href is the only reason that route appears here at all.
+    expect(linkHrefs).toHaveLength(4);
   });
 
   it('tints only the tab matching the current route', async () => {

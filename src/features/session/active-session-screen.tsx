@@ -12,9 +12,11 @@ import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChecklistRow } from '@/components/ui/checklist-row';
+import { EmptyState } from '@/components/ui/empty-state';
 import { FieldLabel } from '@/components/ui/field-label';
 import { Input } from '@/components/ui/input';
 import { Stepper } from '@/components/ui/stepper';
+import { AddSessionTasks } from '@/features/session/add-session-tasks';
 import { SessionExitDialog } from '@/features/session/session-exit-dialog';
 import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { formatClock } from '@/lib/duration';
@@ -43,9 +45,9 @@ function useStopwatch(startedAt: number | undefined) {
 
 /**
  * `persist` rehydrates AsyncStorage asynchronously, so the store is still empty on the first
- * render. The body below latches `startedWithNoTasks` from that first render, so it has to
- * mount only once hydration has finished — otherwise a session restored from disk always
- * renders as "No active session".
+ * render — and an empty store is indistinguishable from "no session". The body must therefore
+ * mount only once hydration has finished, or a session sitting on disk renders as
+ * "No active session" and the user is told their practice is gone.
  */
 export function ActiveSessionScreen() {
   const [hydrated, setHydrated] = useState(() => useActiveSessionStore.persist.hasHydrated());
@@ -75,6 +77,7 @@ function ActiveSessionScreenBody() {
     setNotes,
     setTaskMinutes,
     toggleTaskCompleted,
+    removeTask,
     reset,
   } = useActiveSessionStore();
   const elapsedSeconds = useStopwatch(startedAt);
@@ -82,7 +85,7 @@ function ActiveSessionScreenBody() {
   // minutes. "Planned" is the sum of the routine's target durations.
   const plannedMinutes = tasks.reduce((sum, task) => sum + (task.targetDurationMinutes ?? 0), 0);
   const [confirmExit, setConfirmExit] = useState(false);
-  const [startedWithNoTasks] = useState(() => tasks.length === 0);
+  const [addingTasks, setAddingTasks] = useState(false);
   const createSessionMutation = useCreateSession();
   const showToast = useToastStore((state) => state.show);
   const [failure, setFailure] = useState<ErrorDescription | null>(null);
@@ -127,8 +130,12 @@ function ActiveSessionScreenBody() {
     router.back();
   }
 
-  if (startedWithNoTasks) {
-    // Navigated here directly without starting from a routine — nothing to practice.
+  // "Is there a session" can no longer be "are there tasks": a blank session legitimately has
+  // none until the user picks some. `startedAt` answers it for anything started since it
+  // existed — and the `tasks.length` fallback catches a session persisted *before* it did,
+  // which would otherwise be thrown away as "no session" on the upgrade that added it. Such a
+  // session shows a 0:00 clock; losing the clock beats losing the practice.
+  if (startedAt === undefined && tasks.length === 0) {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
@@ -176,24 +183,44 @@ function ActiveSessionScreenBody() {
         </Card>
 
         <ThemedText type="overline" color="textMuted">
-          Routine tasks
+          {routineId ? 'Routine tasks' : 'Session tasks'}
         </ThemedText>
 
         <ScrollView contentContainerStyle={styles.taskList}>
-          {tasks.map((task) => (
-            <Card key={task.taskId} style={styles.taskCard}>
-              <ChecklistRow
-                label={task.title}
-                checked={task.completed}
-                onToggle={() => toggleTaskCompleted(task.taskId)}
-              />
-              <Stepper
-                minutes={task.durationMinutes}
-                onChange={(m) => setTaskMinutes(task.taskId, m)}
-              />
-            </Card>
-          ))}
+          {tasks.length === 0 ? (
+            <EmptyState
+              title="No tasks yet"
+              message="Pick tasks from the library as you go, or finish whenever you like."
+            />
+          ) : (
+            tasks.map((task) => (
+              <Card key={task.taskId} style={styles.taskCard}>
+                <ChecklistRow
+                  label={task.title}
+                  checked={task.completed}
+                  onToggle={() => toggleTaskCompleted(task.taskId)}
+                />
+                <View style={styles.taskActions}>
+                  <Stepper
+                    minutes={task.durationMinutes}
+                    onChange={(m) => setTaskMinutes(task.taskId, m)}
+                  />
+                  {/* Only a blank session can drop a task: a routine's list is the routine's. */}
+                  {!routineId && (
+                    <Button variant="tertiary" onPress={() => removeTask(task.taskId)}>
+                      Remove
+                    </Button>
+                  )}
+                </View>
+              </Card>
+            ))
+          )}
         </ScrollView>
+
+        {/* Canvas 07b keeps Add task reachable throughout, not only from an empty session. */}
+        <Button variant="secondary" block onPress={() => setAddingTasks(true)}>
+          Add task
+        </Button>
 
         {/* Canvas 2d splits what mobile draws as one "Session notes — optional" card into a
             label and a helper line. Same content, and the label primitive already exists. */}
@@ -225,6 +252,8 @@ function ActiveSessionScreenBody() {
           Saved when you finish.
         </ThemedText>
       </SafeAreaView>
+
+      {addingTasks && <AddSessionTasks onClose={() => setAddingTasks(false)} />}
 
       <SessionExitDialog
         visible={confirmExit}
@@ -299,4 +328,5 @@ const styles = StyleSheet.create({
   notes: { minHeight: 88, paddingTop: Spacing[2], textAlignVertical: 'top' },
   taskList: { gap: Spacing[3] },
   taskCard: { gap: Spacing[3] },
+  taskActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });

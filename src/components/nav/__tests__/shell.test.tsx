@@ -84,12 +84,17 @@ describe('AppShell (web)', () => {
 });
 
 describe('PracticeFab', () => {
-  it('sends the user to the routines list, which is where practice starts', async () => {
+  /**
+   * Canvas 02b: Practice opens the choice sheet. It used to push the routines list — and it
+   * hardcoded that route instead of importing the constant the web pair used, so the native
+   * and web halves of the same control had already drifted apart.
+   */
+  it('opens the practice sheet rather than navigating anywhere', async () => {
     await render(<PracticeFab />);
 
     await fireEvent.press(screen.getByLabelText('Start practice'));
 
-    expect(mockRouter.push).toHaveBeenCalledWith('/(app)/(main)/(tabs)/routines');
+    expect(mockRouter.push).not.toHaveBeenCalled();
   });
 
   it('carries a label rather than an icon, per the canvas', async () => {

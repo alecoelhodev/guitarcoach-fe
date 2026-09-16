@@ -1,13 +1,9 @@
 import { Link, usePathname } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import {
-  type Destination,
-  isRouteActive,
-  MOBILE_TABS,
-  PRACTICE_HREF,
-} from '@/components/nav/destinations';
+import { type Destination, isRouteActive, MOBILE_TABS } from '@/components/nav/destinations';
 import { ThemedText } from '@/components/themed-text';
+import { usePracticeSheet } from '@/features/session/practice-sheet-provider';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { FontFamily } from '@/theme/typography';
 
@@ -25,6 +21,7 @@ const PRACTICE_SIZE = 58;
  */
 export function BottomBar() {
   const pathname = usePathname();
+  const practiceSheet = usePracticeSheet();
   const [home, routines, library, profile] = MOBILE_TABS;
 
   return (
@@ -33,12 +30,16 @@ export function BottomBar() {
       <TabItem {...routines} active={isRouteActive(pathname, routines.match)} />
 
       {/* Canvas `.bnc`: an accent circle carrying the word "Practice", not an
-          icon, riding above the bar's top edge. An action, so no active state. */}
-      <Link href={PRACTICE_HREF} asChild>
-        <View style={styles.practice} accessibilityRole="button">
-          <ThemedText style={styles.practiceLabel}>Practice</ThemedText>
-        </View>
-      </Link>
+          icon, riding above the bar's top edge. An action, not a destination — canvas 02b
+          opens the choice sheet here, which is why this is a Pressable and not a Link. */}
+      <Pressable
+        style={styles.practice}
+        accessibilityRole="button"
+        accessibilityLabel="Start practice"
+        onPress={practiceSheet.open}
+      >
+        <ThemedText style={styles.practiceLabel}>Practice</ThemedText>
+      </Pressable>
 
       <TabItem {...library} active={isRouteActive(pathname, library.match)} />
       <TabItem {...profile} active={isRouteActive(pathname, profile.match)} />

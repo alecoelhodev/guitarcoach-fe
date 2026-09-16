@@ -1,6 +1,6 @@
-import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
+import { usePracticeSheet } from '@/features/session/practice-sheet-provider';
 import { TabBarInset } from '@/theme/platform';
 import { Colors, Radius } from '@/theme/tokens';
 import { FontFamily } from '@/theme/typography';
@@ -15,13 +15,13 @@ const SIZE = 58;
  * lifted by an accent-tinted glow rather than a neutral drop shadow.
  */
 export function PracticeFab() {
-  const router = useRouter();
+  const practiceSheet = usePracticeSheet();
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Start practice"
-      onPress={() => router.push('/(app)/(main)/(tabs)/routines')}
+      onPress={practiceSheet.open}
       style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
     >
       <Text style={styles.label}>Practice</Text>

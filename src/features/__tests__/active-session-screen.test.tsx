@@ -63,25 +63,30 @@ describe('with no active session', () => {
     expect(mockRouter.back).toHaveBeenCalledTimes(1);
   });
 
-  it('stays on the empty screen even if a session starts mid-render', async () => {
+  /**
+   * A blank session has no tasks by design (canvas 02b's "Start a blank session"), so an empty
+   * task list can no longer stand in for "no session" — `startedAt` does.
+   */
+  it('treats a blank session as a real one rather than an empty screen', async () => {
+    await act(async () => {
+      useActiveSessionStore.getState().start({ tasks: [] });
+    });
+
     await render(withGluestack(<ActiveSessionScreen />));
 
-    // `startedWithNoTasks` is a lazy `useState` initialiser, so it is decided once at mount.
-    await act(async () => startSession());
-
-    expect(screen.getByText('No active session')).toBeTruthy();
+    expect(screen.queryByText('No active session')).toBeNull();
+    expect(screen.getByText('No tasks yet')).toBeTruthy();
   });
 });
 
 describe('restored from a previous launch', () => {
   /**
    * The cold-start ordering that the hydration gate exists for: `persist` reads AsyncStorage
-   * asynchronously, so the store is still empty when the screen first mounts. Without the
-   * gate the body would mount on that empty render and `startedWithNoTasks` — a lazy
-   * `useState` initialiser, decided once — would latch "no session" for good, hiding a
-   * session that is sitting on disk.
+   * asynchronously, so the store is still empty when the screen first mounts — indistinguishable
+   * from having no session. Without the gate the body mounts on that empty render and tells the
+   * user their practice is gone while it is sitting on disk.
    */
-  it('shows the persisted session instead of latching the empty state', async () => {
+  it('shows the persisted session rather than the empty state', async () => {
     await storage.setItem(
       'active-session',
       JSON.stringify({
@@ -162,12 +167,19 @@ describe('with an active session', () => {
     expect(screen.getByText('12:30')).toBeTruthy();
   });
 
-  it('reads zero rather than NaN for a session persisted before startedAt existed', async () => {
+  /**
+   * A session persisted before `startedAt` existed rehydrates without one. It must not be
+   * mistaken for "no session" — that would discard a practice in progress on the very upgrade
+   * that added the field. It loses its clock, which is the cheap half of the trade.
+   */
+  it('keeps a session persisted before startedAt existed, at a zeroed clock', async () => {
     startSession();
     useActiveSessionStore.setState({ startedAt: undefined });
 
     await render(withGluestack(<ActiveSessionScreen />));
 
+    expect(screen.queryByText('No active session')).toBeNull();
+    expect(screen.getByText('Alternate picking')).toBeTruthy();
     expect(screen.getByText('0:00')).toBeTruthy();
   });
 
