@@ -1,5 +1,6 @@
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { describeError, shouldRetry } from '@/api/errors';
+import { asShippedBuild } from '@/test/dev-flag';
 
 describe('describeError', () => {
   it('names the connection as the cause rather than the caller context', () => {
@@ -9,7 +10,24 @@ describe('describeError', () => {
     );
 
     expect(title).toBe('No connection');
-    expect(message).toBe('Check your connection and try again.');
+    expect(message).toContain('Check your connection and try again.');
+  });
+
+  /**
+   * A dead network, a base URL pointing at the wrong backend, and a CORS rejection are all
+   * status 0 — indistinguishable to the user and, until now, to the developer too. Dev builds
+   * name the host; shipped builds must not, so both branches are pinned.
+   */
+  it('names the host it could not reach, in dev only', async () => {
+    const offline = new ApiError('No connection', OFFLINE_STATUS);
+
+    expect(describeError(offline).message).toBe(
+      "Couldn't reach localhost:3000. Check your connection and try again.",
+    );
+
+    await asShippedBuild(() => {
+      expect(describeError(offline).message).toBe('Check your connection and try again.');
+    });
   });
 
   it.each([

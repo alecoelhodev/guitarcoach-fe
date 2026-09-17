@@ -66,6 +66,9 @@
   },
   "scripts": {
     "start": "expo start",
+    "dev:local": "EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 EXPO_PUBLIC_API_BASE_URL_NATIVE= expo start",
+    "dev:cloud": "EXPO_PUBLIC_API_BASE_URL=http://localhost:3000 EXPO_PUBLIC_API_BASE_URL_NATIVE=https://guitarcoach-685026468764.us-east1.run.app expo start",
+    "dev:cloud-web": "EXPO_PUBLIC_API_BASE_URL=https://guitarcoach-685026468764.us-east1.run.app EXPO_PUBLIC_API_BASE_URL_NATIVE= expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

@@ -53,10 +53,14 @@ const config: ExpoConfig = {
   },
   extra: {
     router: {},
-    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
+    // `|| undefined`, not a bare read: @expo/env skips any key already present in `process.env`
+    // using `typeof !== 'undefined'`, so `EXPO_PUBLIC_API_BASE_URL_NATIVE= expo start` — how the
+    // start scripts neutralise a stale .env entry — arrives here as `''`. A `??` downstream would
+    // then choose the empty string over the real URL.
+    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || undefined,
     // iOS/Android only, where `localhost` resolves to the phone rather than the dev
     // machine. Unset is the normal case — both platforms then share `apiBaseUrl`.
-    apiBaseUrlNative: process.env.EXPO_PUBLIC_API_BASE_URL_NATIVE,
+    apiBaseUrlNative: process.env.EXPO_PUBLIC_API_BASE_URL_NATIVE || undefined,
     eas: {
       projectId: '54c693c8-66cc-46ee-b412-55cc201d6973',
     },

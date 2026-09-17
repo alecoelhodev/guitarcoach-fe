@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useSignOut } from '@/api/auth.queries';
 import { ProfileScreen } from '@/features/profile/profile-screen';
 import { useSessionStore } from '@/stores/session-store';
+import { asShippedBuild } from '@/test/dev-flag';
 import { makeUser } from '@/test/fixtures';
 import { mutationStub } from '@/test/query-hooks';
 
@@ -98,6 +99,28 @@ describe('ProfileScreen', () => {
     await fireEvent.press(screen.getByText('Signing out…'));
 
     expect(mutation.mutate).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The point of the row: "No connection" is the same message whether the network is down or the
+   * app is pointed at a backend that cannot answer it, so the screen has to say which one it
+   * chose. It is `__DEV__`-only because a shipped build must not name internal hosts.
+   */
+  it('shows which backend it is talking to, in dev only', async () => {
+    signedIn();
+    await render(<ProfileScreen />);
+
+    expect(screen.getByText('API')).toBeTruthy();
+    expect(screen.getByText('localhost:3000')).toBeTruthy();
+  });
+
+  it('hides the backend row outside dev', async () => {
+    signedIn();
+
+    await asShippedBuild(async () => {
+      await render(<ProfileScreen />);
+      expect(screen.queryByText('API')).toBeNull();
+    });
   });
 
   it('formats "member since" as a month and year', async () => {

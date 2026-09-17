@@ -212,3 +212,41 @@ describe('upload', () => {
     ).rejects.toBeInstanceOf(ApiError);
   });
 });
+
+describe('the resolved base URL', () => {
+  /**
+   * `EXPO_PUBLIC_API_BASE_URL_NATIVE= expo start` is how `npm run dev:local` clears a stale
+   * .env entry, and @expo/env treats an empty string as defined — so it reaches `extra` as `''`
+   * unless `app.config.ts` maps it to undefined. If a `??` ever chose it, every request would go
+   * to a relative URL and fail as "No connection" with nothing to point at.
+   */
+  it('ignores an empty native override rather than preferring it', async () => {
+    const { request } = loadClient('ios', {
+      apiBaseUrl: 'http://localhost:3000',
+      apiBaseUrlNative: '',
+    });
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(200));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await request('/tasks');
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:3000/api/v1/tasks');
+  });
+
+  it('exposes which backend it chose, and which variable chose it', () => {
+    const { apiTarget } = loadClient('ios', {
+      apiBaseUrl: 'http://localhost:3000',
+      apiBaseUrlNative: 'https://example.test',
+    });
+
+    expect(apiTarget).toEqual({
+      url: 'https://example.test',
+      source: 'EXPO_PUBLIC_API_BASE_URL_NATIVE',
+      lanRewritten: false,
+    });
+  });
+
+  it('refuses to load at all when nothing is configured', () => {
+    expect(() => loadClient('web', {})).toThrow(/EXPO_PUBLIC_API_BASE_URL is not set/);
+  });
+});
