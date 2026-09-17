@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -6,12 +7,15 @@ import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { QueryState } from '@/components/ui/query-state';
+import { AddToRoutineSheet } from '@/features/library/add-to-routine-sheet';
 import { Colors, MaxContentWidth, Spacing } from '@/theme/tokens';
 
 export function TaskDetail({ taskId }: { taskId: string }) {
   const query = useTask(taskId);
+  const [adding, setAdding] = useState(false);
 
   return (
     <ThemedView style={styles.container}>
@@ -52,9 +56,18 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                   </ExternalLink>
                 )}
 
+                {/* Canvas 04's primary action, sitting directly above the read-only footnote. */}
+                <Button block onPress={() => setAdding(true)}>
+                  Add to Routine
+                </Button>
+
                 <ThemedText type="body" color="textMuted" style={styles.note}>
                   Tasks are shared and read-only.
                 </ThemedText>
+
+                {/* Mounted only while open, so the routine list is not fetched for every task
+                    detail the user merely reads. */}
+                {adding && <AddToRoutineSheet taskId={task.id} onClose={() => setAdding(false)} />}
               </>
             )}
           </QueryState>
