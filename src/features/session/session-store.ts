@@ -36,6 +36,9 @@ type ActiveSessionState = {
   }) => void;
   setTitle: (title: string) => void;
   setNotes: (notes: string) => void;
+  /** Blank sessions pick their tasks as they go; a routine's arrive up front via `start`. */
+  addTask: (task: ActiveSessionTask) => void;
+  removeTask: (taskId: string) => void;
   setTaskMinutes: (taskId: string, minutes: number) => void;
   toggleTaskCompleted: (taskId: string) => void;
   reset: () => void;
@@ -59,6 +62,22 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
       setTitle: (title) => set({ title }),
 
       setNotes: (notes) => set({ notes }),
+
+      /**
+       * Deduped here, not at the call site. A task may appear at most once per session
+       * (`@@id([practiceSessionId, taskId])`), and the backend does not map that violation —
+       * a repeated `taskId` in the Finish payload comes back as a bare 500, not a 409. This
+       * is the only thing between the user and an unexplained failure at the end of a session.
+       */
+      addTask: (task) =>
+        set((state) =>
+          state.tasks.some((existing) => existing.taskId === task.taskId)
+            ? state
+            : { tasks: [...state.tasks, task] },
+        ),
+
+      removeTask: (taskId) =>
+        set((state) => ({ tasks: state.tasks.filter((task) => task.taskId !== taskId) })),
 
       setTaskMinutes: (taskId, durationMinutes) =>
         set((state) => ({

@@ -51,6 +51,52 @@ describe('start', () => {
   });
 });
 
+describe('addTask and removeTask', () => {
+  const picked = task({ taskId: 'new-1', title: 'Sweep picking' });
+
+  it('appends a task picked mid-session', () => {
+    state().start({ tasks: [] });
+
+    state().addTask(picked);
+
+    expect(state().tasks).toEqual([picked]);
+  });
+
+  /**
+   * The dedupe is not a nicety. A task may appear at most once per session
+   * (`@@id([practiceSessionId, taskId])`) and the backend does not map that violation — a
+   * repeated `taskId` in the Finish payload comes back as a bare 500, not a 409. This is the
+   * only thing standing between the user and an unexplained failure at the end of a session.
+   */
+  it('ignores a task the session already holds, rather than duplicating it', () => {
+    state().start({ tasks: [] });
+    state().addTask(picked);
+    state().setTaskMinutes('new-1', 12);
+
+    state().addTask({ ...picked, durationMinutes: 0 });
+
+    expect(state().tasks).toHaveLength(1);
+    // The re-add must not reset what was already logged against it either.
+    expect(state().tasks[0].durationMinutes).toBe(12);
+  });
+
+  it('drops a task and leaves its siblings alone', () => {
+    state().start({ tasks: [task({ taskId: 'a' }), task({ taskId: 'b' })] });
+
+    state().removeTask('a');
+
+    expect(state().tasks.map((t) => t.taskId)).toEqual(['b']);
+  });
+
+  it('is a no-op for a task the session does not hold', () => {
+    state().start({ tasks: [task({ taskId: 'a' })] });
+
+    state().removeTask('ghost');
+
+    expect(state().tasks).toHaveLength(1);
+  });
+});
+
 describe('setTaskMinutes', () => {
   it('records minutes against one task and leaves its siblings alone', () => {
     state().start({ tasks: [task({ taskId: 'a' }), task({ taskId: 'b' })] });

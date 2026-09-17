@@ -39,7 +39,8 @@ export const SECONDARY = [
 
 /**
  * The four bottom-bar slots, in canvas order — Practice occupies the centre and
- * is an action, not a destination, so it is not in this list.
+ * is an action, not a destination, so it is not in this list. It carries no href at all:
+ * canvas 02b has it open the practice choice sheet (`usePracticeSheet`).
  *
  * History and AI Coach are deliberately absent: the canvas gives the narrow
  * viewport a four-tab budget and reaches both from Home instead. They are rail
@@ -51,9 +52,6 @@ export const MOBILE_TABS = [
   PRIMARY[2], // Library
   SECONDARY[1], // Profile
 ] as const;
-
-/** Where Practice goes — the routines list is where a session starts. */
-export const PRACTICE_HREF = '/(app)/(main)/(tabs)/routines' as const;
 
 export type Destination = (typeof PRIMARY)[number] | (typeof SECONDARY)[number];
 

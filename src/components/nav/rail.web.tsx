@@ -1,15 +1,10 @@
 import { Link, usePathname } from 'expo-router';
 import { Play } from 'lucide-react-native';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import {
-  type Destination,
-  isRouteActive,
-  PRACTICE_HREF,
-  PRIMARY,
-  SECONDARY,
-} from '@/components/nav/destinations';
+import { type Destination, isRouteActive, PRIMARY, SECONDARY } from '@/components/nav/destinations';
 import { ThemedText } from '@/components/themed-text';
+import { usePracticeSheet } from '@/features/session/practice-sheet-provider';
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 
 /**
@@ -21,6 +16,7 @@ import { Colors, Radius, Spacing } from '@/theme/tokens';
  */
 export function Rail() {
   const pathname = usePathname();
+  const practiceSheet = usePracticeSheet();
 
   return (
     <View style={styles.rail}>
@@ -28,14 +24,18 @@ export function Rail() {
         Guitar Coach
       </ThemedText>
 
-      <Link href={PRACTICE_HREF} asChild>
-        <View style={practiceItemStyle}>
-          <Play color="#ffffff" size={18} strokeWidth={2.75} fill="#ffffff" />
-          <ThemedText type="button" style={styles.practiceLabel}>
-            Practice
-          </ThemedText>
-        </View>
-      </Link>
+      {/* An action, not a destination — canvas 02b opens the choice sheet from here. */}
+      <Pressable
+        style={practiceItemStyle}
+        accessibilityRole="button"
+        accessibilityLabel="Start practice"
+        onPress={practiceSheet.open}
+      >
+        <Play color="#ffffff" size={18} strokeWidth={2.75} fill="#ffffff" />
+        <ThemedText type="button" style={styles.practiceLabel}>
+          Practice
+        </ThemedText>
+      </Pressable>
 
       <View style={styles.gap} />
 
