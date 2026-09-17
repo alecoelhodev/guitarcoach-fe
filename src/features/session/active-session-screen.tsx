@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { describeError, type ErrorDescription } from '@/api/errors';
@@ -12,20 +12,33 @@ import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChecklistRow } from '@/components/ui/checklist-row';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { FieldLabel } from '@/components/ui/field-label';
+import { Input } from '@/components/ui/input';
 import { Stepper } from '@/components/ui/stepper';
-import { useActiveSessionStore } from '@/features/session/session-store';
+import { SessionExitDialog } from '@/features/session/session-exit-dialog';
+import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { formatClock } from '@/lib/duration';
 import { useToastStore } from '@/stores/toast-store';
 import { Spacing } from '@/theme/tokens';
 
-function useStopwatch() {
-  const [seconds, setSeconds] = useState(0);
+/**
+ * Elapsed is *derived* from `startedAt`, never counted in ticks. Backgrounding the app suspends
+ * the interval, so a tick count silently under-reported the session, and a cold start restarted
+ * the clock at 00:00 while the persisted tasks survived beside it — the two halves of one
+ * session disagreeing. The interval now only forces the re-render.
+ *
+ * A session persisted before `startedAt` existed rehydrates without one; it reads 0, not `NaN`.
+ */
+function useStopwatch(startedAt: number | undefined) {
+  const [now, setNow] = useState(() => Date.now());
+
   useEffect(() => {
-    const id = setInterval(() => setSeconds((current) => current + 1), 1000);
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  return seconds;
+
+  if (startedAt === undefined) return 0;
+  return Math.max(0, Math.floor((now - startedAt) / 1000));
 }
 
 /**
@@ -51,9 +64,20 @@ export function ActiveSessionScreen() {
 
 function ActiveSessionScreenBody() {
   const router = useRouter();
-  const { routineId, title, tasks, setTaskMinutes, toggleTaskCompleted, reset } =
-    useActiveSessionStore();
-  const elapsedSeconds = useStopwatch();
+  const {
+    routineId,
+    routineTitle,
+    title,
+    notes,
+    startedAt,
+    tasks,
+    setTitle,
+    setNotes,
+    setTaskMinutes,
+    toggleTaskCompleted,
+    reset,
+  } = useActiveSessionStore();
+  const elapsedSeconds = useStopwatch(startedAt);
   // Canvas 07: the clock is a local pacing aid; what gets saved is the per-task
   // minutes. "Planned" is the sum of the routine's target durations.
   const plannedMinutes = tasks.reduce((sum, task) => sum + (task.targetDurationMinutes ?? 0), 0);
@@ -68,7 +92,11 @@ function ActiveSessionScreenBody() {
     try {
       await createSessionMutation.mutateAsync({
         routineId,
-        title,
+        // Both are optional and both reject the empty string — `title` is `@Length(1, 200)`,
+        // and `forbidNonWhitelisted` means a stray '' is a 400 rather than an ignored field.
+        // Omit, never blank.
+        ...(title?.trim() ? { title: title.trim() } : {}),
+        ...(notes?.trim() ? { notes: notes.trim() } : {}),
         tasks: tasks.map((task) => ({
           taskId: task.taskId,
           // 0 is the local "nothing logged" value — a routine task carries no target duration
@@ -85,7 +113,7 @@ function ActiveSessionScreenBody() {
       // write lands, so discarding them on a failed save loses the user's whole session. A
       // banner rather than a toast for the same reason — a message that vanishes after four
       // seconds is one the user can miss while their practice is still unsaved.
-      setFailure(describeError(error, "Couldn't save this session"));
+      setFailure(describeError(error, "Couldn't save the session"));
       return;
     }
 
@@ -127,12 +155,12 @@ function ActiveSessionScreenBody() {
         </View>
 
         <View>
-          {title && (
+          {routineTitle && (
             <ThemedText type="body" color="textMuted">
-              Following · {title}
+              Following · {routineTitle}
             </ThemedText>
           )}
-          <ThemedText type="h3">{title ?? 'Practice session'}</ThemedText>
+          <SessionTitle title={title} onChange={setTitle} />
         </View>
 
         <Card style={styles.clockCard}>
@@ -167,6 +195,21 @@ function ActiveSessionScreenBody() {
           ))}
         </ScrollView>
 
+        {/* Canvas 2d splits what mobile draws as one "Session notes — optional" card into a
+            label and a helper line. Same content, and the label primitive already exists. */}
+        <View>
+          <FieldLabel>Session notes</FieldLabel>
+          <Input
+            testID="session-notes"
+            value={notes ?? ''}
+            onChangeText={setNotes}
+            multiline
+            // `Input` only sets minHeight: 44, which is one line — a notes box has to ask.
+            style={styles.notes}
+            placeholder="Optional — what went well, what to fix."
+          />
+        </View>
+
         {failure && <Banner tone="error" title={failure.title} message={failure.message} />}
 
         <Button
@@ -183,20 +226,67 @@ function ActiveSessionScreenBody() {
         </ThemedText>
       </SafeAreaView>
 
-      <ConfirmDialog
+      <SessionExitDialog
         visible={confirmExit}
-        title="Exit practice?"
-        message="Nothing is saved until you finish. Exiting now discards this session."
-        destructive
-        confirmLabel="Exit"
-        cancelLabel="Keep practicing"
-        onConfirm={() => {
+        message={describeUnsaved(elapsedSeconds, tasks)}
+        saving={createSessionMutation.isPending}
+        onFinish={() => {
+          setConfirmExit(false);
+          void handleFinish();
+        }}
+        onKeepPracticing={() => setConfirmExit(false)}
+        onDiscard={() => {
           setConfirmExit(false);
           handleExit();
         }}
-        onCancel={() => setConfirmExit(false)}
       />
     </ThemedView>
+  );
+}
+
+/**
+ * Canvas 07's title is editable ("Evening practice") but the canvas never draws the control, so
+ * this is the lightest thing that reads as the heading it replaces: tap the heading, get an
+ * input, commit on blur. An emptied title is legitimate — Finish omits the key rather than
+ * sending '', which `@Length(1, 200)` rejects.
+ */
+function SessionTitle({ title, onChange }: { title?: string; onChange: (title: string) => void }) {
+  const [editing, setEditing] = useState(false);
+
+  if (!editing) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Rename session"
+        onPress={() => setEditing(true)}
+      >
+        <ThemedText type="h3">{title?.trim() || 'Practice session'}</ThemedText>
+      </Pressable>
+    );
+  }
+
+  return (
+    <Input
+      testID="session-title"
+      autoFocus
+      value={title ?? ''}
+      onChangeText={onChange}
+      onBlur={() => setEditing(false)}
+      onSubmitEditing={() => setEditing(false)}
+      returnKeyType="done"
+      placeholder="Practice session"
+    />
+  );
+}
+
+/** Canvas 07b: "18 minutes and one completed task haven't been saved yet." */
+function describeUnsaved(elapsedSeconds: number, tasks: ActiveSessionTask[]) {
+  const minutes = Math.floor(elapsedSeconds / 60);
+  const completed = tasks.filter((task) => task.completed).length;
+
+  return (
+    `${minutes} minute${minutes === 1 ? '' : 's'} and ` +
+    `${completed} completed task${completed === 1 ? '' : 's'} haven't been saved yet.`
   );
 }
 
@@ -206,6 +296,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center' },
   clockCard: { alignItems: 'center' },
   note: { textAlign: 'center' },
+  notes: { minHeight: 88, paddingTop: Spacing[2], textAlignVertical: 'top' },
   taskList: { gap: Spacing[3] },
   taskCard: { gap: Spacing[3] },
 });

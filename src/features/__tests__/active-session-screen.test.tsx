@@ -32,6 +32,7 @@ function startSession(
 ) {
   useActiveSessionStore.getState().start({
     routineId: 'r1',
+    routineTitle: 'Morning warm-up',
     title: 'Morning warm-up',
     tasks: tasks.map((t) => ({
       targetDurationMinutes: 10,
@@ -87,6 +88,7 @@ describe('restored from a previous launch', () => {
         version: 0,
         state: {
           routineId: 'r1',
+          routineTitle: 'Morning warm-up',
           title: 'Morning warm-up',
           tasks: [
             {
@@ -144,6 +146,29 @@ describe('with an active session', () => {
     });
 
     expect(screen.getByText('1:05')).toBeTruthy();
+  });
+
+  /**
+   * The bug spec 08 exists for. The clock used to be `useState(0)` plus a tick, so a
+   * backgrounded app — which suspends the interval — came back showing 00:00 beside the tasks
+   * it had faithfully persisted. Deriving from `startedAt` is what makes the two agree.
+   */
+  it('shows the time already elapsed when a session is resumed, not zero', async () => {
+    startSession();
+    useActiveSessionStore.setState({ startedAt: Date.now() - 12 * 60_000 - 30_000 });
+
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    expect(screen.getByText('12:30')).toBeTruthy();
+  });
+
+  it('reads zero rather than NaN for a session persisted before startedAt existed', async () => {
+    startSession();
+    useActiveSessionStore.setState({ startedAt: undefined });
+
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    expect(screen.getByText('0:00')).toBeTruthy();
   });
 
   it('shows the planned total, and omits it when the routine has no targets', async () => {
@@ -316,35 +341,137 @@ describe('with an active session', () => {
     expect(mutation.mutateAsync).not.toHaveBeenCalled();
   });
 
-  it('warns that exiting discards the session, and keeps it when cancelled', async () => {
+  /**
+   * Canvas 07b counts what is at stake rather than warning in the abstract, because a finished
+   * session cannot be edited afterwards — this dialog is the last chance to correct the numbers.
+   */
+  it('counts the unsaved minutes and completed tasks in the exit prompt', async () => {
+    startSession([
+      { taskId: 't1', title: 'Alternate picking', completed: true },
+      { taskId: 't2', title: 'Barre chords' },
+    ]);
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      jest.advanceTimersByTime(18 * 60_000);
+    });
+    await fireEvent.press(screen.getByLabelText('Exit practice'));
+
+    expect(
+      screen.getByText("18 minutes and 1 completed task haven't been saved yet."),
+    ).toBeTruthy();
+  });
+
+  it('keeps the session when the prompt is dismissed', async () => {
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
 
     await fireEvent.press(screen.getByLabelText('Exit practice'));
-    expect(
-      screen.getByText('Nothing is saved until you finish. Exiting now discards this session.'),
-    ).toBeTruthy();
-
     await fireEvent.press(screen.getByText('Keep practicing'));
 
-    expect(screen.queryByText('Exit practice?')).toBeNull();
+    expect(screen.queryByText('Leave this session?')).toBeNull();
     expect(useActiveSessionStore.getState().tasks).toHaveLength(1);
     expect(mockRouter.back).not.toHaveBeenCalled();
   });
 
-  it('discards the session on a confirmed exit, writing nothing', async () => {
+  it('discards the session without writing anything', async () => {
     const mutation = mutationStub();
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
 
     await fireEvent.press(screen.getByLabelText('Exit practice'));
-    await fireEvent.press(screen.getByText('Exit'));
+    await fireEvent.press(screen.getByText('Discard session'));
 
     expect(useActiveSessionStore.getState().tasks).toEqual([]);
     expect(mockRouter.back).toHaveBeenCalledTimes(1);
-    // The whole point of the warning: an exit must not create a practice session.
+    // Nothing partial exists on the server, so discarding needs no request — and must not
+    // accidentally make one.
     expect(mutation.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('saves from the exit prompt, which is the same write as Finish', async () => {
+    const mutation = mutationStub();
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await fireEvent.press(screen.getByLabelText('Exit practice'));
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish and save'));
+    });
+
+    expect(mutation.mutateAsync).toHaveBeenCalledTimes(1);
+    expect(useActiveSessionStore.getState().tasks).toEqual([]);
+    expect(mockRouter.back).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends the notes typed during the session', async () => {
+    const mutation = mutationStub();
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await fireEvent.changeText(screen.getByTestId('session-notes'), '  Metronome at 80.  ');
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(mutation.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: 'Metronome at 80.' }),
+    );
+  });
+
+  /**
+   * `notes` and `title` are both optional and both reject '' — `title` via `@Length(1, 200)`,
+   * and `forbidNonWhitelisted` turns a stray blank into a 400 rather than an ignored field. The
+   * same trap class as `durationMinutes` being `@Min(1)`.
+   */
+  it('omits an untouched note and an emptied title rather than sending blanks', async () => {
+    const mutation = mutationStub();
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await fireEvent.press(screen.getByLabelText('Rename session'));
+    await fireEvent.changeText(screen.getByTestId('session-title'), '   ');
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    const payload = mutation.mutateAsync.mock.calls[0][0];
+    expect(payload).not.toHaveProperty('title');
+    expect(payload).not.toHaveProperty('notes');
+  });
+
+  it('renames the session, keeping the routine it follows', async () => {
+    const mutation = mutationStub();
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await fireEvent.press(screen.getByLabelText('Rename session'));
+    await fireEvent.changeText(screen.getByTestId('session-title'), 'Evening practice');
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(mutation.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Evening practice' }),
+    );
+  });
+
+  it('falls back to a generic heading once the title is cleared', async () => {
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await fireEvent.press(screen.getByLabelText('Rename session'));
+    await fireEvent.changeText(screen.getByTestId('session-title'), '');
+    await fireEvent(screen.getByTestId('session-title'), 'blur');
+
+    expect(screen.getByText('Practice session')).toBeTruthy();
+    // The routine line is separate state, so renaming never rewrites what is being followed.
+    expect(screen.getByText('Following · Morning warm-up')).toBeTruthy();
   });
 
   it('makes clear nothing is stored until finish', async () => {

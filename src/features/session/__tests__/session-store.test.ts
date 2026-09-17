@@ -109,12 +109,75 @@ describe('toggleTaskCompleted', () => {
 });
 
 describe('reset', () => {
-  it('clears the routine, title and tasks', () => {
+  it('clears every field of the session, not just the tasks', () => {
     state().start({ routineId: 'routine-1', title: 'Morning warm-up', tasks: [task()] });
+    state().setNotes('Metronome at 80.');
 
     state().reset();
 
-    expect(state()).toMatchObject({ routineId: undefined, title: undefined, tasks: [] });
+    expect(state()).toMatchObject({
+      routineId: undefined,
+      routineTitle: undefined,
+      title: undefined,
+      notes: undefined,
+      startedAt: undefined,
+      tasks: [],
+    });
+  });
+});
+
+describe('notes and title', () => {
+  it('records notes typed during the session', () => {
+    state().start({ tasks: [task()] });
+
+    state().setNotes('Metronome at 80.');
+
+    expect(state().notes).toBe('Metronome at 80.');
+  });
+
+  it('renames the session without touching the routine it follows', () => {
+    state().start({ routineId: 'r1', routineTitle: 'Warm-up', title: 'Warm-up', tasks: [] });
+
+    state().setTitle('Evening practice');
+
+    expect(state()).toMatchObject({ routineTitle: 'Warm-up', title: 'Evening practice' });
+  });
+
+  it('drops notes from the previous session on a fresh start', () => {
+    state().start({ tasks: [task()] });
+    state().setNotes('Old notes.');
+
+    state().start({ tasks: [task()] });
+
+    expect(state().notes).toBeUndefined();
+  });
+});
+
+describe('startedAt', () => {
+  it('stamps the start so elapsed time can be derived rather than counted', () => {
+    const before = Date.now();
+
+    state().start({ tasks: [task()] });
+
+    expect(state().startedAt).toBeGreaterThanOrEqual(before);
+    expect(state().startedAt).toBeLessThanOrEqual(Date.now());
+  });
+
+  describe('on a second session', () => {
+    // Frozen in a hook rather than inline, so a failing assertion cannot leave fake timers
+    // installed for the persistence suite below — which waits on real AsyncStorage writes.
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it('restamps rather than carrying the previous clock forward', () => {
+      jest.setSystemTime(1_000_000);
+      state().start({ tasks: [task()] });
+
+      jest.setSystemTime(1_060_000);
+      state().start({ tasks: [task()] });
+
+      expect(state().startedAt).toBe(1_060_000);
+    });
   });
 });
 
