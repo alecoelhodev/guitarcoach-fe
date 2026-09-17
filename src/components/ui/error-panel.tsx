@@ -8,9 +8,11 @@ export type ErrorPanelProps = {
   title: string;
   message?: string;
   onRetry?: () => void;
+  /** Canvas 04b pairs Try again with a Dismiss for panels the user can simply walk away from. */
+  onDismiss?: () => void;
 };
 
-export function ErrorPanel({ title, message, onRetry }: ErrorPanelProps) {
+export function ErrorPanel({ title, message, onRetry, onDismiss }: ErrorPanelProps) {
   return (
     <View accessibilityRole="alert" style={styles.base}>
       <ThemedText type="label" style={styles.text}>
@@ -21,10 +23,20 @@ export function ErrorPanel({ title, message, onRetry }: ErrorPanelProps) {
           {message}
         </ThemedText>
       )}
-      {onRetry && (
-        <Button variant="tertiary" onPress={onRetry} style={styles.retry}>
-          Try again
-        </Button>
+      {(onRetry || onDismiss) && (
+        <View style={styles.actions}>
+          {onRetry && (
+            <Button variant="tertiary" onPress={onRetry}>
+              Try again
+            </Button>
+          )}
+          {/* Destructive-free but still last: canvas 04b orders it Try again, then Dismiss. */}
+          {onDismiss && (
+            <Button variant="tertiary" onPress={onDismiss}>
+              Dismiss
+            </Button>
+          )}
+        </View>
       )}
     </View>
   );
@@ -46,7 +58,9 @@ const styles = StyleSheet.create({
   message: {
     textAlign: 'center',
   },
-  retry: {
+  actions: {
+    flexDirection: 'row',
+    gap: Spacing[2],
     marginTop: Spacing[1],
   },
 });
