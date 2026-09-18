@@ -60,14 +60,22 @@ A bare `npm start` — or `npx expo start` — uses `.env`, which is `http://loc
 - an offline error names the host it could not reach, e.g. "Couldn't reach localhost:3000."
 
 Switching backends needs a **dev-server restart** — run a different script — but not `--clear`.
-The values travel in the dev-server manifest via `app.config.ts`'s `extra`, so Metro's transform
-cache cannot hold a stale one. If the API row ever disagrees with the script you ran, that is a
-bug, not something to paper over with a cache clear.
+`src/api/client.ts` reads `process.env.EXPO_PUBLIC_API_BASE_URL`, and Metro's serializer re-injects
+every `EXPO_PUBLIC_*` variable on each build, so no cache sits between the script you ran and the
+app. If the API row ever disagrees with the script, that is a bug, not something to paper over with
+a cache clear.
+
+> **Why the app does not read `Constants.expoConfig.extra`.** It did once, and on web it went stale:
+> `babel-preset-expo` inlines the whole app config into `expo-constants` as a literal at transform
+> time, and Metro's cache key does not include the config — so a browser kept serving a base URL
+> from an earlier session across every restart, while the phone (which gets the manifest fresh per
+> request) was correct. `app.config.ts` still copies both variables into `extra`, but only so
+> `expo config` can report them; nothing at runtime reads it.
 
 ### Why `localhost` works on a phone now
 
-It did not used to. Both variables are resolved on your Mac and shipped to the device in the
-manifest, so a phone receiving `localhost` resolves it to _itself_. `src/api/base-url.ts` rewrites
+It did not used to. Both variables are resolved on your Mac and inlined into the bundle the device
+downloads, so a phone receiving `localhost` resolves it to _itself_. `src/api/base-url.ts` rewrites
 a loopback host to the dev machine's LAN address from `Constants.expoConfig.hostUri`, keeping the
 API port — so `dev:local` reaches your Docker backend from the phone.
 

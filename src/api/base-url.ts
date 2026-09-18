@@ -1,11 +1,11 @@
 /**
  * Where the app points, and why.
  *
- * `app.config.ts` copies `EXPO_PUBLIC_API_BASE_URL` and `EXPO_PUBLIC_API_BASE_URL_NATIVE` into
- * `extra` at dev-server start, so both are resolved on the dev machine and shipped to the device
- * in the manifest — a phone receives whatever `localhost` meant on the Mac, i.e. itself. The
- * native override exists to point iOS/Android somewhere reachable while the browser keeps the
- * local one; the LAN rewrite below covers the case where you want both on local Docker.
+ * `EXPO_PUBLIC_API_BASE_URL` and `EXPO_PUBLIC_API_BASE_URL_NATIVE` are resolved on the dev machine
+ * and inlined into the bundle the device downloads — so a phone receives whatever `localhost`
+ * meant on the Mac, i.e. itself. The native override exists to point iOS/Android somewhere
+ * reachable while the browser keeps the local one; the LAN rewrite below covers the case where you
+ * want both on local Docker.
  */
 
 /** Hosts that mean "this device", and therefore the wrong thing on a phone. */

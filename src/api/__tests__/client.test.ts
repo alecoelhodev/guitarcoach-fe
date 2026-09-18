@@ -1,23 +1,39 @@
 type Client = typeof import('@/api/client');
 
+type ApiEnv = { apiBaseUrl?: string; apiBaseUrlNative?: string };
+
 /**
- * `client.ts` reads `Platform.OS` and the config once at module load, so each platform — and
- * each `extra` — needs a fresh copy. The default mirrors `jest.setup.ts`, so a caller that
- * does not care about the base URL gets the same value every other suite sees.
+ * `client.ts` reads `Platform.OS` and the two environment variables once at module load, so each
+ * platform — and each pair of values — needs a fresh copy. The default mirrors `jest.setup.ts`, so
+ * a caller that does not care about the base URL gets the same value every other suite sees.
+ *
+ * The variables are set rather than mocked because that is how the app receives them: Metro's
+ * serializer injects `EXPO_PUBLIC_*` into `process.env`, and under Jest `expo/virtual/env` is
+ * literally `export const env = process.env`, so a write here is what the module reads.
  */
 function loadClient(
   platform: 'ios' | 'web',
-  extra: Record<string, string> = { apiBaseUrl: 'http://localhost:3000' },
+  env: ApiEnv = { apiBaseUrl: 'http://localhost:3000' },
 ): Client {
   jest.resetModules();
+  setApiEnv(env);
   jest.doMock('react-native', () => ({ Platform: { OS: platform } }));
-  jest.doMock('expo-constants', () => ({
-    __esModule: true,
-    default: { expoConfig: { extra } },
-  }));
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return require('@/api/client') as Client;
 }
+
+function setApiEnv({ apiBaseUrl, apiBaseUrlNative }: ApiEnv) {
+  // Deleted rather than set to '', which `resolveApiTarget` treats as "configured but empty".
+  if (apiBaseUrl === undefined) delete process.env.EXPO_PUBLIC_API_BASE_URL;
+  else process.env.EXPO_PUBLIC_API_BASE_URL = apiBaseUrl;
+
+  if (apiBaseUrlNative === undefined) delete process.env.EXPO_PUBLIC_API_BASE_URL_NATIVE;
+  else process.env.EXPO_PUBLIC_API_BASE_URL_NATIVE = apiBaseUrlNative;
+}
+
+// Both variables are process-wide, so a suite that leaves one set would change what every later
+// suite in this file resolves.
+afterEach(() => setApiEnv({ apiBaseUrl: 'http://localhost:3000' }));
 
 function jsonResponse(status: number, body: unknown = {}) {
   return {
@@ -216,9 +232,9 @@ describe('upload', () => {
 describe('the resolved base URL', () => {
   /**
    * `EXPO_PUBLIC_API_BASE_URL_NATIVE= expo start` is how `npm run dev:local` clears a stale
-   * .env entry, and @expo/env treats an empty string as defined — so it reaches `extra` as `''`
-   * unless `app.config.ts` maps it to undefined. If a `??` ever chose it, every request would go
-   * to a relative URL and fail as "No connection" with nothing to point at.
+   * .env entry, and @expo/env treats an empty string as defined — so it reaches the app as `''`
+   * rather than undefined. If a `??` ever chose it over the real URL, every request would go to a
+   * relative URL and fail as "No connection" with nothing to point at.
    */
   it('ignores an empty native override rather than preferring it', async () => {
     const { request } = loadClient('ios', {

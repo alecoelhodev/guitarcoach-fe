@@ -15,10 +15,15 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
-// `src/api/client.ts` reads the base URL at module load.
+// `src/api/client.ts` reads the base URL from `process.env` at module load, and throws without
+// one. `??=` so a suite that sets its own value before this file runs keeps it.
+process.env.EXPO_PUBLIC_API_BASE_URL ??= 'http://localhost:3000';
+
+// `expoConfig` must exist for the `hostUri` read in `src/api/client.ts`; `extra` is deliberately
+// absent, because nothing reads it any more.
 jest.mock('expo-constants', () => ({
   __esModule: true,
-  default: { expoConfig: { extra: { apiBaseUrl: 'http://localhost:3000' } } },
+  default: { expoConfig: {} },
 }));
 
 // `react-native-reanimated` self-detects Jest and takes its web path, but its `initializers`
