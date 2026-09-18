@@ -14,6 +14,7 @@ import { RoutineCard } from '@/features/routines/routine-card';
 import { useStartPractice } from '@/features/session/use-start-practice';
 import { linkHrefs, mockRouter } from '@/test/expo-router';
 import { makeRoutine, makeSession, makeSessionTask, makeTask } from '@/test/fixtures';
+import { pressLinkTarget } from '@/test/press';
 import { mutationStub } from '@/test/query-hooks';
 import type { PracticePlan } from '@/types/coach';
 
@@ -82,13 +83,23 @@ describe('RoutineCard', () => {
    * anything at all.
    */
   it('starts practice for its own routine, without prefetching any tasks', async () => {
-    const routine = makeRoutine({ id: 'r3', title: 'Morning warm-up' });
+    const routine = makeRoutine({ id: 'r3', title: 'Morning warm-up', taskCount: 3 });
     await render(<RoutineCard routine={routine} />);
 
     expect(startPractice.mutate).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByText('Start Practice'));
 
     expect(startPractice.mutate).toHaveBeenCalledWith({ routine });
+  });
+
+  // QA-06: an empty routine started a session that immediately said "No active session".
+  // The count rides along on the list response, so checking it costs nothing.
+  it('cannot start a routine with no tasks', async () => {
+    await render(<RoutineCard routine={makeRoutine({ taskCount: 0 })} />);
+
+    await fireEvent.press(screen.getByText('Start Practice'));
+
+    expect(startPractice.mutate).not.toHaveBeenCalled();
   });
 
   it('says it is loading while the tasks are on their way', async () => {
@@ -125,6 +136,20 @@ describe('TaskCard', () => {
     await render(<TaskCard task={makeTask({ id: 't9' })} />);
 
     expect(linkHrefs).toEqual([{ pathname: '/library/[id]', params: { id: 't9' } }]);
+  });
+
+  // QA-02: the card body is the whole affordance, so it has to be a real pressable. A plain
+  // `View` under `<Link asChild>` drops the forwarded `onPress` on native and navigates on web
+  // only, which is exactly how this shipped broken to Expo Go while every test stayed green.
+  it('navigates when the card body itself is pressed', async () => {
+    await render(<TaskCard task={makeTask({ id: 't9', title: 'Alternate picking' })} />);
+
+    await pressLinkTarget(screen.getByText('Alternate picking'));
+
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/library/[id]',
+      params: { id: 't9' },
+    });
   });
 
   it('renders a bare task with none of its optional decorations', async () => {
@@ -166,6 +191,18 @@ describe('SessionCard', () => {
     await render(<SessionCard session={makeSession({ id: 's3' })} />);
 
     expect(linkHrefs).toEqual([{ pathname: '/history/[id]', params: { id: 's3' } }]);
+  });
+
+  // QA-02, as for TaskCard: History's rows did not respond to a tap on the simulator.
+  it('navigates when the card body itself is pressed', async () => {
+    await render(<SessionCard session={makeSession({ id: 's3', title: 'Blues in A' })} />);
+
+    await pressLinkTarget(screen.getByText('Blues in A'));
+
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/history/[id]',
+      params: { id: 's3' },
+    });
   });
 
   it('falls back to a generic title, since sessions need not be named', async () => {

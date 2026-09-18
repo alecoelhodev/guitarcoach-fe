@@ -95,12 +95,21 @@ describe('auth — every route is unprefixed, because better-auth mounts outside
 });
 
 describe('coach — two modes, and they are separate endpoints', () => {
-  it('requestPracticePlan posts a prompt to the planner', () => {
+  /**
+   * QA-10. The shared transport arms an `AbortController` only when it is given a timeout, and
+   * none of these passed one — so a backend that accepted the request and never answered left
+   * the composer pending indefinitely, with nothing to cancel or retry. Measured at over two
+   * minutes before the observation was cut short, not because it recovered.
+   */
+  const BOUNDED = { timeoutMs: 60_000 };
+
+  it('requestPracticePlan posts a prompt to the planner, under a time limit', () => {
     requestPracticePlan('30 minutes of blues');
 
     expect(requestMock).toHaveBeenCalledWith('/ai/practice-planner', {
       method: 'POST',
       body: { prompt: '30 minutes of blues' },
+      ...BOUNDED,
     });
   });
 
@@ -110,6 +119,7 @@ describe('coach — two modes, and they are separate endpoints', () => {
     expect(requestMock).toHaveBeenCalledWith('/ai/practice-planner', {
       method: 'POST',
       body: { previousResponseId: 'resp-1', confirmation: true },
+      ...BOUNDED,
     });
   });
 
@@ -119,15 +129,17 @@ describe('coach — two modes, and they are separate endpoints', () => {
     expect(requestMock).toHaveBeenCalledWith('/ai/practice-planner', {
       method: 'POST',
       body: { previousResponseId: 'resp-1', confirmation: false },
+      ...BOUNDED,
     });
   });
 
-  it('instantCreateRoutine hits the other endpoint entirely', () => {
+  it('instantCreateRoutine hits the other endpoint entirely, also bounded', () => {
     instantCreateRoutine("what I've skipped lately");
 
     expect(requestMock).toHaveBeenCalledWith('/ai/routine-coach', {
       method: 'POST',
       body: { message: "what I've skipped lately" },
+      ...BOUNDED,
     });
   });
 });

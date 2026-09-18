@@ -17,6 +17,17 @@ import { useToastStore } from '@/stores/toast-store';
 export async function resetStores() {
   useSessionStore.setState({ status: 'loading', user: null });
   useToastStore.setState({ toast: null });
-  useActiveSessionStore.setState({ routineId: undefined, title: undefined, tasks: [] });
+  // Every data field, not a convenient subset: `routineTitle`, `notes`, `startedAt` and
+  // `userId` used to survive into the next test, which is the "passes alone, fails in
+  // company" split this helper exists to prevent.
+  useActiveSessionStore.setState({
+    userId: undefined,
+    routineId: undefined,
+    routineTitle: undefined,
+    title: undefined,
+    notes: undefined,
+    startedAt: undefined,
+    tasks: [],
+  });
   await clearStorage();
 }

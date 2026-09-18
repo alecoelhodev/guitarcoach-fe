@@ -46,6 +46,10 @@ export function RecordingUpload({ sessionId }: { sessionId: string }) {
         type: 'audio/*',
         multiple: false,
         copyToCacheDirectory: true,
+        // Web-only, and it defaults to `true`: with base64 on, `asset.uri` is the whole file
+        // re-encoded as a data URL — up to 50 MB of string we no longer read, because the
+        // browser path uploads `asset.file` instead.
+        base64: false,
       });
       if (result.canceled) {
         setPhase('idle');
@@ -59,7 +63,14 @@ export function RecordingUpload({ sessionId }: { sessionId: string }) {
         busy.current = false;
         return;
       }
-      const selected = { uri: asset.uri, name: asset.name, mimeType: asset.mimeType };
+      const selected = {
+        uri: asset.uri,
+        name: asset.name,
+        mimeType: asset.mimeType,
+        // Web only, and the only form a browser's FormData can send as a file. Dropping it
+        // here is what made every web upload fail as "That file can't be uploaded".
+        file: asset.file,
+      };
       setFile(selected);
       await sendFile(selected);
     } catch {

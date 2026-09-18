@@ -97,6 +97,22 @@ describe('RoutinesList', () => {
     expect(screen.queryByText('Ask AI Coach to draft one')).toBeNull();
   });
 
+  /**
+   * QA-04. The two creation actions live in the `FlatList` footer, and `QueryState` returns
+   * its `empty` branch before `children` ever runs — so a brand-new account read "Build one
+   * from the library or ask the coach" on a screen that offered neither. Visiting
+   * `/routines/new` by hand worked, which is not a path a new user can find.
+   */
+  it('still offers both creation actions on an empty Active tab', async () => {
+    mock.mockReturnValue(infinitePages([makePage([])]));
+    await render(<RoutinesList />);
+
+    expect(screen.getByText('No routines yet')).toBeTruthy();
+    expect(screen.getByText('Create Routine')).toBeTruthy();
+    expect(screen.getByText('Ask AI Coach to draft one')).toBeTruthy();
+    expect(linkHrefs).toContain('/routines/new');
+  });
+
   it('keeps the coach out of the Archived footer even when it has content', async () => {
     mock.mockReturnValue(infinitePages([makePage([makeRoutine({ status: 'archived' })])]));
     await render(<RoutinesList />);

@@ -54,10 +54,16 @@ export function RoutinesList() {
             archived ? (
               <EmptyState title="Nothing archived yet." />
             ) : (
-              <EmptyState
-                title="No routines yet"
-                message="Build one from the library or ask the coach."
-              />
+              // The same two actions as the list footer, because `QueryState`'s empty branch
+              // returns before `children` ever runs: a new account saw the copy telling it to
+              // build a routine with no way on this screen to build one.
+              <View style={styles.emptyBlock}>
+                <EmptyState
+                  title="No routines yet"
+                  message="Build one from the library or ask the coach."
+                />
+                <CreateRoutineActions />
+              </View>
             )
           }
         >
@@ -80,25 +86,9 @@ export function RoutinesList() {
                       </Button>
                     </View>
                   )}
-                  {/* Canvas 05 keeps the coach reachable from the list, not just the
-                      empty state — routines have no other creation path today. Creating
-                      from the Archived tab would land the user back on Active with no
-                      explanation, so the tab offers nothing. */}
-                  {!archived && (
-                    <>
-                      <Link href="/(app)/(main)/coach" asChild>
-                        <Button variant="ghost" block>
-                          Ask AI Coach to draft one
-                        </Button>
-                      </Link>
-                      {/* Canvas 05 places Create Routine under the coach button. */}
-                      <Link href="/routines/new" asChild>
-                        <Button variant="secondary" block>
-                          Create Routine
-                        </Button>
-                      </Link>
-                    </>
-                  )}
+                  {/* Creating from the Archived tab would land the user back on Active with
+                      no explanation, so that tab offers nothing. */}
+                  {!archived && <CreateRoutineActions />}
                 </>
               }
               ListFooterComponentStyle={styles.footerBlock}
@@ -110,6 +100,29 @@ export function RoutinesList() {
   );
 }
 
+/**
+ * Canvas 05 keeps the coach reachable from the list itself, not only from the empty state.
+ * Shared by the footer and the empty state so the two cannot drift — and so that the empty
+ * Active tab is not the one place in the app with no way to create a routine.
+ */
+function CreateRoutineActions() {
+  return (
+    <>
+      <Link href="/(app)/(main)/coach" asChild>
+        <Button variant="ghost" block>
+          Ask AI Coach to draft one
+        </Button>
+      </Link>
+      {/* Canvas 05 places Create Routine under the coach button. */}
+      <Link href="/routines/new" asChild>
+        <Button variant="secondary" block>
+          Create Routine
+        </Button>
+      </Link>
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
@@ -118,4 +131,5 @@ const styles = StyleSheet.create({
   list: { padding: Spacing[4], paddingBottom: TabBarInset + Spacing[4], gap: Spacing[3] },
   footer: { alignItems: 'center' },
   footerBlock: { gap: Spacing[3] },
+  emptyBlock: { padding: Spacing[4], gap: Spacing[3] },
 });

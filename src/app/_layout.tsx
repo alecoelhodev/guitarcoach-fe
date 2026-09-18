@@ -12,11 +12,12 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { setUnauthorizedHandler } from '@/api/client';
-import { CACHE_BUSTER, CACHE_MAX_AGE_MS, purgePersistedCache, queryPersister } from '@/api/persist';
+import { CACHE_BUSTER, CACHE_MAX_AGE_MS, queryPersister } from '@/api/persist';
 import { queryClient } from '@/api/query-client';
 import { ErrorBoundaryFallback } from '@/components/error-boundary-fallback';
 import { ToastHost } from '@/components/toast-host';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
+import { clearLocalSession } from '@/stores/clear-local-session';
 import { useSessionStore } from '@/stores/session-store';
 import { Colors } from '@/theme/tokens';
 
@@ -61,13 +62,11 @@ export default function RootLayout() {
   const ready = fontsLoaded && status !== 'loading';
 
   useEffect(() => {
+    // Same teardown as the deliberate sign-out path, and shared with it: an expired cookie
+    // leaves the previous user's cached data — and their in-progress practice session —
+    // for whoever signs in next.
     setUnauthorizedHandler(() => {
-      void useSessionStore.getState().clear();
-      // Same reason the deliberate sign-out path clears it: an expired cookie leaves the
-      // previous user's routines and sessions cached for whoever signs in next. The
-      // persisted snapshot has to go too — `clear()` only empties memory.
-      queryClient.clear();
-      void purgePersistedCache();
+      void clearLocalSession(queryClient);
     });
   }, []);
 

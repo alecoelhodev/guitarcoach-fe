@@ -82,10 +82,14 @@ second Jest project on `jest-expo/web`.
 
 **Shared test helpers live in `src/test/`** — `fixtures.ts` (builders for the generated DTOs),
 `query-client.tsx` (`makeTestQueryClient` / `withQueryClient`), `reset-stores.ts`,
-`expo-router.tsx` (the minimal `useRouter`/`Link`/`usePathname` mock, plus `linkHrefs` and
-`mockRouter`), `query-hooks.ts` (`pendingQuery` / `successQuery` / `errorQuery` /
-`infinitePages` / `mutationStub`) and `gluestack.tsx` (`withGluestack`). Use them rather than
-re-deriving a `QueryClient` or a `user` object per suite. Two traps they exist to
+`expo-router.tsx` (the minimal `useRouter`/`Link`/`usePathname` mock, plus `linkHrefs`,
+`mockRouter` and `setMockPathname`), `press.ts` (`pressLinkTarget`, the only honest test for
+whether a `Link asChild` child is pressable on native), `query-hooks.ts` (`pendingQuery` /
+`successQuery` / `errorQuery` / `infinitePages` / `mutationStub`) and `gluestack.tsx`
+(`withGluestack`). Use them rather than re-deriving a `QueryClient` or a `user` object per
+suite. Note that `mockRouter`'s `beforeEach` re-pins `canGoBack` to `true`: `mockClear` forgets
+the calls but keeps the implementation, so a suite that pins it `false` for one case otherwise
+leaves it `false` for every case after it. Two traps they exist to
 absorb: **never pass `replace: true` to a store's `setState`** (actions live in the same object
 as the data, so a replace deletes `start`, `show`, `hydrate`), and **clear storage between
 tests** — `jest.setup.ts` builds its AsyncStorage mock on a single `Map` in the factory
@@ -178,6 +182,17 @@ src/types/      generated api.d.ts + per-resource re-exports
   `src/test/expo-router.tsx` mock reproduces the throw, so every suite rendering a
   `Link asChild` guards the rule; `rail.web.test.tsx` and `bottom-bar.web.test.tsx` are the
   dedicated ones.
+- **An `asChild` child must be pressable, and a `View` is not.** SDK 57's Link docs are
+  explicit that the child "must accept `onPress` or `onClick`"; React Native's `View` accepts
+  neither, so the forwarded handler is silently dropped — while `react-native-web`'s `View`
+  honours the injected DOM props. A `<Link asChild><Card>` or `<Link asChild><View>` therefore
+  navigates in the browser and does **nothing in Expo Go**, which is how the Library, History,
+  Home-avatar, routine-strip and recent-session links all shipped dead on native with a green
+  suite. Use `Pressable` (`routine-card.tsx`), a `Button`, a `Card` with `onPress` — which
+  renders a `Pressable` — or a `Text`, which handles press natively.
+  `fireEvent.press` is **not** evidence either way: RNTL calls an `onPress` prop wherever it
+  finds one, including on a plain `View`. Assert with `pressLinkTarget` from
+  `src/test/press.ts`, which fails unless the element actually claims the touch responder.
 - Route groups matter: the real path is `/(app)/(main)/(tabs)/routines`, not
   `/(app)/(tabs)/routines`. Detail routes resolve bare: `/routines/[id]`.
 - Components consume `*.queries.ts` hooks; don't call `useQuery` with an inline key from a
@@ -256,6 +271,13 @@ Verified against the committed OpenAPI schema:
 - **Practice sessions are write-once.** `/practice-sessions/{sessionId}` is `GET` only —
   no update endpoint. Starting practice creates nothing; the session is written once, on
   Finish. Local in-progress state lives in `src/features/session/session-store.ts`.
+- **That local session is persisted per device, not per account, so it carries a `userId`.**
+  One AsyncStorage key serves everyone who signs in on the device, and a session left behind
+  by a signed-out account was offered to the next one — routine, minutes and unsaved notes
+  included. Two things keep it scoped, and both are needed: `start()` stamps the owner and
+  every reader checks it, and `clearLocalSession()` (`src/stores/clear-local-session.ts`) is
+  the single teardown shared by the deliberate sign-out and the 401 handler. Add anything
+  account-scoped to that function rather than to one of its two callers.
 - **Session totals are client-derived.** There is no total-elapsed field and no analytics
   endpoint; per-task minutes are optional, so every total is a client-side sum that must
   render correctly when minutes are absent.

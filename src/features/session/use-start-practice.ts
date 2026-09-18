@@ -5,6 +5,7 @@ import { describeError } from '@/api/errors';
 import { queryKeys } from '@/api/query-keys';
 import { listRoutineTasks } from '@/api/routines';
 import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
+import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
 import type { Routine, RoutineTaskWithTask } from '@/types/routine';
 
@@ -40,6 +41,9 @@ export function useStartPractice() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const startSession = useActiveSessionStore((state) => state.start);
+  // Stamped on the session so a later account cannot be offered it — the store persists
+  // under one device-wide key. See `src/stores/clear-local-session.ts`.
+  const userId = useSessionStore((state) => state.user?.id);
   const showToast = useToastStore((state) => state.show);
 
   return useMutation({
@@ -51,6 +55,7 @@ export function useStartPractice() {
       }),
     onSuccess: (tasks, { routine }) => {
       startSession({
+        userId,
         routineId: routine.id,
         routineTitle: routine.title,
         // Seeded from the routine, then the user's to rename — canvas 07's "Evening practice".

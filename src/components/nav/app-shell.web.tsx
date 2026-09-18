@@ -19,19 +19,19 @@ import { useIsWide } from '@/hooks/use-is-wide';
 export default function AppShell({ children }: { children: ReactNode }) {
   const isWide = useIsWide();
 
-  if (!isWide) {
-    return (
-      <View style={styles.column}>
-        <View style={styles.content}>{children}</View>
-        <BottomBar />
-      </View>
-    );
-  }
-
+  // One tree with three fixed slots, never two trees.
+  //
+  // Returning `[content, BottomBar]` below the breakpoint and `[Rail, content]` above it put
+  // different element types at the same child positions, so crossing 768px made React
+  // reconcile a View against a Rail and remount everything under it — the Stack, the route,
+  // and every piece of `useState` in the screen. Resizing a browser window mid-task wiped a
+  // half-written AI Coach prompt and its pending request with it. A conditional renders
+  // `false` in its slot, which keeps the content View at the same index either way.
   return (
-    <View style={styles.row}>
-      <Rail />
+    <View style={isWide ? styles.row : styles.column}>
+      {isWide && <Rail />}
       <View style={styles.content}>{children}</View>
+      {!isWide && <BottomBar />}
     </View>
   );
 }

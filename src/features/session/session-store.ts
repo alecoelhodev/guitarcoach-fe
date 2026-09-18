@@ -12,6 +12,13 @@ export type ActiveSessionTask = {
 };
 
 type ActiveSessionState = {
+  /**
+   * Who started this session. The store is persisted under one device-wide key, so without an
+   * owner a session left behind by a signed-out account is offered to whoever signs in next —
+   * routine, minutes and unsaved notes included. Checked wherever the session is surfaced;
+   * `clearLocalSession` is the proactive half of the same guard.
+   */
+  userId?: string;
   routineId?: string;
   /**
    * The routine being followed, kept separate from `title`. Canvas 07 shows both — "Following ·
@@ -29,6 +36,7 @@ type ActiveSessionState = {
   startedAt?: number;
   tasks: ActiveSessionTask[];
   start: (input: {
+    userId?: string;
     routineId?: string;
     routineTitle?: string;
     title?: string;
@@ -53,8 +61,16 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
     (set) => ({
       tasks: [],
 
-      start: ({ routineId, routineTitle, title, tasks }) =>
-        set({ routineId, routineTitle, title, tasks, notes: undefined, startedAt: Date.now() }),
+      start: ({ userId, routineId, routineTitle, title, tasks }) =>
+        set({
+          userId,
+          routineId,
+          routineTitle,
+          title,
+          tasks,
+          notes: undefined,
+          startedAt: Date.now(),
+        }),
 
       setTitle: (title) => set({ title }),
 
@@ -78,6 +94,7 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
       // so a reset session persists as `{"tasks":[]}` and a killed app resumes nothing.
       reset: () =>
         set({
+          userId: undefined,
           routineId: undefined,
           routineTitle: undefined,
           title: undefined,
@@ -86,6 +103,13 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
           tasks: [],
         }),
     }),
-    { name: 'active-session', storage: createJSONStorage(() => storage) },
+    {
+      name: 'active-session',
+      storage: createJSONStorage(() => storage),
+      version: 1,
+      // v0 predates `userId`, so a session stored then has no owner and cannot be proved to
+      // belong to whoever is signed in now. Dropped rather than adopted.
+      migrate: () => ({ tasks: [] }),
+    },
   ),
 );

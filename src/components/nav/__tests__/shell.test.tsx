@@ -2,7 +2,8 @@ jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
 jest.mock('@/hooks/use-is-wide', () => ({ useIsWide: jest.fn() }));
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { useState } from 'react';
+import { Text, TextInput } from 'react-native';
 
 import AppShell from '@/components/nav/app-shell';
 import WebAppShell from '@/components/nav/app-shell.web';
@@ -80,6 +81,45 @@ describe('AppShell (web)', () => {
     expect(screen.getByText('History')).toBeTruthy();
     // One Practice action, not one per shell.
     expect(screen.getAllByText('Practice')).toHaveLength(1);
+  });
+});
+
+/**
+ * QA-09. The shell used to return `[content, BottomBar]` narrow and `[Rail, content]` wide —
+ * different element types at the same child index — so crossing 768px made React reconcile a
+ * View against a Rail and remount the whole subtree, the routed screen included. Resizing a
+ * browser window discarded a half-typed AI Coach prompt and the request it had in flight.
+ *
+ * Asserted through a child that holds state, because that is the damage; the rail and bar
+ * swapping is already covered above and is expected to remount.
+ */
+describe('AppShell (web) across the breakpoint', () => {
+  function StatefulScreen() {
+    const [text, setText] = useState('');
+    return <TextInput testID="draft" value={text} onChangeText={setText} />;
+  }
+
+  it('keeps the routed screen mounted when the viewport crosses 768px', async () => {
+    mockIsWide.mockReturnValue(false);
+    const view = await render(
+      <WebAppShell>
+        <StatefulScreen />
+      </WebAppShell>,
+    );
+    await fireEvent.changeText(screen.getByTestId('draft'), 'half-typed prompt');
+    expect(screen.getByTestId('draft').props.value).toBe('half-typed prompt');
+
+    // The same live tree re-rendering at a new width, which is what a browser resize is —
+    // not a fresh render, which is what hid this from the suite.
+    mockIsWide.mockReturnValue(true);
+    await view.rerender(
+      <WebAppShell>
+        <StatefulScreen />
+      </WebAppShell>,
+    );
+
+    expect(screen.getByText('Guitar Coach')).toBeTruthy();
+    expect(screen.getByTestId('draft').props.value).toBe('half-typed prompt');
   });
 });
 

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { UploadFile } from '@/api/client';
 import { queryKeys } from '@/api/query-keys';
 import { deleteRecording, listRecordings, uploadRecording } from '@/api/recordings';
 
@@ -10,8 +11,6 @@ export function useRecordings(sessionId: string) {
   });
 }
 
-type RecordingFile = { uri: string; name: string; mimeType: string };
-
 /**
  * Deliberately thin — picking the file and rejecting an oversized or wrong-typed one is the
  * screen's job (`src/lib/file-validation.ts`), not the hook's, so a caller cannot get a
@@ -20,7 +19,7 @@ type RecordingFile = { uri: string; name: string; mimeType: string };
 export function useUploadRecording(sessionId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (file: RecordingFile) => uploadRecording(sessionId, file),
+    mutationFn: (file: UploadFile) => uploadRecording(sessionId, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.recordings(sessionId) });
     },
