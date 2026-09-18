@@ -124,8 +124,11 @@ Two representative patterns:
 - **Infinite-query pagination** (`useRoutines` in `src/api/routines.queries.ts`) —
   `useInfiniteQuery` with page-based `pageParam` and
   `getNextPageParam: (last) => last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined`.
-  List screens (Library, Routines, History) expose this as a "Load more" button rather than
-  automatic infinite scroll.
+  The Library loads the next page when the list reaches its end (`onEndReached`, spinner
+  footer, explicit **Try again** when a page fails — a failed next page is a query error with
+  the loaded pages still in `data`, so the screen splits it out or `QueryState` would replace
+  the whole list). Routines, History and the routine "Add tasks" picker still expose a
+  "Load more" button.
 - **Optimistic mutation with rollback** (`useReorderRoutineTasks`) — `onMutate` cancels
   in-flight queries for that key and snapshots + optimistically writes the reordered list via
   `setQueryData`; `onError` restores the snapshot; `onSettled` invalidates to reconcile with

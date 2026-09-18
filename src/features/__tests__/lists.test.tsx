@@ -27,9 +27,9 @@ import { makePage, makeRoutine, makeSession, makeTask } from '@/test/fixtures';
 import { errorInfinite, infinitePages, pendingInfinite } from '@/test/query-hooks';
 
 /**
- * The three paginated list screens. They share one ladder — pending, error, empty, content,
- * plus a "load more" footer gated on `hasNextPage` — so each screen is driven through the
- * same five states. The hook module is mocked rather than the transport: `useRoutines`,
+ * The three paginated list screens. They share one ladder — pending, error, empty, content —
+ * so each screen is driven through the same five states. Routines and History page on a
+ * "Load more" button; Library pages on scroll, so its footer cases fire `onEndReached`. The hook module is mocked rather than the transport: `useRoutines`,
  * `useSessions` and `useTasks` are already covered at 100% by their own suites against a real
  * QueryClient, so mounting a provider here would re-verify covered code.
  */
@@ -192,6 +192,24 @@ describe('RoutinesList', () => {
   });
 });
 
+/**
+ * A scroll event alone never reaches `onEndReached`: `VirtualizedList` bails out of
+ * `_maybeCallOnEdgeReached` until it has both a content length (from `onContentSizeChange`)
+ * and a visible length (from `onLayout`), and Jest lays nothing out. Feed it all three.
+ */
+async function scrollToEnd() {
+  const list = screen.getByTestId('library-list');
+  await fireEvent(list, 'layout', { nativeEvent: { layout: { width: 100, height: 100 } } });
+  await fireEvent(list, 'contentSizeChange', 100, 500);
+  await fireEvent.scroll(list, {
+    nativeEvent: {
+      contentOffset: { y: 500 },
+      contentSize: { height: 500, width: 100 },
+      layoutMeasurement: { height: 100, width: 100 },
+    },
+  });
+}
+
 describe('LibraryList', () => {
   const mock = useTasksMock as unknown as AnyHook;
 
@@ -239,14 +257,25 @@ describe('LibraryList', () => {
     expect(screen.getByText('Something went wrong on our end')).toBeTruthy();
   });
 
-  it('loads more when there is another page', async () => {
+  it('fetches the next page when the list reaches its end', async () => {
     const query = infinitePages([makePage([makeTask()])], { hasNextPage: true });
     mock.mockReturnValue(query);
     await render(<LibraryList />);
 
-    await fireEvent.press(screen.getByText('Load more'));
+    await scrollToEnd();
 
     expect(query.fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops at the last page', async () => {
+    const query = infinitePages([makePage([makeTask()])]);
+    mock.mockReturnValue(query);
+    await render(<LibraryList />);
+
+    await scrollToEnd();
+
+    expect(query.fetchNextPage).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('Loading more tasks')).toBeNull();
   });
   it('combines filters, toggles each off, and clears both', async () => {
     mock.mockReturnValue(infinitePages([makePage([makeTask()], { total: 8 })]));
@@ -303,15 +332,44 @@ describe('LibraryList', () => {
     expect(useTasksMock).toHaveBeenLastCalledWith({ category: 'theory', difficulty: undefined });
   });
 
-  it('disables pagination while fetching the next page', async () => {
+  it('does not fetch again while the next page is already loading', async () => {
     const query = infinitePages([makePage([makeTask()])], {
       hasNextPage: true,
       isFetchingNextPage: true,
     });
     mock.mockReturnValue(query);
     await render(<LibraryList />);
-    await fireEvent.press(screen.getByText('Loading…'));
+
+    expect(screen.getByLabelText('Loading more tasks')).toBeTruthy();
+
+    await scrollToEnd();
+
     expect(query.fetchNextPage).not.toHaveBeenCalled();
+  });
+
+  /**
+   * TanStack reports a failed next page as a query error with the loaded pages still in
+   * `data`. Without the screen's own split, `QueryState` would swallow the whole list.
+   */
+  it('keeps the loaded tasks and offers a retry when the next page fails', async () => {
+    const query = infinitePages([makePage([makeTask({ title: 'Alternate picking' })])], {
+      hasNextPage: true,
+      isError: true,
+      error: new ApiError('nope', 500),
+      isFetchNextPageError: true,
+    });
+    mock.mockReturnValue(query);
+    await render(<LibraryList />);
+
+    expect(screen.getByText('Alternate picking')).toBeTruthy();
+    expect(screen.queryByText('Something went wrong on our end')).toBeNull();
+
+    // Scrolling again must not retry by itself — that is what the button is for.
+    await scrollToEnd();
+    expect(query.fetchNextPage).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(query.fetchNextPage).toHaveBeenCalledTimes(1);
   });
 });
 

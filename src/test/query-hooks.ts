@@ -45,12 +45,16 @@ type InfiniteQueryLike<T> = QueryLike<{ pages: Paginated<T>[] }> & {
   fetchNextPage: jest.Mock;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
+  isFetchNextPageError: boolean;
 };
 
 /**
- * The three list screens all read `data?.pages.flatMap((page) => page.data) ?? []`, so pages
- * go in as `makePage()` results. `hasNextPage` and `isFetchingNextPage` drive the footer
- * button and its "Loading…" label, which is the only branching those screens own.
+ * The four list screens all read `data?.pages.flatMap((page) => page.data) ?? []`, so pages
+ * go in as `makePage()` results. `hasNextPage` and `isFetchingNextPage` drive the footer —
+ * the "Load more" button on Routines, History and Add tasks, the spinner on Library, which
+ * additionally reads `isFetchNextPageError` to offer a retry instead of letting `QueryState`
+ * swallow the whole list. TanStack pairs that flag with `isError: true` and retained `data`,
+ * so a test for it must set both.
  */
 export function infinitePages<T>(
   pages: Paginated<T>[],
@@ -61,6 +65,7 @@ export function infinitePages<T>(
     fetchNextPage: jest.fn(),
     hasNextPage: false,
     isFetchingNextPage: false,
+    isFetchNextPageError: false,
     ...overrides,
   };
 }
@@ -71,6 +76,7 @@ export function pendingInfinite<T>(): InfiniteQueryLike<T> {
     fetchNextPage: jest.fn(),
     hasNextPage: false,
     isFetchingNextPage: false,
+    isFetchNextPageError: false,
   };
 }
 
@@ -80,6 +86,7 @@ export function errorInfinite<T>(error: Error): InfiniteQueryLike<T> {
     fetchNextPage: jest.fn(),
     hasNextPage: false,
     isFetchingNextPage: false,
+    isFetchNextPageError: false,
   };
 }
 

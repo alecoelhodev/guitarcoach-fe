@@ -54,6 +54,13 @@ synchronously renders nothing and every later query fails with the misleading
 (`toBeOnTheScreen`, `toHaveTextContent`, …) register on import — do **not** add
 `@testing-library/jest-native`, which is deprecated.
 
+**A scroll event alone never reaches `onEndReached`.** `VirtualizedList` returns early from
+`_maybeCallOnEdgeReached` until it has a content length (`onContentSizeChange`) _and_ a visible
+length (`onLayout`), and Jest lays nothing out — so `fireEvent.scroll` on its own passes the
+assertion for the wrong reason. Fire `layout`, then `contentSizeChange`, then `scroll`, as
+`scrollToEnd` in `src/features/__tests__/lists.test.tsx` does. Only the Library paginates on
+scroll; the other lists still use a "Load more" button.
+
 **`jest.config.js` pins `process.env.TZ = 'UTC'`.** `src/lib/date-grouping.ts` derives "this
 week" in local time, so without the pin its tests assert one thing on a dev machine and
 another on CI's UTC runner. Never assert on the host zone, and don't move the pin into the
