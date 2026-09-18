@@ -293,6 +293,37 @@ describe("today's practice", () => {
   });
 });
 
+describe("today's practice — a routine with no tasks", () => {
+  /**
+   * QA-06, third entry point. The pick is derived — the newest active routine — and that
+   * routine can legitimately have no tasks: Instant Create produces them, and so does
+   * creating one by hand. The card badged "0 tasks" and still offered Start Practice, which
+   * opened "No active session". Found by re-testing the fix in a browser, not by the report.
+   */
+  it('will not start it, and says what is missing instead', async () => {
+    givenRoutines(makeRoutine({ id: 'r1', title: 'QA Empty Routine', taskCount: 0 }));
+    mockRoutineTasks.mockReturnValue(asHookResult(successQuery([])));
+    await render(withGluestack(<HomeScreen />));
+
+    await fireEvent.press(screen.getByText('Start Practice'));
+
+    expect(startPractice.mutate).not.toHaveBeenCalled();
+    expect(screen.getByText('Add a task to this routine before practising it.')).toBeTruthy();
+  });
+
+  it('still starts a routine that has tasks', async () => {
+    const routine = makeRoutine({ id: 'r1', title: 'Morning warm-up', taskCount: 1 });
+    givenRoutines(routine);
+    const tasks = [makeRoutineTaskWithTask({ task: makeTask({ title: 'Scales' }) })];
+    mockRoutineTasks.mockReturnValue(asHookResult(successQuery(tasks)));
+    await render(withGluestack(<HomeScreen />));
+
+    await fireEvent.press(screen.getByText('Start Practice'));
+
+    expect(startPractice.mutate).toHaveBeenCalledWith({ routine, tasks });
+  });
+});
+
 describe('active routines', () => {
   it('lists each active routine with its task count and duration', async () => {
     givenRoutines(
@@ -633,7 +664,7 @@ describe('primary actions', () => {
   // Canvas 840: Start opens the session pre-loaded. It used to navigate to the routine
   // detail screen instead, which made the user press Start twice.
   it('starts the session from Home rather than routing to the routine', async () => {
-    const routine = makeRoutine({ id: 'r1', title: 'Morning warm-up' });
+    const routine = makeRoutine({ id: 'r1', title: 'Morning warm-up', taskCount: 1 });
     givenRoutines(routine);
     const tasks = [makeRoutineTaskWithTask({ task: makeTask({ title: 'Scales' }) })];
     mockRoutineTasks.mockReturnValue(asHookResult(successQuery(tasks)));
