@@ -1,4 +1,5 @@
-import { ApiError, OFFLINE_STATUS } from '@/api/client';
+import { describeApiTarget } from '@/api/base-url';
+import { ApiError, apiTarget, OFFLINE_STATUS } from '@/api/client';
 
 export type ErrorDescription = { title: string; message?: string };
 
@@ -18,7 +19,14 @@ export function describeError(error: unknown, fallbackTitle = GENERIC_TITLE): Er
 
   switch (true) {
     case error.status === OFFLINE_STATUS:
-      return { title: 'No connection', message: 'Check your connection and try again.' };
+      return {
+        title: 'No connection',
+        // A dead network, a wrong base URL and a CORS rejection all arrive here as status 0.
+        // In dev, name the host so the three are distinguishable; shipped copy is unchanged.
+        message: __DEV__
+          ? `Couldn't reach ${describeApiTarget(apiTarget)}. Check your connection and try again.`
+          : 'Check your connection and try again.',
+      };
     case error.status === 404:
       return { title: 'Not found', message: "This isn't here anymore." };
     case error.status === 403:

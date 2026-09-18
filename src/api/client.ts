@@ -1,22 +1,37 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { type ApiTarget, describeApiTarget, resolveApiTarget } from '@/api/base-url';
+
 const API_PREFIX = '/api/v1';
 
 const extra = Constants.expoConfig?.extra;
 
-/**
- * Both values are resolved by the CLI on the dev machine and shipped to the device in the
- * manifest, so a phone receives whatever `localhost` meant on the Mac — i.e. itself. Setting
- * `EXPO_PUBLIC_API_BASE_URL_NATIVE` points iOS/Android at a reachable host while the browser
- * keeps using the local one. Unset, both platforms share `apiBaseUrl`.
- */
-const baseUrl = (
-  Platform.OS === 'web' ? extra?.apiBaseUrl : (extra?.apiBaseUrlNative ?? extra?.apiBaseUrl)
-) as string | undefined;
+const target = resolveApiTarget({
+  platform: Platform.OS,
+  apiBaseUrl: extra?.apiBaseUrl as string | undefined,
+  apiBaseUrlNative: extra?.apiBaseUrlNative as string | undefined,
+  hostUri: Constants.expoConfig?.hostUri,
+});
 
-if (!baseUrl) {
-  throw new Error('EXPO_PUBLIC_API_BASE_URL is not set — check your .env file.');
+if (!target) {
+  throw new Error(
+    'EXPO_PUBLIC_API_BASE_URL is not set — run `npm run dev:local`, or check your .env file.',
+  );
+}
+
+/** Which backend this build is talking to. Read by the dev-only row on the profile screen. */
+export const apiTarget: ApiTarget = target;
+
+const baseUrl = target.url;
+
+// The only console call in `src/`, and deliberate: an unreachable backend and a wrong backend
+// are the same `ApiError('No connection', 0)` at the UI, so the terminal has to say which one
+// the app actually chose before the first screen renders.
+// `NODE_ENV !== 'test'` because jest-expo leaves `__DEV__` true: without it this prints once
+// per suite for all 47 of them.
+if (__DEV__ && process.env.NODE_ENV !== 'test') {
+  console.log(`[api] ${describeApiTarget(target)} — via ${target.source}`);
 }
 
 /** `ApiError.status` when the request never reached the server. */

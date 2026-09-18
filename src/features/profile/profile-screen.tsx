@@ -2,6 +2,8 @@ import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSignOut } from '@/api/auth.queries';
+import { describeApiTarget } from '@/api/base-url';
+import { apiTarget } from '@/api/client';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -54,6 +56,14 @@ export function ProfileScreen() {
                   year: 'numeric',
                 })}
               />
+              {/* Dev only — a shipped build must not name internal hosts. Without it, "No
+                  connection" cannot be told apart from "pointed at the wrong backend". */}
+              {__DEV__ && (
+                <>
+                  <View style={styles.divider} />
+                  <DetailRow label="API" value={describeApiTarget(apiTarget)} />
+                </>
+              )}
             </Card>
           </>
         )}

@@ -88,7 +88,9 @@ describe('QueryState', () => {
       );
 
       expect(screen.getByText('No connection')).toBeTruthy();
-      expect(screen.getByText('Check your connection and try again.')).toBeTruthy();
+      // Matched loosely because dev builds prefix the host they couldn't reach; what this test
+      // is about is that the offline copy wins over the caller's context, asserted below.
+      expect(screen.getByText(/Check your connection and try again\./)).toBeTruthy();
       expect(screen.queryByText("Couldn't load routines")).toBeNull();
     });
 
