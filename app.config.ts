@@ -53,10 +53,16 @@ const config: ExpoConfig = {
   },
   extra: {
     router: {},
+    // Diagnostic only — these exist so `npx expo config --type public --json` can report which
+    // backend a command will use without starting a server. Do NOT read them at runtime: on web
+    // `Constants.expoConfig` is a Babel-inlined copy of APP_MANIFEST, and Metro caches that
+    // transform without keying on the config, so it goes stale across restarts. `src/api/client.ts`
+    // reads `process.env.EXPO_PUBLIC_*` instead, which the serializer re-injects every build.
+    //
     // `|| undefined`, not a bare read: @expo/env skips any key already present in `process.env`
     // using `typeof !== 'undefined'`, so `EXPO_PUBLIC_API_BASE_URL_NATIVE= expo start` — how the
-    // start scripts neutralise a stale .env entry — arrives here as `''`. A `??` downstream would
-    // then choose the empty string over the real URL.
+    // dev scripts neutralise a stale .env entry — arrives here as `''`, which would print as an
+    // empty string rather than "unset".
     apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || undefined,
     // iOS/Android only, where `localhost` resolves to the phone rather than the dev
     // machine. Unset is the normal case — both platforms then share `apiBaseUrl`.

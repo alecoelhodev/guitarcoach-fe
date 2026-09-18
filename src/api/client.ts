@@ -5,12 +5,16 @@ import { type ApiTarget, describeApiTarget, resolveApiTarget } from '@/api/base-
 
 const API_PREFIX = '/api/v1';
 
-const extra = Constants.expoConfig?.extra;
-
 const target = resolveApiTarget({
   platform: Platform.OS,
-  apiBaseUrl: extra?.apiBaseUrl as string | undefined,
-  apiBaseUrlNative: extra?.apiBaseUrlNative as string | undefined,
+  // Read from `process.env`, never `Constants.expoConfig.extra`. On web the app config is inlined
+  // into expo-constants as a literal at Babel transform time, and Metro's transform cache key does
+  // not include the config — so `extra` keeps whatever it held when that cache entry was written,
+  // across restarts, until `--clear`. `EXPO_PUBLIC_*` is re-injected by the serializer on every
+  // build instead. `hostUri` is safe: on native it comes from the per-request dev-server manifest,
+  // and web never reads it.
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
+  apiBaseUrlNative: process.env.EXPO_PUBLIC_API_BASE_URL_NATIVE,
   hostUri: Constants.expoConfig?.hostUri,
 });
 
