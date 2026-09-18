@@ -7,6 +7,7 @@ jest.mock('@/api/coach.queries', () => ({
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import {
   useInstantCreateRoutine,
   useRequestPracticePlan,
@@ -274,5 +275,74 @@ describe('resolving a draft', () => {
     });
     expect(screen.getByText('Plan declined.')).toBeTruthy();
     expect(screen.queryByText('Not saved')).toBeNull();
+  });
+});
+
+/**
+ * QA-10. `handleSubmit` and `handleConfirm` had no `try`/`catch` at all, and neither the
+ * screen nor the mutations ever read `isError` — so a failed coach call was an unhandled
+ * promise rejection and the screen showed nothing whatsoever. That is also what made the
+ * missing request timeout read as "still working" rather than "never coming back": a
+ * loopback proxy that accepted the request and never answered left the form pending for
+ * over two minutes with no cancel and no retry.
+ */
+describe('when the coach cannot answer', () => {
+  /** `mutationStub` resolves by design; a rejection is what these cases need. */
+  function failing(error: unknown) {
+    const stub = mutationStub();
+    stub.mutateAsync.mockRejectedValue(error);
+    return stub;
+  }
+
+  it('surfaces an unreachable backend, with a way to try again', async () => {
+    const { request } = stubs({ request: failing(new ApiError('boom', OFFLINE_STATUS)) });
+    await render(<CoachScreen />);
+
+    await submit('30-min blues routine');
+
+    expect(screen.getByText('No connection')).toBeTruthy();
+    const retry = screen.getByText('Try again');
+    request.mutateAsync.mockResolvedValue(DRAFT);
+
+    await act(async () => {
+      await fireEvent.press(retry);
+    });
+
+    expect(screen.getByText('Blues warm-up')).toBeTruthy();
+    expect(screen.queryByText('No connection')).toBeNull();
+  });
+
+  it('names the context when the failure has no recognised cause', async () => {
+    stubs({ request: failing(new Error('nope')) });
+    await render(<CoachScreen />);
+
+    await submit('30-min blues routine');
+
+    expect(screen.getByText("The coach couldn't answer")).toBeTruthy();
+  });
+
+  it('reports a failed confirmation rather than losing the draft silently', async () => {
+    stubs({ resolve: failing(new ApiError('boom', 500)) });
+    await render(<CoachScreen />);
+    await submit('30-min blues routine');
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Save Routine'));
+    });
+
+    expect(screen.getByText('Something went wrong on our end')).toBeTruthy();
+  });
+
+  // The third planner status. It fell through both branches, so a coach that declined to
+  // draft anything looked identical to a press that did nothing.
+  it('says so when the planner declines to draft a plan', async () => {
+    stubs({ request: mutationStub({ status: 'cancelled' }) });
+    await render(<CoachScreen />);
+
+    await submit('something impossible');
+
+    expect(
+      screen.getByText('The coach did not draft a plan. Try describing it differently.'),
+    ).toBeTruthy();
   });
 });

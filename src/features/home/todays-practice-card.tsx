@@ -33,6 +33,8 @@ export function TodaysPracticeCard({
   onStartPractice,
   isStarting = false,
 }: TodaysPracticeCardProps) {
+  const empty = routine.taskCount === 0;
+
   return (
     <Card>
       <View style={styles.header}>
@@ -45,12 +47,19 @@ export function TodaysPracticeCard({
 
       <ThemedText type="h5">{routine.title}</ThemedText>
 
-      {/* A routine with no tasks yet is a real state — Instant Create can produce
-          one — so the line is dropped rather than rendered empty. */}
-      {taskTitles.length > 0 && (
-        <ThemedText type="body" color="textMuted" numberOfLines={2}>
-          {taskTitles.join(' · ')}
+      {/* A routine with no tasks yet is a real state — Instant Create can produce one — so
+          the task line gives way to the reason practice is unavailable rather than rendering
+          empty above a dead button. */}
+      {empty ? (
+        <ThemedText type="body" color="textMuted">
+          Add a task to this routine before practising it.
         </ThemedText>
+      ) : (
+        taskTitles.length > 0 && (
+          <ThemedText type="body" color="textMuted" numberOfLines={2}>
+            {taskTitles.join(' · ')}
+          </ThemedText>
+        )
       )}
 
       <View style={styles.actions}>
@@ -58,6 +67,11 @@ export function TodaysPracticeCard({
             routine — "View routine" is the one that goes there. */}
         <Button
           style={styles.start}
+          // QA-06: the derived pick is simply the newest active routine, which can perfectly
+          // well have no tasks — Instant Create makes those, and so does creating one by hand.
+          // Starting it opened "No active session", so the card badged "0 tasks" and then
+          // offered an action that could not work.
+          disabled={empty}
           onPress={onStartPractice}
           loading={isStarting}
           loadingLabel="Starting…"

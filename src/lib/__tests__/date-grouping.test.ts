@@ -84,17 +84,40 @@ describe('groupSessionsByDay', () => {
     expect(groupSessionsByDay([])).toEqual([]);
   });
 
-  it('turns a malformed createdAt into a garbage day header instead of failing', () => {
-    // `.slice(0, 10)` assumes a well-formed ISO string and never validates. Recorded
-    // because it is the opposite of `filterThisWeek`, which drops the same input.
+  it('falls back to the leading ISO date when a timestamp will not parse', () => {
+    // Not a shape the API produces, but the grouping must not throw on it — an unparseable
+    // value gets a visible key of its own rather than taking the screen down.
     expect(groupSessionsByDay([at('nonsense')])[0].date).toBe('nonsense');
   });
 
-  it('groups on the UTC date in the string, not the viewer local date', () => {
-    // The basis differs from `filterThisWeek`, which compares local time. Under a negative
-    // UTC offset a late-evening session therefore files under the *next* day's header while
-    // the weekly total leaves it out. See docs/MIGRATION-PLAN.md "Known gaps"; fixing it is a product
-    // call about which day a late-night session belongs to.
-    expect(groupSessionsByDay([at('2026-09-06T01:00:00.000Z')])[0].date).toBe('2026-09-06');
+  /**
+   * QA-07. Grouping keyed on `createdAt.slice(0, 10)` — the UTC date in the string — while
+   * `filterThisWeek` compares local time, so an evening session in a negative-offset zone
+   * filed under tomorrow's heading on History and was left out of Home's weekly total. Worse,
+   * History disagreed with the session detail screen it linked to.
+   *
+   * The zone is passed explicitly because `jest.config.js` pins `TZ=UTC`, under which local
+   * and UTC agree and an assertion on the host zone would prove nothing either way.
+   */
+  it('groups on the viewer calendar day, not the UTC date in the string', () => {
+    // 2026-09-17, 20:22 in New York.
+    const groups = groupSessionsByDay([at('2026-09-18T00:22:00.000Z')], 'America/New_York');
+
+    expect(groups[0].date).toBe('2026-09-17');
+  });
+
+  it('keeps an evening and the following morning in different local groups', () => {
+    const groups = groupSessionsByDay(
+      [at('2026-09-18T00:22:00.000Z'), at('2026-09-18T13:00:00.000Z')],
+      'America/New_York',
+    );
+
+    expect(groups.map((group) => group.date)).toEqual(['2026-09-18', '2026-09-17']);
+  });
+
+  it('groups on the UTC day when the viewer is in UTC', () => {
+    const groups = groupSessionsByDay([at('2026-09-06T01:00:00.000Z')], 'UTC');
+
+    expect(groups[0].date).toBe('2026-09-06');
   });
 });

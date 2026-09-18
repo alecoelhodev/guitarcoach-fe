@@ -1,4 +1,4 @@
-import { isValidElement, type ReactElement, type ReactNode } from 'react';
+import { cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { Text } from 'react-native';
 
 /**
@@ -57,6 +57,8 @@ type LinkProps = {
   children?: ReactNode;
 };
 
+type AsChildProps = { style?: unknown; onPress?: (event: unknown) => void };
+
 function MockLink({ href, asChild, onPress, children }: LinkProps) {
   linkHrefs.push(href);
 
@@ -71,7 +73,22 @@ function MockLink({ href, asChild, onPress, children }: LinkProps) {
           'Flatten it with StyleSheet.flatten or pass a single object.',
       );
     }
-    return children as ReactElement;
+
+    if (!isValidElement<AsChildProps>(children)) return children as ReactElement;
+
+    // The real Slot forwards `onPress` to the child, and SDK 57's docs are explicit that the
+    // child "must accept `onPress` or `onClick`". React Native's `View` accepts neither, so a
+    // non-pressable child navigates on web (react-native-web honours the injected DOM props)
+    // and does nothing in Expo Go. Injecting the handler here is what lets a suite press a card
+    // and find out — without it, `linkHrefs` only proves a Link was rendered, never that it
+    // can be pressed.
+    const ownPress = children.props.onPress;
+    return cloneElement(children, {
+      onPress: (event: unknown) => {
+        ownPress?.(event);
+        mockRouter.push(href);
+      },
+    });
   }
 
   // Not `asChild` — `ExternalLink` is the only such caller, and its test needs to press it.
@@ -98,4 +115,8 @@ beforeEach(() => {
   pathname = '/';
   for (const fn of Object.values(mockRouter)) fn.mockClear();
   for (const fn of Object.values(mockNavigation)) fn.mockClear();
+  // `mockClear` forgets the calls but keeps the implementation, so a suite that pins
+  // `canGoBack` to false for one test leaves it false for every test after it. Restated here
+  // rather than switched to `mockReset`, which would drop the default and return undefined.
+  mockRouter.canGoBack.mockReturnValue(true);
 });

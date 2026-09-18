@@ -8,12 +8,14 @@ import {
   useRequestPracticePlan,
   useResolvePracticePlan,
 } from '@/api/coach.queries';
+import { describeError, type ErrorDescription } from '@/api/errors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
+import { ErrorPanel } from '@/components/ui/error-panel';
 import { Input } from '@/components/ui/input';
 import { Segmented } from '@/components/ui/segmented';
 import { PlanPreviewCard } from '@/features/coach/plan-preview-card';
@@ -35,6 +37,7 @@ export function CoachScreen() {
   const [draft, setDraft] =
     useState<Extract<DraftPlanResponse, { status: 'awaiting_confirmation' }>>();
   const [message, setMessage] = useState<string>();
+  const [failure, setFailure] = useState<ErrorDescription | null>(null);
 
   const requestPlanMutation = useRequestPracticePlan();
   const resolvePlanMutation = useResolvePracticePlan();
@@ -44,37 +47,63 @@ export function CoachScreen() {
     resolvePlanMutation.isPending ||
     instantCreateMutation.isPending;
 
+  /**
+   * Every coach call goes through here.
+   *
+   * Nothing used to catch these. A rejected `mutateAsync` was an unhandled promise rejection
+   * and the screen showed *nothing at all* — no panel, no toast, the spinner simply stopped.
+   * That is also what made the missing request timeout invisible rather than merely slow.
+   */
+  async function run(work: () => Promise<void>) {
+    setFailure(null);
+    try {
+      await work();
+    } catch (error) {
+      setFailure(describeError(error, "The coach couldn't answer"));
+    }
+  }
+
   async function handleSubmit() {
     if (!input.trim()) return;
     setMessage(undefined);
-    if (mode === 'draft') {
-      const response = await requestPlanMutation.mutateAsync(input.trim());
-      if (response.status === 'awaiting_confirmation') {
-        setDraft(response);
-      } else if (response.status === 'created') {
-        setMessage(`Routine "${response.routine.title}" created.`);
-        setInput('');
+
+    await run(async () => {
+      if (mode === 'draft') {
+        const response = await requestPlanMutation.mutateAsync(input.trim());
+        if (response.status === 'awaiting_confirmation') {
+          setDraft(response);
+        } else if (response.status === 'created') {
+          setMessage(`Routine "${response.routine.title}" created.`);
+          setInput('');
+        } else {
+          // `cancelled` fell through and left the screen blank, which reads as nothing
+          // having happened at all.
+          setMessage('The coach did not draft a plan. Try describing it differently.');
+        }
+      } else {
+        const response = await instantCreateMutation.mutateAsync(input.trim());
+        setMessage(response.message);
+        if (response.routineId) setInput('');
       }
-    } else {
-      const response = await instantCreateMutation.mutateAsync(input.trim());
-      setMessage(response.message);
-      if (response.routineId) setInput('');
-    }
+    });
   }
 
   async function handleConfirm(confirmation: boolean) {
     if (!draft) return;
-    const response = await resolvePlanMutation.mutateAsync({
-      previousResponseId: draft.previousResponseId,
-      confirmation,
+
+    await run(async () => {
+      const response = await resolvePlanMutation.mutateAsync({
+        previousResponseId: draft.previousResponseId,
+        confirmation,
+      });
+      setDraft(undefined);
+      if (response.status === 'created') {
+        setMessage(`Routine "${response.routine.title}" created.`);
+        setInput('');
+      } else {
+        setMessage('Plan declined.');
+      }
     });
-    setDraft(undefined);
-    if (response.status === 'created') {
-      setMessage(`Routine "${response.routine.title}" created.`);
-      setInput('');
-    } else {
-      setMessage('Plan declined.');
-    }
   }
 
   return (
@@ -93,6 +122,7 @@ export function CoachScreen() {
               setMode(value);
               setDraft(undefined);
               setMessage(undefined);
+              setFailure(null);
             }}
           />
 
@@ -134,6 +164,14 @@ export function CoachScreen() {
               {mode === 'draft' ? 'Draft a plan' : 'Create routine'}
             </Button>
           </View>
+
+          {failure && (
+            <ErrorPanel
+              title={failure.title}
+              message={failure.message}
+              onRetry={() => void handleSubmit()}
+            />
+          )}
 
           {draft && (
             <PlanPreviewCard

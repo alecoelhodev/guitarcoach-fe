@@ -62,6 +62,9 @@ function StartPracticeButton({ routine }: { routine: Routine }) {
   return (
     <Button
       block
+      // QA-06: starting an empty routine landed on "No active session". The count is on the
+      // list response, so this costs no extra request.
+      disabled={routine.taskCount === 0}
       loading={startPractice.isPending}
       loadingLabel="Loading…"
       onPress={() => startPractice.mutate({ routine })}

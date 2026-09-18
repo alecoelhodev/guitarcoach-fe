@@ -1,10 +1,7 @@
-import { request, upload } from '@/api/client';
+import { request, type UploadFile, upload } from '@/api/client';
 import type { Recording } from '@/types/recording';
 
-export function uploadRecording(
-  sessionId: string,
-  file: { uri: string; name: string; mimeType: string },
-) {
+export function uploadRecording(sessionId: string, file: UploadFile) {
   return upload<Recording>(`/practice-sessions/${sessionId}/recordings`, file);
 }
 

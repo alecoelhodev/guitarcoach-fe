@@ -35,15 +35,36 @@ it('uploads a validated file to this session and reports success', async () => {
     type: 'audio/*',
     multiple: false,
     copyToCacheDirectory: true,
+    // Web-only option, off so `uri` is not the whole file re-encoded as a data URL.
+    base64: false,
   });
   expect(useUploadRecording).toHaveBeenCalledWith('session-42');
   expect(upload.mutateAsync).toHaveBeenCalledWith({
     uri: asset.uri,
     name: asset.name,
     mimeType: asset.mimeType,
+    file: undefined,
   });
   expect(useToastStore.getState().toast?.message).toBe('Recording added');
   expect(screen.getByText('MP3, WAV, M4A, OGG or WebM · up to 50 MB')).toBeTruthy();
+});
+
+/**
+ * QA-03. `DocumentPickerAsset.file` is web-only in SDK 57 and it is the only form a browser's
+ * FormData can send as a file — dropping it here is what made every web upload come back as
+ * "That file can't be uploaded" for a valid WAV.
+ */
+it('forwards the browser File the picker attaches on web', async () => {
+  const file = new Blob(['RIFF'], { type: 'audio/wav' });
+  pick.mockResolvedValue({
+    canceled: false,
+    assets: [{ ...asset, name: 'take.wav', mimeType: 'audio/wav', file: file as File }],
+  });
+
+  await render(<RecordingUpload sessionId="s1" />);
+  await fireEvent.press(screen.getByText('Upload recording'));
+
+  expect(upload.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ file }));
 });
 
 it.each([

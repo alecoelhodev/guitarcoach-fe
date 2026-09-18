@@ -22,7 +22,7 @@ import { useStartPractice } from '@/features/session/use-start-practice';
 import { useIsWide } from '@/hooks/use-is-wide';
 import { storage } from '@/lib/storage';
 import { useSessionStore } from '@/stores/session-store';
-import { mockRouter } from '@/test/expo-router';
+import { mockRouter, setMockPathname } from '@/test/expo-router';
 import {
   makePage,
   makeRoutine,
@@ -33,6 +33,7 @@ import {
   makeUser,
 } from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
+import { pressLinkTarget } from '@/test/press';
 import {
   emptyQuery,
   errorInfinite,
@@ -113,6 +114,17 @@ describe('greeting', () => {
     expect(screen.getByText('Evening, Jordan')).toBeTruthy();
     expect(screen.getByLabelText('Profile')).toBeTruthy();
     expect(screen.getByText('J')).toBeTruthy();
+  });
+
+  // QA-02: the avatar announced itself as a button and did nothing on the simulator, because
+  // `<Link asChild>` forwards `onPress` and a plain `View` has nowhere to put it.
+  it('opens the profile when the avatar is pressed', async () => {
+    useSessionStore.setState({ status: 'authenticated', user: makeUser({ name: 'Jordan' }) });
+    await render(withGluestack(<HomeScreen />));
+
+    await pressLinkTarget(screen.getByLabelText('Profile'));
+
+    expect(mockRouter.push).toHaveBeenCalledWith('/(app)/(main)/(tabs)/profile');
   });
 
   it('greets without a name, and hides the avatar, before the session hydrates', async () => {
@@ -281,6 +293,37 @@ describe("today's practice", () => {
   });
 });
 
+describe("today's practice — a routine with no tasks", () => {
+  /**
+   * QA-06, third entry point. The pick is derived — the newest active routine — and that
+   * routine can legitimately have no tasks: Instant Create produces them, and so does
+   * creating one by hand. The card badged "0 tasks" and still offered Start Practice, which
+   * opened "No active session". Found by re-testing the fix in a browser, not by the report.
+   */
+  it('will not start it, and says what is missing instead', async () => {
+    givenRoutines(makeRoutine({ id: 'r1', title: 'QA Empty Routine', taskCount: 0 }));
+    mockRoutineTasks.mockReturnValue(asHookResult(successQuery([])));
+    await render(withGluestack(<HomeScreen />));
+
+    await fireEvent.press(screen.getByText('Start Practice'));
+
+    expect(startPractice.mutate).not.toHaveBeenCalled();
+    expect(screen.getByText('Add a task to this routine before practising it.')).toBeTruthy();
+  });
+
+  it('still starts a routine that has tasks', async () => {
+    const routine = makeRoutine({ id: 'r1', title: 'Morning warm-up', taskCount: 1 });
+    givenRoutines(routine);
+    const tasks = [makeRoutineTaskWithTask({ task: makeTask({ title: 'Scales' }) })];
+    mockRoutineTasks.mockReturnValue(asHookResult(successQuery(tasks)));
+    await render(withGluestack(<HomeScreen />));
+
+    await fireEvent.press(screen.getByText('Start Practice'));
+
+    expect(startPractice.mutate).toHaveBeenCalledWith({ routine, tasks });
+  });
+});
+
 describe('active routines', () => {
   it('lists each active routine with its task count and duration', async () => {
     givenRoutines(
@@ -310,6 +353,25 @@ describe('active routines', () => {
     expect(screen.getByText('All routines')).toBeTruthy();
   });
 
+  // QA-02, same class as the Library and History cards: the mobile strip tile is the whole
+  // affordance, so it has to be pressable rather than a Card wrapping a View.
+  it('opens a routine when its strip tile is pressed', async () => {
+    // Two routines: the first is also drawn by "Today's practice", so only the second
+    // title is unique to the strip.
+    givenRoutines(
+      makeRoutine({ id: 'r1', title: 'Warm-up' }),
+      makeRoutine({ id: 'r2', title: 'Fingerstyle focus' }),
+    );
+    await render(withGluestack(<HomeScreen />));
+
+    await pressLinkTarget(screen.getByText('Fingerstyle focus'));
+
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/routines/[id]',
+      params: { id: 'r2' },
+    });
+  });
+
   it('gives each card a Start action only on the wide grid', async () => {
     await render(withGluestack(<HomeScreen />));
     expect(screen.queryByText('Start')).toBeNull();
@@ -337,6 +399,22 @@ describe('recent sessions', () => {
     expect(screen.getByText('Recent session')).toBeTruthy();
     expect(screen.getByText('Blues in A')).toBeTruthy();
     expect(screen.getByText('See all')).toBeTruthy();
+  });
+
+  // QA-02 again: the wide table's rows were a bare View under `<Link asChild>`.
+  it('opens a session when a wide table row is pressed', async () => {
+    mockIsWide.mockReturnValue(true);
+    mockSessions.mockReturnValue(
+      asHookResult(successQuery(makePage([makeSession({ id: 's1', title: 'Blues in A' })]))),
+    );
+    await render(withGluestack(<HomeScreen />));
+
+    await pressLinkTarget(screen.getByText('Blues in A'));
+
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/history/[id]',
+      params: { id: 's1' },
+    });
   });
 
   // Canvas 2a collapses the stacked cards into a table and pluralises the heading.
@@ -467,6 +545,13 @@ describe('new user', () => {
 });
 
 describe('resume prompt', () => {
+  /** The prompt is scoped to the session's owner, so these all sign the same person in. */
+  const OWNER = makeUser({ id: 'user-1', name: 'Jordan' });
+
+  beforeEach(() => {
+    useSessionStore.setState({ status: 'authenticated', user: OWNER });
+  });
+
   it('does not appear when no session was left in progress', async () => {
     await render(withGluestack(<HomeScreen />));
 
@@ -475,6 +560,7 @@ describe('resume prompt', () => {
 
   it('offers to resume a session left in progress', async () => {
     useActiveSessionStore.getState().start({
+      userId: OWNER.id,
       title: 'Morning warm-up',
       tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
     });
@@ -499,8 +585,9 @@ describe('resume prompt', () => {
     await storage.setItem(
       'active-session',
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
+          userId: OWNER.id,
           title: 'Morning warm-up',
           tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
         },
@@ -516,8 +603,42 @@ describe('resume prompt', () => {
     expect(screen.getByText('Resume practice session?')).toBeTruthy();
   });
 
+  // QA-01: the store persists under one device-wide key, so a session survives a sign-out.
+  // Offering it to the next account disclosed the previous user's routine, minutes and notes.
+  it('never offers a session another account left behind', async () => {
+    useActiveSessionStore.getState().start({
+      userId: 'someone-else',
+      title: 'Morning warm-up',
+      tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+    });
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.queryByText('Resume practice session?')).toBeNull();
+    // The prompt is the only door to that session's contents from here, so its absence is
+    // the whole assertion: without it there is no Resume to press.
+    expect(screen.queryByText('Resume')).toBeNull();
+  });
+
+  // QA-05: Home stays mounted under the session modal, so the moment practice started the
+  // prompt appeared over the very session it was offering to resume — and a second mounted
+  // Home stacked a second copy of the dialog on top.
+  it('stays hidden while the session screen is the current route', async () => {
+    useActiveSessionStore.getState().start({
+      userId: OWNER.id,
+      title: 'Morning warm-up',
+      tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+    });
+    setMockPathname('/session/active');
+
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.queryByText('Resume practice session?')).toBeNull();
+  });
+
   it('throws the session away on Discard, without navigating', async () => {
     useActiveSessionStore.getState().start({
+      userId: OWNER.id,
       title: 'Morning warm-up',
       tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
     });
@@ -543,7 +664,7 @@ describe('primary actions', () => {
   // Canvas 840: Start opens the session pre-loaded. It used to navigate to the routine
   // detail screen instead, which made the user press Start twice.
   it('starts the session from Home rather than routing to the routine', async () => {
-    const routine = makeRoutine({ id: 'r1', title: 'Morning warm-up' });
+    const routine = makeRoutine({ id: 'r1', title: 'Morning warm-up', taskCount: 1 });
     givenRoutines(routine);
     const tasks = [makeRoutineTaskWithTask({ task: makeTask({ title: 'Scales' }) })];
     mockRoutineTasks.mockReturnValue(asHookResult(successQuery(tasks)));

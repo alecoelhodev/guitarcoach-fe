@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTasks } from '@/api/tasks.queries';
@@ -34,8 +34,40 @@ export function LibraryList() {
   ]
     .filter(Boolean)
     .join(' · ');
-  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError } = query;
   const tasks = query.data?.pages.flatMap((page) => page.data) ?? [];
+
+  // FlatList fires onEndReached repeatedly during momentum, and a page that just failed must
+  // not retry itself on every scroll event — the footer offers that explicitly instead.
+  const loadMore = () => {
+    if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) fetchNextPage();
+  };
+
+  // A failed next page keeps the pages already on screen, but TanStack still reports it as a
+  // query error and QueryState checks isError before data — so the footer owns that case and
+  // the loaded tasks are not replaced by a full-screen panel.
+  const listState = {
+    data: query.data,
+    isPending: query.isPending,
+    isError: query.isError && !isFetchNextPageError,
+    error: query.error,
+    refetch: query.refetch,
+  };
+
+  const footer = isFetchNextPageError ? (
+    <View style={styles.footer}>
+      <ThemedText type="body" color="textMuted">
+        {"Couldn't load more tasks."}
+      </ThemedText>
+      <Button variant="tertiary" onPress={() => fetchNextPage()}>
+        Try again
+      </Button>
+    </View>
+  ) : isFetchingNextPage ? (
+    <View style={styles.footer}>
+      <ActivityIndicator color={Colors.accentRamp[700]} accessibilityLabel="Loading more tasks" />
+    </View>
+  ) : null;
 
   return (
     <ThemedView style={styles.container}>
@@ -74,14 +106,14 @@ export function LibraryList() {
               </Pressable>
             )}
           </View>
-          {!query.isPending && !query.isError && query.data && (
+          {!query.isPending && !listState.isError && query.data && (
             <ThemedText type="body" color="textMuted">
               {count}
             </ThemedText>
           )}
         </View>
         <QueryState
-          query={query}
+          query={listState}
           errorTitle="Couldn't load the library"
           isEmpty={tasks.length === 0}
           empty={
@@ -99,23 +131,14 @@ export function LibraryList() {
         >
           {() => (
             <FlatList
+              testID="library-list"
               data={tasks}
               keyExtractor={(task) => task.id}
               renderItem={({ item }) => <TaskCard task={item} />}
               contentContainerStyle={styles.list}
-              ListFooterComponent={
-                hasNextPage ? (
-                  <View style={styles.footer}>
-                    <Button
-                      variant="tertiary"
-                      disabled={isFetchingNextPage}
-                      onPress={() => fetchNextPage()}
-                    >
-                      {isFetchingNextPage ? 'Loading…' : 'Load more'}
-                    </Button>
-                  </View>
-                ) : null
-              }
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={footer}
             />
           )}
         </QueryState>
@@ -141,5 +164,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  footer: { alignItems: 'center' },
+  footer: { alignItems: 'center', gap: Spacing[2] },
 });

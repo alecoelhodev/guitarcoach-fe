@@ -216,14 +216,58 @@ describe('persistence', () => {
     await storage.setItem(
       PERSIST_KEY,
       JSON.stringify({
-        version: 0,
-        state: { routineId: 'routine-9', title: 'Restored', tasks: [task({ taskId: 'z' })] },
+        version: 1,
+        state: {
+          userId: 'user-1',
+          routineId: 'routine-9',
+          title: 'Restored',
+          tasks: [task({ taskId: 'z' })],
+        },
       }),
     );
 
     await useActiveSessionStore.persist.rehydrate();
 
-    expect(state()).toMatchObject({ routineId: 'routine-9', title: 'Restored' });
+    expect(state()).toMatchObject({ userId: 'user-1', routineId: 'routine-9', title: 'Restored' });
     expect(state().tasks.map((t) => t.taskId)).toEqual(['z']);
+  });
+
+  // QA-01. A v0 payload predates `userId`, so nothing about it says which account left it
+  // behind — and the alternative to dropping it is handing one user's unsaved notes to the
+  // next one who signs in on this device.
+  it('discards a v0 session, which carries no owner to check', async () => {
+    await storage.setItem(
+      PERSIST_KEY,
+      JSON.stringify({
+        version: 0,
+        state: {
+          routineId: 'routine-9',
+          title: 'Restored',
+          notes: 'PRIVATE',
+          tasks: [task({ taskId: 'z' })],
+        },
+      }),
+    );
+
+    await useActiveSessionStore.persist.rehydrate();
+
+    expect(state().tasks).toEqual([]);
+    expect(state()).toMatchObject({ routineId: undefined, notes: undefined });
+  });
+});
+
+describe('ownership', () => {
+  it('stamps the session with the user who started it', () => {
+    state().start({ userId: 'user-1', routineId: 'routine-1', tasks: [task()] });
+
+    expect(state().userId).toBe('user-1');
+  });
+
+  it('clears the owner on reset along with everything else', () => {
+    state().start({ userId: 'user-1', tasks: [task()] });
+
+    state().reset();
+
+    expect(state().userId).toBeUndefined();
   });
 });

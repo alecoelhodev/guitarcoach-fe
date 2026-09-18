@@ -8,8 +8,10 @@ import { useCreateSession } from '@/api/sessions.queries';
 import { ActiveSessionScreen } from '@/features/session/active-session-screen';
 import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { storage } from '@/lib/storage';
+import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
 import { mockRouter } from '@/test/expo-router';
+import { makeUser } from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
 import { mutationStub } from '@/test/query-hooks';
 
@@ -25,12 +27,16 @@ const useCreateSessionMock = useCreateSession as unknown as jest.MockedFunction<
   (...args: never[]) => unknown
 >;
 
+/** The session screen only shows a session its own owner started, so every test needs one. */
+const SIGNED_IN = makeUser({ id: 'user-1' });
+
 function startSession(
   tasks: (Partial<ActiveSessionTask> & { taskId: string; title: string })[] = [
     { taskId: 't1', title: 'Alternate picking' },
   ],
 ) {
   useActiveSessionStore.getState().start({
+    userId: SIGNED_IN.id,
     routineId: 'r1',
     routineTitle: 'Morning warm-up',
     title: 'Morning warm-up',
@@ -46,6 +52,7 @@ function startSession(
 beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
+  useSessionStore.setState({ status: 'authenticated', user: SIGNED_IN });
   useCreateSessionMock.mockReturnValue(mutationStub());
 });
 
@@ -63,13 +70,30 @@ describe('with no active session', () => {
     expect(mockRouter.back).toHaveBeenCalledTimes(1);
   });
 
-  it('stays on the empty screen even if a session starts mid-render', async () => {
+  // QA-05: the empty state used to be latched at mount, so once the store was emptied by a
+  // successful Finish the screen carried on drawing a live session — a 0:00 clock, no tasks
+  // and an enabled Finish Session that would have posted an empty one. Derived now.
+  it('falls back to the empty state when the session is cleared underneath it', async () => {
+    startSession();
     await render(withGluestack(<ActiveSessionScreen />));
+    expect(screen.getByText('Finish Session')).toBeTruthy();
 
-    // `startedWithNoTasks` is a lazy `useState` initialiser, so it is decided once at mount.
-    await act(async () => startSession());
+    await act(async () => useActiveSessionStore.getState().reset());
 
     expect(screen.getByText('No active session')).toBeTruthy();
+    expect(screen.queryByText('Finish Session')).toBeNull();
+  });
+
+  // QA-01. The store persists under one device-wide key, so a session can outlive the account
+  // that wrote it. Even reaching this route directly must not show another user's notes.
+  it('refuses a session another account left behind', async () => {
+    startSession();
+    useSessionStore.setState({ status: 'authenticated', user: makeUser({ id: 'user-2' }) });
+
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    expect(screen.getByText('No active session')).toBeTruthy();
+    expect(screen.queryByText('Morning warm-up')).toBeNull();
   });
 });
 
@@ -85,8 +109,9 @@ describe('restored from a previous launch', () => {
     await storage.setItem(
       'active-session',
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
+          userId: 'user-1',
           routineId: 'r1',
           routineTitle: 'Morning warm-up',
           title: 'Morning warm-up',
@@ -128,6 +153,7 @@ describe('with an active session', () => {
 
   it('falls back to a generic heading when the session has no title', async () => {
     useActiveSessionStore.getState().start({
+      userId: SIGNED_IN.id,
       tasks: [{ taskId: 't1', title: 'Free practice', durationMinutes: 5, completed: false }],
     });
     await render(withGluestack(<ActiveSessionScreen />));
@@ -229,6 +255,24 @@ describe('with an active session', () => {
       message: 'Session saved',
       variant: 'success',
     });
+  });
+
+  // QA-05: this route is always pushed, so `back()` is normally right — but a web reload or a
+  // deep link onto it leaves nothing to pop, and `back()` then did nothing at all. The user
+  // was left on the session they had just saved, now empty, with Finish still enabled.
+  it('replaces rather than popping when there is no history to go back to', async () => {
+    mockRouter.canGoBack.mockReturnValue(false);
+    const mutation = mutationStub();
+    useCreateSessionMock.mockReturnValue(mutation);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(mockRouter.back).not.toHaveBeenCalled();
+    expect(mockRouter.replace).toHaveBeenCalledWith('/(app)/(main)/(tabs)');
   });
 
   it('sends the edited minutes and completion, not the routine targets', async () => {
