@@ -82,8 +82,12 @@ describe('script', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 
-  it('logs rather than throwing when the DOM misbehaves', () => {
+  // This runs in a shipped web build, and the page renders correctly on the dark default
+  // without the colour-scheme class — so it warns in development and says nothing in
+  // production, rather than putting a DOM exception in a user's console.
+  it('swallows a DOM failure rather than throwing, and does not console.error', () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     // `system` reaches for matchMedia; making it throw exercises the catch without having to
     // break documentElement itself.
     Object.defineProperty(window, 'matchMedia', {
@@ -94,8 +98,11 @@ describe('script', () => {
     });
 
     expect(() => script('system')).not.toThrow();
-    expect(consoleError).toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
+    // `__DEV__` is true under the preset, so the development arm is what runs here.
+    expect(consoleWarn).toHaveBeenCalled();
 
     consoleError.mockRestore();
+    consoleWarn.mockRestore();
   });
 });

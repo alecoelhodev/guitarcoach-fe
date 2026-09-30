@@ -19,10 +19,15 @@ export function RecordingUpload({ sessionId }: { sessionId: string }) {
   const upload = useUploadRecording(sessionId);
   const [file, setFile] = useState<UploadFile>();
   const [phase, setPhase] = useState<Phase>('idle');
+  // `validateRecordingFile` says *why* it refused; the screen used to throw that away and
+  // show one line for both "too big" and "wrong format", neither of which tells the user
+  // which file to pick next.
+  const [rejection, setRejection] = useState<string>();
   const busy = useRef(false);
   const showToast = useToastStore((state) => state.show);
 
   async function sendFile(selected: UploadFile) {
+    setRejection(undefined);
     setPhase('uploading');
     try {
       await upload.mutateAsync(selected);
@@ -59,8 +64,10 @@ export function RecordingUpload({ sessionId }: { sessionId: string }) {
         return;
       }
       const asset = result.assets[0];
-      if (!asset || !validateRecordingFile(asset).valid || !asset.mimeType) {
+      const check = asset ? validateRecordingFile(asset) : undefined;
+      if (!asset || !check?.valid || !asset.mimeType) {
         setFile(undefined);
+        setRejection(check && !check.valid ? check.reason : undefined);
         setPhase('invalid');
         busy.current = false;
         return;
@@ -119,6 +126,11 @@ export function RecordingUpload({ sessionId }: { sessionId: string }) {
                 ? "Upload didn't finish"
                 : "Couldn't open the file picker"}
           </ThemedText>
+          {phase === 'invalid' && rejection && (
+            <ThemedText type="body" color="textMuted">
+              {rejection}
+            </ThemedText>
+          )}
           {phase === 'failed' && (
             <>
               <ThemedText type="body" color="textMuted">

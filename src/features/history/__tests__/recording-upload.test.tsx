@@ -82,6 +82,39 @@ it.each([
   expect(upload.mutateAsync).toHaveBeenCalledTimes(1);
 });
 
+// "That file can't be uploaded" is the same sentence for a 60 MB WAV and a PNG, and neither
+// tells the user which file to reach for instead.
+it('says which rule the file broke, not just that it broke one', async () => {
+  pick.mockResolvedValue({
+    canceled: false,
+    assets: [{ ...asset, size: RECORDING_MAX_SIZE_BYTES + 1 }],
+  });
+  await render(<RecordingUpload sessionId="s1" />);
+  await fireEvent.press(screen.getByText('Upload recording'));
+
+  expect(screen.getByText('File is larger than 50 MB.')).toBeTruthy();
+
+  pick.mockResolvedValue({ canceled: false, assets: [{ ...asset, mimeType: 'image/png' }] });
+  await fireEvent.press(screen.getByText('Choose another'));
+
+  expect(
+    screen.getByText('Unsupported file type. Use MP3, WAV, M4A, OGG, or WebM.'),
+  ).toBeTruthy();
+});
+
+// A picker reporting `audio/mpeg; codecs=mp3` or an uppercased type is handing back the same
+// media type, and the upload used to refuse it.
+it('accepts a type whose spelling differs from the allowlist', async () => {
+  pick.mockResolvedValue({
+    canceled: false,
+    assets: [{ ...asset, mimeType: 'AUDIO/MPEG; codecs=mp3' }],
+  });
+  await render(<RecordingUpload sessionId="s1" />);
+  await fireEvent.press(screen.getByText('Upload recording'));
+
+  expect(upload.mutateAsync).toHaveBeenCalledTimes(1);
+});
+
 it('allows the exact size limit', async () => {
   pick.mockResolvedValue({
     canceled: false,
