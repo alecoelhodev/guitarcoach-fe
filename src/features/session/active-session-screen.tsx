@@ -32,7 +32,20 @@ import { Colors, IconSize, IconStroke, Spacing } from '@/theme/tokens';
  *
  * A session persisted before `startedAt` existed rehydrates without one; it reads 0, not `NaN`.
  */
-function useStopwatch(startedAt: number | undefined) {
+function elapsedSecondsAt(startedAt: number | undefined, now: number) {
+  if (startedAt === undefined) return 0;
+  return Math.max(0, Math.floor((now - startedAt) / 1000));
+}
+
+/**
+ * Owns the tick.
+ *
+ * The interval used to live in the screen body, which re-rendered the whole session once a
+ * second — every task card, its checkbox, its minutes stepper, and the notes field the user
+ * was typing into — to advance one line of text. The exit dialog is the only other reader and
+ * it needs the elapsed time once, when it opens, not sixty times a minute.
+ */
+function SessionClock({ startedAt }: { startedAt: number | undefined }) {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -40,8 +53,7 @@ function useStopwatch(startedAt: number | undefined) {
     return () => clearInterval(id);
   }, []);
 
-  if (startedAt === undefined) return 0;
-  return Math.max(0, Math.floor((now - startedAt) / 1000));
+  return <ThemedText type="display">{formatClock(elapsedSecondsAt(startedAt, now))}</ThemedText>;
 }
 
 /**
@@ -70,21 +82,20 @@ const MODAL_EDGES = ['top', 'bottom'] as const;
 
 function ActiveSessionScreenBody() {
   const router = useRouter();
-  const {
-    userId,
-    routineId,
-    routineTitle,
-    title,
-    notes,
-    startedAt,
-    tasks,
-    setTitle,
-    setNotes,
-    setTaskMinutes,
-    toggleTaskCompleted,
-    reset,
-  } = useActiveSessionStore();
-  const elapsedSeconds = useStopwatch(startedAt);
+  // Sliced, not `useActiveSessionStore()`. Subscribing to the whole store object meant any
+  // `set()` — a minute stepped, a box ticked — re-rendered everything below.
+  const userId = useActiveSessionStore((state) => state.userId);
+  const routineId = useActiveSessionStore((state) => state.routineId);
+  const routineTitle = useActiveSessionStore((state) => state.routineTitle);
+  const title = useActiveSessionStore((state) => state.title);
+  const notes = useActiveSessionStore((state) => state.notes);
+  const startedAt = useActiveSessionStore((state) => state.startedAt);
+  const tasks = useActiveSessionStore((state) => state.tasks);
+  const setTitle = useActiveSessionStore((state) => state.setTitle);
+  const setNotes = useActiveSessionStore((state) => state.setNotes);
+  const setTaskMinutes = useActiveSessionStore((state) => state.setTaskMinutes);
+  const toggleTaskCompleted = useActiveSessionStore((state) => state.toggleTaskCompleted);
+  const reset = useActiveSessionStore((state) => state.reset);
   // Canvas 07: the clock is a local pacing aid; what gets saved is the per-task
   // minutes. "Planned" is the sum of the routine's target durations.
   const plannedMinutes = tasks.reduce((sum, task) => sum + (task.targetDurationMinutes ?? 0), 0);
@@ -190,7 +201,7 @@ function ActiveSessionScreenBody() {
             <ThemedText type="overline" color="textMuted">
               Elapsed · on this device
             </ThemedText>
-            <ThemedText type="display">{formatClock(elapsedSeconds)}</ThemedText>
+            <SessionClock startedAt={startedAt} />
             {plannedMinutes > 0 && (
               <ThemedText type="body" color="textMuted">
                 of {plannedMinutes} min planned
@@ -254,7 +265,9 @@ function ActiveSessionScreenBody() {
 
       <SessionExitDialog
         visible={confirmExit}
-        message={describeUnsaved(elapsedSeconds, tasks)}
+        // Read once, at render, rather than from a value that ticks: the dialog only needs
+        // to say roughly how much practice is at stake.
+        message={describeUnsaved(elapsedSecondsAt(startedAt, Date.now()), tasks)}
         saving={createSessionMutation.isPending}
         onFinish={() => {
           setConfirmExit(false);

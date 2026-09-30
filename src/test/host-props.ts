@@ -27,10 +27,7 @@ export function countHostProp(root: TestInstance | null, prop: string, value: un
 }
 
 /** The first host element carrying `prop`, or null. Same caveat as `countHostProp`. */
-export function findHostWithProp(
-  root: TestInstance | null,
-  prop: string,
-): TestInstance | null {
+export function findHostWithProp(root: TestInstance | null, prop: string): TestInstance | null {
   if (!root) return null;
   if (root.props?.[prop] !== undefined) return root;
 

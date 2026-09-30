@@ -3,7 +3,6 @@ import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import { Inter_800ExtraBold } from '@expo-google-fonts/inter/800ExtraBold';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
 import { Stack, type Theme, ThemeProvider } from 'expo-router';
@@ -80,8 +79,6 @@ export default function RootLayout() {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
 
-  if (!ready) return null;
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       {/*
@@ -92,6 +89,12 @@ export default function RootLayout() {
       */}
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <GluestackUIProvider mode="dark">
+          {/*
+            Above the `ready` gate, not below it. This provider reads a day-old snapshot out
+            of AsyncStorage on mount, and while it sat under the gate that read did not begin
+            until the fonts and the session round-trip had both finished — three waits in
+            series where two of them can overlap. The splash still covers all of it.
+          */}
           <PersistQueryClientProvider
             client={queryClient}
             persistOptions={{
@@ -100,7 +103,7 @@ export default function RootLayout() {
               maxAge: CACHE_MAX_AGE_MS,
             }}
           >
-            <BottomSheetModalProvider>
+            {ready && (
               <ThemeProvider value={navigationTheme}>
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="(auth)" />
@@ -108,7 +111,7 @@ export default function RootLayout() {
                 </Stack>
                 <ToastHost />
               </ThemeProvider>
-            </BottomSheetModalProvider>
+            )}
           </PersistQueryClientProvider>
         </GluestackUIProvider>
       </SafeAreaProvider>

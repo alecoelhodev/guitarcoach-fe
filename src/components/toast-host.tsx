@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
+import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Toast } from '@/components/ui/toast';
@@ -32,7 +33,11 @@ export function ToastHost() {
       // it cannot be dismissed before its four seconds are up.
       pointerEvents="box-none"
     >
-      <Toast message={toast.message} variant={toast.variant} onDismiss={hide} />
+      {/* It used to appear and vanish as a hard cut, which reads as a glitch at the edge of
+          vision rather than as a message. */}
+      <Animated.View entering={FadeInDown.duration(180)} exiting={FadeOutDown.duration(140)}>
+        <Toast message={toast.message} variant={toast.variant} onDismiss={hide} />
+      </Animated.View>
     </SafeAreaView>
   );
 }

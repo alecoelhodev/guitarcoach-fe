@@ -20,7 +20,13 @@ export default function AppLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(main)" />
-      <Stack.Screen name="session/active" options={{ presentation: 'fullScreenModal' }} />
+      {/* Named rather than inherited: a `fullScreenModal` defaults to a horizontal push on
+          Android, which reads as navigating deeper into the app rather than as entering a
+          session that covers it. */}
+      <Stack.Screen
+        name="session/active"
+        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+      />
     </Stack>
   );
 }

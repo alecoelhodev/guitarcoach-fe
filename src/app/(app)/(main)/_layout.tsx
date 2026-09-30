@@ -19,7 +19,11 @@ export default function MainLayout() {
         <Stack.Screen name="routines/[id]/index" />
         <Stack.Screen
           name="routines/[id]/add-tasks"
-          options={{ presentation: 'modal', headerShown: false }}
+          options={{
+            presentation: 'modal',
+            headerShown: false,
+            animation: 'slide_from_bottom',
+          }}
         />
         <Stack.Screen name="library/[id]" />
         <Stack.Screen name="history/index" />

@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
@@ -47,80 +48,89 @@ export function RoutineTaskRow({
   const title = routineTask.task.title;
 
   return (
-    <Card style={expanded ? styles.cardExpanded : undefined}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityLabel={title}
-        onPress={onToggleExpanded}
-        style={styles.summary}
-      >
-        <ThemedText type="body" color="textMuted" style={styles.index}>
-          {index + 1}
-        </ThemedText>
-        <ThemedText type="label" style={styles.title}>
-          {title}
-        </ThemedText>
-        {/* An em-dash, not "0 min": a task with no target is valid and must not read as zero. */}
-        <ThemedText type="body" color="textMuted">
-          {minutes != null ? `${minutes} min` : '—'}
-        </ThemedText>
-      </Pressable>
+    // `LinearTransition` on the card so the rows below slide rather than jump when this one
+    // opens, and again when a Move up/down reorders the list. `alert-dialog` was the only
+    // thing in the app using reanimated; everything else was a hard cut.
+    <Animated.View layout={LinearTransition.duration(180)}>
+      <Card style={expanded ? styles.cardExpanded : undefined}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          accessibilityLabel={title}
+          onPress={onToggleExpanded}
+          style={styles.summary}
+        >
+          <ThemedText type="body" color="textMuted" style={styles.index}>
+            {index + 1}
+          </ThemedText>
+          <ThemedText type="label" style={styles.title}>
+            {title}
+          </ThemedText>
+          {/* An em-dash, not "0 min": a task with no target is valid and must not read as zero. */}
+          <ThemedText type="body" color="textMuted">
+            {minutes != null ? `${minutes} min` : '—'}
+          </ThemedText>
+        </Pressable>
 
-      {expanded && (
-        <View style={styles.controls}>
-          <View style={styles.durationRow}>
-            <ThemedText type="overline" color="textMuted">
-              Target duration
-            </ThemedText>
-            {minutes != null ? (
-              <Stepper
-                minutes={minutes}
-                min={MIN_MINUTES}
-                onChange={onSetMinutes}
-                // Decrementing at the floor clears rather than dead-ends, so the value can be
-                // removed without the stepper ever producing the 0 the backend rejects.
-                onClear={() => onSetMinutes(undefined)}
-              />
-            ) : (
+        {expanded && (
+          <Animated.View
+            entering={FadeIn.duration(140)}
+            exiting={FadeOut.duration(100)}
+            style={styles.controls}
+          >
+            <View style={styles.durationRow}>
+              <ThemedText type="overline" color="textMuted">
+                Target duration
+              </ThemedText>
+              {minutes != null ? (
+                <Stepper
+                  minutes={minutes}
+                  min={MIN_MINUTES}
+                  onChange={onSetMinutes}
+                  // Decrementing at the floor clears rather than dead-ends, so the value can be
+                  // removed without the stepper ever producing the 0 the backend rejects.
+                  onClear={() => onSetMinutes(undefined)}
+                />
+              ) : (
+                <Button
+                  variant="tertiary"
+                  disabled={busy}
+                  onPress={() => onSetMinutes(DEFAULT_MINUTES)}
+                >
+                  Add duration
+                </Button>
+              )}
+            </View>
+
+            <View style={styles.actions}>
               <Button
                 variant="tertiary"
-                disabled={busy}
-                onPress={() => onSetMinutes(DEFAULT_MINUTES)}
+                style={styles.action}
+                disabled={busy || isFirst}
+                onPress={() => onMove(-1)}
               >
-                Add duration
+                Move up
               </Button>
-            )}
-          </View>
-
-          <View style={styles.actions}>
-            <Button
-              variant="tertiary"
-              style={styles.action}
-              disabled={busy || isFirst}
-              onPress={() => onMove(-1)}
-            >
-              Move up
-            </Button>
-            <Button
-              variant="tertiary"
-              style={styles.action}
-              disabled={busy || isLast}
-              onPress={() => onMove(1)}
-            >
-              Move down
-            </Button>
-            {/* No confirmation — re-adding a task is one tap, so a dialog costs more than the
+              <Button
+                variant="tertiary"
+                style={styles.action}
+                disabled={busy || isLast}
+                onPress={() => onMove(1)}
+              >
+                Move down
+              </Button>
+              {/* No confirmation — re-adding a task is one tap, so a dialog costs more than the
                 mistake does. Canvas 06 draws a plain Remove. */}
-            <Button variant="tertiary" style={styles.action} disabled={busy} onPress={onRemove}>
-              <ThemedText type="label" style={styles.removeLabel}>
-                Remove
-              </ThemedText>
-            </Button>
-          </View>
-        </View>
-      )}
-    </Card>
+              <Button variant="tertiary" style={styles.action} disabled={busy} onPress={onRemove}>
+                <ThemedText type="label" style={styles.removeLabel}>
+                  Remove
+                </ThemedText>
+              </Button>
+            </View>
+          </Animated.View>
+        )}
+      </Card>
+    </Animated.View>
   );
 }
 
