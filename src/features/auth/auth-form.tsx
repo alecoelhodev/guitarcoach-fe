@@ -67,6 +67,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
 
   const scrollRef = useRef<ScrollView>(null);
   const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
   const fieldTop = useRef<Partial<Record<keyof FormValues, number>>>({});
 
   // Read through a ref so the resolver stays stable while still validating against the
@@ -230,6 +231,13 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
                 editable={!busy}
                 placeholder="Jordan"
                 invalid={!!errors.name}
+                autoCapitalize="words"
+                // `textContentType` is iOS-only; Android's autofill reads `autoComplete`.
+                autoComplete="name"
+                textContentType="name"
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+                submitBehavior="submit"
               />
             )}
           />
@@ -256,9 +264,14 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
+              // `textContentType` is iOS-only; Android's autofill reads `autoComplete`.
+              autoComplete="email"
               textContentType="emailAddress"
               placeholder="jordan@example.com"
               invalid={!!errors.email}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              submitBehavior="submit"
             />
           )}
         />
@@ -276,13 +289,17 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
           name="password"
           render={({ field }) => (
             <PasswordInput
+              ref={passwordRef}
               testID="password-input"
               value={field.value}
               onChangeText={field.onChange}
               onBlur={field.onBlur}
               editable={!busy}
+              autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
               textContentType={mode === 'create' ? 'newPassword' : 'password'}
               invalid={!!errors.password}
+              returnKeyType="go"
+              onSubmitEditing={() => void submit()}
             />
           )}
         />

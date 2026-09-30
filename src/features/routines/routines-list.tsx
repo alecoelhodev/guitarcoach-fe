@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
 import { Segmented, type SegmentedOption } from '@/components/ui/segmented';
 import { RoutineCard } from '@/features/routines/routine-card';
-import { TabBarInset } from '@/theme/platform';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { RoutineStatus } from '@/types/routine';
 
@@ -26,6 +26,8 @@ const SEGMENTS: SegmentedOption<RoutineStatus>[] = [
  * and the app reads as broken.
  */
 export function RoutinesList() {
+  // Clears the tab bar and the home indicator under it.
+  const bottomPad = useBottomInset() + Spacing[4];
   // Local state on purpose: the route is a tab, and expo-router's typed routes carry no query
   // param for it. Nothing here is worth persisting across launches.
   const [status, setStatus] = useState<RoutineStatus>('active');
@@ -72,7 +74,7 @@ export function RoutinesList() {
               data={routines}
               keyExtractor={(routine) => routine.id}
               renderItem={({ item }) => <RoutineCard routine={item} />}
-              contentContainerStyle={styles.list}
+              contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
               ListFooterComponent={
                 <>
                   {hasNextPage && (
@@ -128,7 +130,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
   title: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[2] },
   segment: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[3] },
-  list: { padding: Spacing[4], paddingBottom: TabBarInset + Spacing[4], gap: Spacing[3] },
+  list: { padding: Spacing[4], gap: Spacing[3] },
   footer: { alignItems: 'center' },
   footerBlock: { gap: Spacing[3] },
   emptyBlock: { padding: Spacing[4], gap: Spacing[3] },

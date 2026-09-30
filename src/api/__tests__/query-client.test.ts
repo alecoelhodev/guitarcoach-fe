@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 import { shouldRetry } from '@/api/errors';
 import { CACHE_MAX_AGE_MS } from '@/api/persist';
 import { storage } from '@/lib/storage';
-import { TabBarInset } from '@/theme/platform';
+import { TabBarChrome } from '@/theme/platform';
 
 /**
  * The app's real `QueryClient` plus the small modules that sit beside it.
@@ -144,10 +144,10 @@ describe('storage', () => {
   });
 });
 
-describe('TabBarInset', () => {
+describe('TabBarChrome', () => {
   it('resolves to the iOS measurement under the iOS-only preset', () => {
     // jest-expo's default preset sets `haste.defaultPlatform: 'ios'`, so this is the ios arm
     // of the `Platform.select`. The `?? 0` fallback is only reachable on web.
-    expect(TabBarInset).toBe(50);
+    expect(TabBarChrome).toBe(50);
   });
 });

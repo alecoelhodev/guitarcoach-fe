@@ -29,14 +29,15 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { FieldLabel } from '@/components/ui/field-label';
 import { Input } from '@/components/ui/input';
+import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { Segmented, type SegmentedOption } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ValidationMessage } from '@/components/ui/validation-message';
 import { RoutineTaskRow } from '@/features/routines/routine-task-row';
 import { UnsavedChangesDialog } from '@/features/routines/unsaved-changes-dialog';
 import { useStartPractice } from '@/features/session/use-start-practice';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useToastStore } from '@/stores/toast-store';
-import { TabBarInset } from '@/theme/platform';
 import { Colors, IconSize, IconStroke, MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { Routine, RoutineStatus, RoutineTaskWithTask } from '@/types/routine';
 
@@ -507,10 +508,19 @@ function useUnsavedGuard(dirty: boolean) {
 }
 
 function Screen({ children }: { children: React.ReactNode }) {
+  // Clears the tab bar and the home indicator under it.
+  const bottomPad = useBottomInset() + Spacing[4];
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.scroll}>{children}</ScrollView>
+        <KeyboardAwareScreen>
+          <ScrollView
+            contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
+        </KeyboardAwareScreen>
       </SafeAreaView>
     </ThemedView>
   );
@@ -566,6 +576,10 @@ function RoutineFields({
               editable={!disabled}
               invalid={!!formState.errors.title}
               placeholder="Warm-up routine"
+              autoCapitalize="sentences"
+              returnKeyType="next"
+              // `@Length(2, 200)` on the DTO; stopping at the ceiling beats a 400.
+              maxLength={200}
             />
           )}
         />
@@ -587,6 +601,8 @@ function RoutineFields({
               invalid={!!formState.errors.notes}
               multiline
               placeholder="Fifteen minutes before anything else."
+              autoCapitalize="sentences"
+              maxLength={2000}
             />
           )}
         />
@@ -599,7 +615,7 @@ function RoutineFields({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
-  scroll: { padding: Spacing[4], paddingBottom: TabBarInset + Spacing[4], gap: Spacing[4] },
+  scroll: { padding: Spacing[4], gap: Spacing[4] },
   header: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
   spacer: { flex: 1 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },

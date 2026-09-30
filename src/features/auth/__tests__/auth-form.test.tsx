@@ -185,3 +185,37 @@ describe('unsaved practice', () => {
     expect(screen.queryByText('Your practice is still here')).toBeNull();
   });
 });
+
+describe('keyboard', () => {
+  // One of nine inputs set a return key and none set `autoComplete`, so Android's autofill
+  // had nothing to match on and the keyboard's Return dismissed instead of advancing.
+  it('advances through the fields and submits from the password key', async () => {
+    signInMock.mockResolvedValue({ user });
+    await render(<AuthForm />);
+
+    const email = screen.getByPlaceholderText('jordan@example.com');
+    const password = screen.getByTestId('password-input');
+
+    expect(email.props.returnKeyType).toBe('next');
+    expect(email.props.autoComplete).toBe('email');
+    expect(password.props.returnKeyType).toBe('go');
+    expect(password.props.autoComplete).toBe('current-password');
+
+    await fireEvent.changeText(email, 'jordan@example.com');
+    await fireEvent.changeText(password, 'a-real-password');
+    await fireEvent(password, 'submitEditing');
+
+    await waitFor(() =>
+      expect(signInMock).toHaveBeenCalledWith({
+        email: 'jordan@example.com',
+        password: 'a-real-password',
+      }),
+    );
+  });
+
+  it('asks for a new password rather than the saved one when creating an account', async () => {
+    await render(<AuthForm initialMode="create" />);
+
+    expect(screen.getByTestId('password-input').props.autoComplete).toBe('new-password');
+  });
+});

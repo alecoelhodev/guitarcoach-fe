@@ -36,6 +36,7 @@ import { useToastStore } from '@/stores/toast-store';
 import { linkHrefs, mockNavigation, mockRouter } from '@/test/expo-router';
 import { makeRoutine } from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
+import { countHostProp } from '@/test/host-props';
 import { errorQuery, mutationStub, pendingQuery, successQuery } from '@/test/query-hooks';
 import type { RoutineTaskWithTask } from '@/types/routine';
 
@@ -686,4 +687,12 @@ describe('starting practice', () => {
     expect(startPractice.mutate).not.toHaveBeenCalled();
     expect(screen.getByText('Add at least one task before practising this routine.')).toBeTruthy();
   });
+});
+
+// The screen puts its primary action directly under a text field, so the scroll view has to
+// keep taps rather than spend the first one dismissing the keyboard.
+it('keeps controls tappable while the keyboard is up', async () => {
+  await render(editing());
+
+  expect(countHostProp(screen.root, 'keyboardShouldPersistTaps', 'handled')).toBeGreaterThan(0);
 });

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { TabBarInset } from '@/theme/platform';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { Colors, Radius } from '@/theme/tokens';
 import { FontFamily, Typography } from '@/theme/typography';
 
@@ -16,13 +16,15 @@ const SIZE = 58;
  */
 export function PracticeFab() {
   const router = useRouter();
+  // Centred on the tab bar's top edge, which sits above the home indicator, not on it.
+  const bottom = useBottomInset() - SIZE / 2;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Start practice"
       onPress={() => router.push('/(app)/(main)/(tabs)/routines')}
-      style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.fab, { bottom }, pressed && styles.pressed]}
     >
       <Text style={styles.label}>Practice</Text>
     </Pressable>
@@ -33,8 +35,6 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     alignSelf: 'center',
-    // Centred on the tab bar's top edge, so it overlaps the bar as drawn.
-    bottom: TabBarInset - SIZE / 2,
     width: SIZE,
     height: SIZE,
     borderRadius: Radius.pill,

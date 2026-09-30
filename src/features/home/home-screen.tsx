@@ -22,10 +22,10 @@ import {
 import { useTodaysPractice } from '@/features/home/use-todays-practice';
 import { useActiveSessionStore } from '@/features/session/session-store';
 import { useStartPractice } from '@/features/session/use-start-practice';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useIsWide } from '@/hooks/use-is-wide';
 import { filterThisWeek } from '@/lib/date-grouping';
 import { useSessionStore } from '@/stores/session-store';
-import { TabBarInset } from '@/theme/platform';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/theme/tokens';
 
 /** Canvas 02 greets by time of day ("Evening, Jordan"). */
@@ -36,6 +36,8 @@ function partOfDay(hour = new Date().getHours()) {
 }
 
 export function HomeScreen() {
+  // Clears the tab bar and the home indicator under it.
+  const bottomPad = useBottomInset() + Spacing[4];
   const router = useRouter();
   const pathname = usePathname();
   const isWide = useIsWide();
@@ -84,7 +86,7 @@ export function HomeScreen() {
         edges={['top']}
         testID="home-safe-area"
       >
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}>
           <View style={styles.header}>
             <View style={styles.greeting}>
               <ThemedText type="h3">
@@ -210,7 +212,6 @@ const styles = StyleSheet.create({
   safeAreaWide: { flex: 1, width: '100%' },
   scroll: {
     padding: Spacing[4],
-    paddingBottom: TabBarInset + Spacing[4],
     gap: Spacing[4],
   },
   header: {

@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/card';
 import { ChecklistRow } from '@/components/ui/checklist-row';
 import { FieldLabel } from '@/components/ui/field-label';
 import { Input } from '@/components/ui/input';
+import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { Stepper } from '@/components/ui/stepper';
 import { SessionExitDialog } from '@/features/session/session-exit-dialog';
 import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
@@ -62,6 +63,9 @@ export function ActiveSessionScreen() {
 
   return <ActiveSessionScreenBody />;
 }
+
+/** A `fullScreenModal` covers the status bar and the home indicator, so it owns both. */
+const MODAL_EDGES = ['top', 'bottom'] as const;
 
 function ActiveSessionScreenBody() {
   const router = useRouter();
@@ -147,7 +151,7 @@ function ActiveSessionScreenBody() {
   if (tasks.length === 0 || userId !== signedInUserId) {
     return (
       <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={MODAL_EDGES}>
           <ThemedText type="h5">No active session</ThemedText>
           <Button variant="secondary" onPress={leave}>
             Go back
@@ -159,87 +163,91 @@ function ActiveSessionScreenBody() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Button
-            variant="icon"
-            accessibilityLabel="Exit practice"
-            onPress={() => setConfirmExit(true)}
-          >
-            <X color={Colors.text} size={IconSize.lg} strokeWidth={IconStroke} />
-          </Button>
-        </View>
+      <SafeAreaView style={styles.safeArea} edges={MODAL_EDGES}>
+        <KeyboardAwareScreen>
+          <View style={styles.header}>
+            <Button
+              variant="icon"
+              accessibilityLabel="Exit practice"
+              onPress={() => setConfirmExit(true)}
+            >
+              <X color={Colors.text} size={IconSize.lg} strokeWidth={IconStroke} />
+            </Button>
+          </View>
 
-        <View>
-          {routineTitle && (
-            <ThemedText type="body" color="textMuted">
-              Following · {routineTitle}
+          <View>
+            {routineTitle && (
+              <ThemedText type="body" color="textMuted">
+                Following · {routineTitle}
+              </ThemedText>
+            )}
+            <SessionTitle title={title} onChange={setTitle} />
+          </View>
+
+          <Card style={styles.clockCard}>
+            <ThemedText type="overline" color="textMuted">
+              Elapsed · on this device
             </ThemedText>
-          )}
-          <SessionTitle title={title} onChange={setTitle} />
-        </View>
+            <ThemedText type="display">{formatClock(elapsedSeconds)}</ThemedText>
+            {plannedMinutes > 0 && (
+              <ThemedText type="body" color="textMuted">
+                of {plannedMinutes} min planned
+              </ThemedText>
+            )}
+          </Card>
 
-        <Card style={styles.clockCard}>
           <ThemedText type="overline" color="textMuted">
-            Elapsed · on this device
+            Routine tasks
           </ThemedText>
-          <ThemedText type="display">{formatClock(elapsedSeconds)}</ThemedText>
-          {plannedMinutes > 0 && (
-            <ThemedText type="body" color="textMuted">
-              of {plannedMinutes} min planned
-            </ThemedText>
-          )}
-        </Card>
 
-        <ThemedText type="overline" color="textMuted">
-          Routine tasks
-        </ThemedText>
+          <ScrollView contentContainerStyle={styles.taskList} keyboardShouldPersistTaps="handled">
+            {tasks.map((task) => (
+              <Card key={task.taskId} style={styles.taskCard}>
+                <ChecklistRow
+                  label={task.title}
+                  checked={task.completed}
+                  onToggle={() => toggleTaskCompleted(task.taskId)}
+                />
+                <Stepper
+                  minutes={task.durationMinutes}
+                  onChange={(m) => setTaskMinutes(task.taskId, m)}
+                />
+              </Card>
+            ))}
+          </ScrollView>
 
-        <ScrollView contentContainerStyle={styles.taskList}>
-          {tasks.map((task) => (
-            <Card key={task.taskId} style={styles.taskCard}>
-              <ChecklistRow
-                label={task.title}
-                checked={task.completed}
-                onToggle={() => toggleTaskCompleted(task.taskId)}
-              />
-              <Stepper
-                minutes={task.durationMinutes}
-                onChange={(m) => setTaskMinutes(task.taskId, m)}
-              />
-            </Card>
-          ))}
-        </ScrollView>
-
-        {/* Canvas 2d splits what mobile draws as one "Session notes — optional" card into a
+          {/* Canvas 2d splits what mobile draws as one "Session notes — optional" card into a
             label and a helper line. Same content, and the label primitive already exists. */}
-        <View>
-          <FieldLabel>Session notes</FieldLabel>
-          <Input
-            testID="session-notes"
-            value={notes ?? ''}
-            onChangeText={setNotes}
-            multiline
-            // `Input` only sets minHeight: 44, which is one line — a notes box has to ask.
-            style={styles.notes}
-            placeholder="Optional — what went well, what to fix."
-          />
-        </View>
+          <View>
+            <FieldLabel>Session notes</FieldLabel>
+            <Input
+              testID="session-notes"
+              value={notes ?? ''}
+              onChangeText={setNotes}
+              multiline
+              // `Input` only sets minHeight: 44, which is one line — a notes box has to ask.
+              style={styles.notes}
+              placeholder="Optional — what went well, what to fix."
+              autoCapitalize="sentences"
+              maxLength={2000}
+            />
+          </View>
 
-        {failure && <Banner tone="error" title={failure.title} message={failure.message} />}
+          {failure && <Banner tone="error" title={failure.title} message={failure.message} />}
 
-        <Button
-          block
-          loading={createSessionMutation.isPending}
-          loadingLabel="Saving session…"
-          onPress={() => void handleFinish()}
-        >
-          Finish Session
-        </Button>
+          <Button
+            block
+            loading={createSessionMutation.isPending}
+            loadingLabel="Saving session…"
+            onPress={() => void handleFinish()}
+          >
+            Finish Session
+          </Button>
 
-        <ThemedText type="body" color="textMuted" style={styles.note}>
-          Saved when you finish.
-        </ThemedText>
+          <ThemedText type="body" color="textMuted" style={styles.note}>
+            Saved when you finish.
+          </ThemedText>
+        </KeyboardAwareScreen>
       </SafeAreaView>
 
       <SessionExitDialog

@@ -67,7 +67,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: Spacing[2],
-    paddingBottom: Spacing[3],
+    // `env()` is a CSS value react-native-web passes straight through. A mobile browser in
+    // standalone/PWA mode draws the home indicator over the page, and a fixed 13px left the
+    // bottom row of labels under it; the `max()` keeps the padding on a desktop browser,
+    // where the env var resolves to 0.
+    paddingBottom: `max(${Spacing[3]}px, env(safe-area-inset-bottom))` as unknown as number,
     paddingHorizontal: Spacing[3],
     backgroundColor: Colors.neutral[100],
     borderTopWidth: 1,

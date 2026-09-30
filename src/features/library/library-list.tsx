@@ -10,7 +10,7 @@ import { Chip } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
 import { TaskCard } from '@/features/library/task-card';
-import { TabBarInset } from '@/theme/platform';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { Colors, MaxContentWidth, Radius, Spacing, TapSlop } from '@/theme/tokens';
 import type { TaskCategory, TaskDifficulty } from '@/types/task';
 
@@ -18,6 +18,8 @@ const categories = { technique: 'Technique', theory: 'Theory', repertoire: 'Repe
 const difficulties = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
 
 export function LibraryList() {
+  // Clears the tab bar and the home indicator under it.
+  const bottomPad = useBottomInset() + Spacing[4];
   const [category, setCategory] = useState<TaskCategory>();
   const [difficulty, setDifficulty] = useState<TaskDifficulty>();
   const query = useTasks({ category, difficulty });
@@ -140,7 +142,7 @@ export function LibraryList() {
               data={tasks}
               keyExtractor={(task) => task.id}
               renderItem={({ item }) => <TaskCard task={item} />}
-              contentContainerStyle={styles.list}
+              contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
               onEndReached={loadMore}
               onEndReachedThreshold={0.5}
               ListFooterComponent={footer}
@@ -156,7 +158,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
   title: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[2] },
-  list: { padding: Spacing[4], paddingBottom: TabBarInset + Spacing[4], gap: Spacing[3] },
+  list: { padding: Spacing[4], gap: Spacing[3] },
   filters: { paddingHorizontal: Spacing[4], gap: Spacing[2], paddingBottom: Spacing[2] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },
   clear: {

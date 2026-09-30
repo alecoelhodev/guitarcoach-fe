@@ -10,6 +10,7 @@ import { Stack, type Theme, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { setUnauthorizedHandler } from '@/api/client';
 import { CACHE_BUSTER, CACHE_MAX_AGE_MS, queryPersister } from '@/api/persist';
@@ -83,26 +84,34 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <GluestackUIProvider mode="dark">
-        <PersistQueryClientProvider
-          client={queryClient}
-          persistOptions={{
-            persister: queryPersister,
-            buster: CACHE_BUSTER,
-            maxAge: CACHE_MAX_AGE_MS,
-          }}
-        >
-          <BottomSheetModalProvider>
-            <ThemeProvider value={navigationTheme}>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(app)" />
-              </Stack>
-              <ToastHost />
-            </ThemeProvider>
-          </BottomSheetModalProvider>
-        </PersistQueryClientProvider>
-      </GluestackUIProvider>
+      {/*
+        Mounted explicitly rather than relying on the one react-navigation installs inside
+        `<Stack>`: `ToastHost` below is a *sibling* of the Stack, so it sat outside that
+        provider while reading the bottom inset. `initialWindowMetrics` is what keeps the
+        first frame from laying out at zero insets and then jumping.
+      */}
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <GluestackUIProvider mode="dark">
+          <PersistQueryClientProvider
+            client={queryClient}
+            persistOptions={{
+              persister: queryPersister,
+              buster: CACHE_BUSTER,
+              maxAge: CACHE_MAX_AGE_MS,
+            }}
+          >
+            <BottomSheetModalProvider>
+              <ThemeProvider value={navigationTheme}>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(app)" />
+                </Stack>
+                <ToastHost />
+              </ThemeProvider>
+            </BottomSheetModalProvider>
+          </PersistQueryClientProvider>
+        </GluestackUIProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

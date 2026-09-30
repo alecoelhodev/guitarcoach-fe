@@ -3,13 +3,15 @@ import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Toast } from '@/components/ui/toast';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useToastStore } from '@/stores/toast-store';
-import { TabBarInset } from '@/theme/platform';
 import { Spacing } from '@/theme/tokens';
 
 const AUTO_DISMISS_MS = 4000;
 
 export function ToastHost() {
+  // Canvas 04b sits the toast above the tab bar, not flush to the safe-area edge.
+  const bottomInset = useBottomInset();
   const toast = useToastStore((state) => state.toast);
   const hide = useToastStore((state) => state.hide);
 
@@ -22,7 +24,11 @@ export function ToastHost() {
   if (!toast) return null;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']} pointerEvents="none">
+    <SafeAreaView
+      style={[styles.container, { paddingBottom: bottomInset + Spacing[3] }]}
+      edges={['bottom']}
+      pointerEvents="none"
+    >
       <Toast message={toast.message} variant={toast.variant} />
     </SafeAreaView>
   );
@@ -35,7 +41,5 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    // Canvas 04b sits the toast above the tab bar, not flush to the safe-area edge.
-    paddingBottom: TabBarInset + Spacing[3],
   },
 });

@@ -8,8 +8,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useSessionStore } from '@/stores/session-store';
-import { TabBarInset } from '@/theme/platform';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/theme/tokens';
 import { FontFamily } from '@/theme/typography';
 
@@ -24,12 +24,14 @@ function initialsOf(name: string) {
 }
 
 export function ProfileScreen() {
+  // Clears the tab bar and the home indicator under it.
+  const bottomPad = useBottomInset() + Spacing[4];
   const user = useSessionStore((state) => state.user);
   const signOutMutation = useSignOut();
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={[styles.safeArea, { paddingBottom: bottomPad }]} edges={['top']}>
         <ThemedText type="h3">Profile</ThemedText>
 
         {user && (
@@ -105,7 +107,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     padding: Spacing[4],
-    paddingBottom: TabBarInset + Spacing[4],
     gap: Spacing[4],
   },
   identity: {

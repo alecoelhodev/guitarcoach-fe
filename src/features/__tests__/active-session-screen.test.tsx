@@ -13,6 +13,7 @@ import { useToastStore } from '@/stores/toast-store';
 import { mockRouter } from '@/test/expo-router';
 import { makeUser } from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
+import { countHostProp } from '@/test/host-props';
 import { mutationStub } from '@/test/query-hooks';
 
 /**
@@ -525,4 +526,13 @@ describe('with an active session', () => {
     expect(screen.getByText('Saved when you finish.')).toBeTruthy();
     expect(screen.getByText('Elapsed · on this device')).toBeTruthy();
   });
+});
+
+// The screen puts its primary action directly under a text field, so the scroll view has to
+// keep taps rather than spend the first one dismissing the keyboard.
+it('keeps controls tappable while the keyboard is up', async () => {
+  startSession();
+  await render(withGluestack(<ActiveSessionScreen />));
+
+  expect(countHostProp(screen.root, 'keyboardShouldPersistTaps', 'handled')).toBeGreaterThan(0);
 });
