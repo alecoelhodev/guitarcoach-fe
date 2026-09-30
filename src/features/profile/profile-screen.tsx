@@ -123,7 +123,9 @@ const styles = StyleSheet.create({
   },
   initials: {
     fontFamily: FontFamily.body,
-    fontSize: 22,
+    // Canvas 22 × 390/318, per theme/typography.ts. No role matches it — it is sized to the
+    // avatar circle rather than to the type ladder.
+    fontSize: 27,
     color: Colors.neutral[700],
   },
   divider: {

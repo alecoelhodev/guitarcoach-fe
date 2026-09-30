@@ -14,6 +14,9 @@ export const Colors = {
   accent2: '#22c55e',
   danger: '#e35d4f',
   divider: 'rgba(255,255,255,0.10)',
+  // Not a canvas token — the canvas writes `#fff` inline. Named here because six files had
+  // copied the literal, and an icon or label on an accent fill needs one shared value.
+  white: '#ffffff',
   // The canvas renders muted body copy (`.mt`) as neutral-700 rather than an alpha.
   textMuted: '#a8adb5',
 
@@ -114,6 +117,26 @@ export const Interaction = {
   focusRingOffset: 2,
   disabledOpacity: 0.45,
 } as const;
+
+/**
+ * The three icon sizes the screens actually use. `lucide-react-native` takes a number, and
+ * the ten call sites had been passing 16 / 18 / 20 as literals, so a size was a per-file
+ * decision rather than a role.
+ *
+ * sm = inline chevrons on list rows, md = controls inside a row, lg = nav and header icons.
+ */
+export const IconSize = { sm: 16, md: 18, lg: 20 } as const;
+
+/** Every icon in the app is drawn at this weight; the canvas uses one stroke throughout. */
+export const IconStroke = 2.75;
+
+/**
+ * Extra touch area for the few controls that are a bare line of text or a glyph rather than
+ * a `Button` — "Show"/"Hide", "Clear", "Forgot password?". Their drawn height is set by the
+ * type, which is well under the 44pt minimum, and `hitSlop` is how RN separates the target
+ * from the paint.
+ */
+export const TapSlop = 12;
 
 // Canvas 1h: one content column capped at 560px on mobile and tablet.
 export const MaxContentWidth = 560;

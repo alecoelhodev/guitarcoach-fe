@@ -149,7 +149,7 @@ export function HomeScreen() {
                   <ThisWeekCard
                     sessions={thisWeek}
                     isPending={isPending}
-                    figureSize={isWide ? 38 : 34}
+                    figureSize={isWide ? 47 : 42}
                   />
                 </View>
               </View>

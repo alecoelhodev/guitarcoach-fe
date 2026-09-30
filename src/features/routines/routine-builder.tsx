@@ -37,7 +37,7 @@ import { UnsavedChangesDialog } from '@/features/routines/unsaved-changes-dialog
 import { useStartPractice } from '@/features/session/use-start-practice';
 import { useToastStore } from '@/stores/toast-store';
 import { TabBarInset } from '@/theme/platform';
-import { Colors, MaxContentWidth, Spacing } from '@/theme/tokens';
+import { Colors, IconSize, IconStroke, MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { Routine, RoutineStatus, RoutineTaskWithTask } from '@/types/routine';
 
 /** `CreateRoutineDto` bounds the title at 2–200; a 1-character title is a 400, not a nudge. */
@@ -530,7 +530,7 @@ function BuilderHeader({
   return (
     <View style={styles.header}>
       <Button variant="icon" accessibilityLabel="Go back" onPress={onBack}>
-        <ChevronLeft size={20} strokeWidth={2.75} />
+        <ChevronLeft color={Colors.text} size={IconSize.lg} strokeWidth={IconStroke} />
       </Button>
       <View style={styles.spacer} />
       {dirty && <Badge label="Unsaved" />}

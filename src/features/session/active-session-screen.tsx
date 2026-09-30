@@ -20,7 +20,7 @@ import { type ActiveSessionTask, useActiveSessionStore } from '@/features/sessio
 import { formatClock } from '@/lib/duration';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
-import { Spacing } from '@/theme/tokens';
+import { Colors, IconSize, IconStroke, Spacing } from '@/theme/tokens';
 
 /**
  * Elapsed is *derived* from `startedAt`, never counted in ticks. Backgrounding the app suspends
@@ -166,7 +166,7 @@ function ActiveSessionScreenBody() {
             accessibilityLabel="Exit practice"
             onPress={() => setConfirmExit(true)}
           >
-            <X size={20} strokeWidth={2.75} />
+            <X color={Colors.text} size={IconSize.lg} strokeWidth={IconStroke} />
           </Button>
         </View>
 
@@ -312,7 +312,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center' },
   clockCard: { alignItems: 'center' },
   note: { textAlign: 'center' },
-  notes: { minHeight: 88, paddingTop: Spacing[2], textAlignVertical: 'top' },
+  // Grew with the type scale: `Input` only guarantees one line, and a notes box asks for
+  // about four.
+  notes: { minHeight: 108, paddingTop: Spacing[2], textAlignVertical: 'top' },
   taskList: { gap: Spacing[3] },
   taskCard: { gap: Spacing[3] },
 });

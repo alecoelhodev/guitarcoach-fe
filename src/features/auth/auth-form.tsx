@@ -20,7 +20,7 @@ import { useActiveSessionStore } from '@/features/session/session-store';
 import { safeNextPath } from '@/lib/next-path';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, Spacing, TapSlop } from '@/theme/tokens';
 
 type Mode = 'signin' | 'create';
 
@@ -299,6 +299,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
           accessibilityRole="button"
           onPress={() => void handleForgotPassword()}
           disabled={busy}
+          hitSlop={TapSlop}
           style={styles.forgot}
         >
           <ThemedText type="caption" style={styles.link}>
@@ -320,6 +321,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
       <Pressable
         accessibilityRole="button"
         onPress={() => switchMode(mode === 'create' ? 'signin' : 'create')}
+        hitSlop={TapSlop}
         style={styles.switch}
       >
         <ThemedText type="body" color="textMuted">

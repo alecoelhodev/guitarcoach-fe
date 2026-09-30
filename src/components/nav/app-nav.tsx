@@ -2,7 +2,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
 import { PracticeFab } from '@/components/nav/practice-fab';
 import { Colors } from '@/theme/tokens';
-import { FontFamily } from '@/theme/typography';
+import { Typography } from '@/theme/typography';
 
 export default function AppNav() {
   return (
@@ -13,18 +13,25 @@ export default function AppNav() {
         indicatorColor={Colors.accentRamp[200]}
         tintColor={Colors.accent}
         iconColor={Colors.neutral[600]}
-        labelStyle={{ fontFamily: FontFamily.bodySemiBold, fontSize: 8.5 }}
+        labelStyle={{
+          fontFamily: Typography.navLabel.fontFamily,
+          fontSize: Typography.navLabel.fontSize,
+        }}
       >
         <NativeTabs.Trigger name="index">
           <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />
         </NativeTabs.Trigger>
 
+        {/* The web rail and bottom bar draw lucide's `ListMusic` for this tab (see
+            `destinations.ts`); a plain bullet list read as a different destination on
+            native. `music.note.list` is SF's nearest equivalent, `queue_music` Material's.
+            The other three already match their lucide counterparts closely enough. */}
         <NativeTabs.Trigger name="routines">
           <NativeTabs.Trigger.Label>Routines</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
-            sf={{ default: 'list.bullet', selected: 'list.bullet' }}
-            md="list"
+            sf={{ default: 'music.note.list', selected: 'music.note.list' }}
+            md="queue_music"
           />
         </NativeTabs.Trigger>
 

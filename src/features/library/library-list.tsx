@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
 import { TaskCard } from '@/features/library/task-card';
 import { TabBarInset } from '@/theme/platform';
-import { Colors, MaxContentWidth, Radius, Spacing } from '@/theme/tokens';
+import { Colors, MaxContentWidth, Radius, Spacing, TapSlop } from '@/theme/tokens';
 import type { TaskCategory, TaskDifficulty } from '@/types/task';
 
 const categories = { technique: 'Technique', theory: 'Theory', repertoire: 'Repertoire' };
@@ -99,7 +99,12 @@ export function LibraryList() {
               />
             ))}
             {filtered && (
-              <Pressable accessibilityRole="button" onPress={clearFilters} style={styles.clear}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={clearFilters}
+                hitSlop={TapSlop}
+                style={styles.clear}
+              >
                 <ThemedText type="label" style={{ color: Colors.accentRamp[700] }}>
                   Clear
                 </ThemedText>

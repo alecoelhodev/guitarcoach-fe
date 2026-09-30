@@ -60,15 +60,15 @@ export function ConfirmDialog({
         )}
 
         <AlertDialogFooter className="gap-2">
-          <Button variant="tertiary" onPress={onCancel} className="min-h-[40px] flex-1">
+          <Button variant="tertiary" onPress={onCancel} className="min-h-[44px] flex-1">
             {cancelLabel}
           </Button>
           {destructive ? (
-            <Button variant="tertiary" onPress={onConfirm} className="min-h-[40px] flex-1">
+            <Button variant="tertiary" onPress={onConfirm} className="min-h-[44px] flex-1">
               <ButtonText className="text-danger-700">{confirmLabel}</ButtonText>
             </Button>
           ) : (
-            <Button onPress={onConfirm} className="min-h-[40px] flex-1">
+            <Button onPress={onConfirm} className="min-h-[44px] flex-1">
               {confirmLabel}
             </Button>
           )}

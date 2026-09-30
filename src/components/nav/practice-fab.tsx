@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { TabBarInset } from '@/theme/platform';
 import { Colors, Radius } from '@/theme/tokens';
-import { FontFamily } from '@/theme/typography';
+import { FontFamily, Typography } from '@/theme/typography';
 
 const SIZE = 58;
 
@@ -53,10 +53,9 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   label: {
+    ...Typography.navLabel,
     fontFamily: FontFamily.heading,
-    fontSize: 9.5,
-    lineHeight: 9.5 * 1.1,
-    color: '#ffffff',
+    color: Colors.white,
     textAlign: 'center',
   },
 });
