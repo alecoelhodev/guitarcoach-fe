@@ -31,7 +31,7 @@ import { FieldLabel } from '@/components/ui/field-label';
 import { Input } from '@/components/ui/input';
 import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { Segmented, type SegmentedOption } from '@/components/ui/segmented';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { ValidationMessage } from '@/components/ui/validation-message';
 import { RoutineTaskRow } from '@/features/routines/routine-task-row';
 import { UnsavedChangesDialog } from '@/features/routines/unsaved-changes-dialog';
@@ -74,6 +74,7 @@ export function RoutineBuilder({ routineId }: { routineId?: string }) {
 
 function CreateRoutine() {
   const router = useRouter();
+  const showToast = useToastStore((state) => state.show);
   const createRoutine = useCreateRoutine();
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -92,6 +93,9 @@ function CreateRoutine() {
       // `replace`, not `push`: back from the new routine should reach the list, not an
       // empty create form.
       router.replace({ pathname: '/routines/[id]', params: { id: routine.id } });
+      // The edit path has always toasted; creating one landed on a screen that looks the
+      // same as the one you were on, with nothing to say it worked.
+      showToast('Routine created', 'success');
     } catch (error) {
       setFailure(describeError(error, "Couldn't save this routine").title);
     }
@@ -145,14 +149,9 @@ function EditRoutine({ routineId }: { routineId: string }) {
   const routineQuery = useRoutine(routineId);
   const tasksQuery = useRoutineTasks(routineId);
 
-  if (routineQuery.isPending || tasksQuery.isPending) {
-    return (
-      <Card>
-        <Skeleton width="70%" />
-        <Skeleton width="45%" />
-      </Card>
-    );
-  }
+  // Two queries, so this stays hand-rolled rather than going through `QueryState`: its
+  // `query` prop takes one, and the retry below has to reach both.
+  if (routineQuery.isPending || tasksQuery.isPending) return <SkeletonCard />;
   if (routineQuery.isError || tasksQuery.isError) {
     const { title, message } = describeError(
       routineQuery.error ?? tasksQuery.error,
@@ -196,6 +195,7 @@ function EditRoutineBody({
 
   const [status, setStatus] = useState<RoutineStatus>(routine.status);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   /**
    * Six different actions write this one panel, so the message has to carry its own retry.
@@ -429,7 +429,7 @@ function EditRoutineBody({
           variant="tertiary"
           style={styles.footerAction}
           disabled={busy}
-          onPress={() => void archive()}
+          onPress={() => setConfirmArchive(true)}
         >
           Archive
         </Button>
@@ -449,6 +449,20 @@ function EditRoutineBody({
           {"Remove this routine's tasks before deleting it."}
         </ThemedText>
       )}
+
+      {/* Archiving used to fire on the first tap, while delete beside it asked. It is
+          reversible from the Archived tab, so the copy says so rather than warning. */}
+      <ConfirmDialog
+        visible={confirmArchive}
+        title={`Archive "${routine.title}"?`}
+        message="It moves to the Archived tab. You can restore it from there."
+        confirmLabel="Archive"
+        onConfirm={() => {
+          setConfirmArchive(false);
+          void archive();
+        }}
+        onCancel={() => setConfirmArchive(false)}
+      />
 
       <ConfirmDialog
         visible={confirmDelete}

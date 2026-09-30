@@ -10,6 +10,7 @@ import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useSessionStore } from '@/stores/session-store';
+import { useToastStore } from '@/stores/toast-store';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/theme/tokens';
 import { FontFamily } from '@/theme/typography';
 
@@ -27,6 +28,7 @@ export function ProfileScreen() {
   // Clears the tab bar and the home indicator under it.
   const bottomPad = useBottomInset() + Spacing[4];
   const user = useSessionStore((state) => state.user);
+  const showToast = useToastStore((state) => state.show);
   const signOutMutation = useSignOut();
 
   return (
@@ -75,7 +77,15 @@ export function ProfileScreen() {
           variant="secondary"
           className="border-danger-300"
           disabled={signOutMutation.isPending}
-          onPress={() => signOutMutation.mutate()}
+          onPress={() =>
+            signOutMutation.mutate(undefined, {
+              // The teardown runs either way, so the user is on the sign-in screen by the
+              // time this fires — but the cookie is still live server-side, which is the one
+              // thing they cannot see and might act on.
+              onError: () =>
+                showToast("Signed out here, but we couldn't reach the server", 'error'),
+            })
+          }
         >
           <ButtonText className="text-danger-700">
             {signOutMutation.isPending ? 'Signing out…' : 'Sign out'}

@@ -1,10 +1,9 @@
 import { type ReactElement, type ReactNode } from 'react';
 
 import { describeError } from '@/api/errors';
-import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorPanel } from '@/components/ui/error-panel';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonCard } from '@/components/ui/skeleton';
 
 /** Structural subset of a query result — `useQuery` and `useInfiniteQuery` both satisfy it. */
 export type QueryStateQuery<T> = {
@@ -42,16 +41,7 @@ export function QueryState<T>({
   empty,
   children,
 }: QueryStateProps<T>): ReactElement {
-  const pending = (
-    <>
-      {skeleton ?? (
-        <Card>
-          <Skeleton width="70%" />
-          <Skeleton width="45%" />
-        </Card>
-      )}
-    </>
-  );
+  const pending = <>{skeleton ?? <SkeletonCard />}</>;
 
   if (query.isPending) return pending;
 

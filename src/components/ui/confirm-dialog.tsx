@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 import { ThemedText } from '@/components/themed-text';
 import {
   AlertDialog,
@@ -8,6 +10,7 @@ import {
   AlertDialogHeader,
 } from '@/components/ui/alert-dialog';
 import { Button, ButtonText } from '@/components/ui/button';
+import { warned } from '@/lib/haptics';
 
 export type ConfirmDialogProps = {
   visible: boolean;
@@ -42,6 +45,12 @@ export function ConfirmDialog({
   onCancel,
   onDismiss,
 }: ConfirmDialogProps) {
+  // Only the destructive ones. A resume prompt is a question; a delete is a warning, and the
+  // dialog is the last moment before something the user cannot undo.
+  useEffect(() => {
+    if (visible && destructive) warned();
+  }, [visible, destructive]);
+
   return (
     <AlertDialog isOpen={visible} onClose={onDismiss ?? onCancel}>
       {/* Named so the dismiss-is-not-cancel rule has a regression test. */}

@@ -7,6 +7,7 @@ import { useUploadRecording } from '@/api/recordings.queries';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { validateRecordingFile } from '@/lib/file-validation';
+import { succeeded } from '@/lib/haptics';
 import { useToastStore } from '@/stores/toast-store';
 import { Colors, Spacing } from '@/theme/tokens';
 
@@ -27,6 +28,7 @@ export function RecordingUpload({ sessionId }: { sessionId: string }) {
       await upload.mutateAsync(selected);
       setFile(undefined);
       setPhase('idle');
+      succeeded();
       showToast('Recording added', 'success');
     } catch (error) {
       setPhase(

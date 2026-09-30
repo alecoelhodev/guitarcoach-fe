@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTasks } from '@/api/tasks.queries';
@@ -9,8 +16,10 @@ import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { TaskCard } from '@/features/library/task-card';
 import { useBottomInset } from '@/hooks/use-bottom-inset';
+import { usePaginatedList } from '@/hooks/use-paginated-list';
 import { Colors, MaxContentWidth, Radius, Spacing, TapSlop } from '@/theme/tokens';
 import type { TaskCategory, TaskDifficulty } from '@/types/task';
 
@@ -36,32 +45,23 @@ export function LibraryList() {
   ]
     .filter(Boolean)
     .join(' · ');
-  const { fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError } = query;
+  const {
+    listState,
+    isRefreshing,
+    refresh,
+    isFetchingNextPage,
+    isNextPageError,
+    loadMore,
+    retryNextPage,
+  } = usePaginatedList(query);
   const tasks = query.data?.pages.flatMap((page) => page.data) ?? [];
 
-  // FlatList fires onEndReached repeatedly during momentum, and a page that just failed must
-  // not retry itself on every scroll event — the footer offers that explicitly instead.
-  const loadMore = () => {
-    if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) fetchNextPage();
-  };
-
-  // A failed next page keeps the pages already on screen, but TanStack still reports it as a
-  // query error and QueryState checks isError before data — so the footer owns that case and
-  // the loaded tasks are not replaced by a full-screen panel.
-  const listState = {
-    data: query.data,
-    isPending: query.isPending,
-    isError: query.isError && !isFetchNextPageError,
-    error: query.error,
-    refetch: query.refetch,
-  };
-
-  const footer = isFetchNextPageError ? (
+  const footer = isNextPageError ? (
     <View style={styles.footer}>
       <ThemedText type="body" color="textMuted">
         {"Couldn't load more tasks."}
       </ThemedText>
-      <Button variant="tertiary" onPress={() => fetchNextPage()}>
+      <Button variant="tertiary" onPress={retryNextPage}>
         Try again
       </Button>
     </View>
@@ -121,6 +121,7 @@ export function LibraryList() {
         </View>
         <QueryState
           query={listState}
+          skeleton={<SkeletonList />}
           errorTitle="Couldn't load the library"
           isEmpty={tasks.length === 0}
           empty={
@@ -140,6 +141,14 @@ export function LibraryList() {
             <FlatList
               testID="library-list"
               data={tasks}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={refresh}
+                  tintColor={Colors.accentRamp[700]}
+                  colors={[Colors.accentRamp[700]]}
+                />
+              }
               keyExtractor={(task) => task.id}
               renderItem={({ item }) => <TaskCard task={item} />}
               contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}

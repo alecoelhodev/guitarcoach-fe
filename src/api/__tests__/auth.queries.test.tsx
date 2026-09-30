@@ -13,6 +13,9 @@ import { resetStores } from '@/test/reset-stores';
 jest.mock('@/api/auth', () => ({ signOut: jest.fn() }));
 jest.mock('@/api/persist', () => ({ purgePersistedCache: jest.fn() }));
 
+/** Long enough for the hook's two retries (500ms then 1000ms) plus slack. */
+const RETRY_WINDOW_MS = 5000;
+
 const signOutMock = signOut as jest.MockedFunction<typeof signOut>;
 const purgeMock = purgePersistedCache as jest.MockedFunction<typeof purgePersistedCache>;
 
@@ -67,7 +70,7 @@ describe('useSignOut', () => {
     const { result, queryClient } = await setup();
     result.current.mutate();
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: RETRY_WINDOW_MS });
     expect(useSessionStore.getState()).toMatchObject({ status: 'unauthenticated', user: null });
     expect(queryClient.getQueryData(queryKeys.me)).toBeUndefined();
   });
@@ -78,6 +81,31 @@ describe('useSignOut', () => {
     const { result } = await setup();
     result.current.mutate();
 
-    await waitFor(() => expect(purgeMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(purgeMock).toHaveBeenCalledTimes(1), {
+      timeout: RETRY_WINDOW_MS,
+    });
+  });
+
+  // Clearing locally is not signing out: the cookie is in the platform's own store, so a
+  // request that never lands leaves the session alive and the next cold start signs the
+  // account back in. Worth more than one attempt.
+  it('retries before giving up, unlike every other mutation', async () => {
+    signOutMock.mockRejectedValue(new Error('offline'));
+
+    const { result } = await setup();
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: RETRY_WINDOW_MS });
+    expect(signOutMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not retry a sign-out that worked', async () => {
+    signOutMock.mockResolvedValue(undefined as never);
+
+    const { result } = await setup();
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(signOutMock).toHaveBeenCalledTimes(1);
   });
 });

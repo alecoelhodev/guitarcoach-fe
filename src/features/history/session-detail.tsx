@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { QueryState } from '@/components/ui/query-state';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { RecordingRow } from '@/features/history/recording-row';
 import { RecordingUpload } from '@/features/history/recording-upload';
 import { formatMinutes, sumSessionMinutes } from '@/lib/duration';
@@ -58,14 +58,7 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
   const sessionQuery = useSession(sessionId);
   const recordingsQuery = useRecordings(sessionId);
 
-  if (sessionQuery.isPending) {
-    return (
-      <Card>
-        <Skeleton width="70%" />
-        <Skeleton width="45%" />
-      </Card>
-    );
-  }
+  if (sessionQuery.isPending) return <SkeletonCard />;
   if (sessionQuery.isError) {
     const { title, message } = describeError(sessionQuery.error, "Couldn't load this session");
     return <ErrorPanel title={title} message={message} onRetry={() => sessionQuery.refetch()} />;

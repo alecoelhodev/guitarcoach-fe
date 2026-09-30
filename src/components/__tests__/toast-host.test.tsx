@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { ToastHost } from '@/components/toast-host';
 import { useToastStore } from '@/stores/toast-store';
@@ -69,6 +69,20 @@ describe('ToastHost', () => {
 
     await advance(2500);
     expect(screen.queryByText('Second')).toBeNull();
+  });
+
+  // The host used to be `pointerEvents="none"`, so a toast could not be tapped at all and
+  // owned the bottom of the screen for the full four seconds.
+  it('dismisses on tap, without waiting out the countdown', async () => {
+    await render(<ToastHost />);
+    await act(async () => {
+      useToastStore.getState().show('Session saved');
+    });
+
+    await fireEvent.press(screen.getByText('Session saved'));
+
+    expect(screen.queryByText('Session saved')).toBeNull();
+    expect(useToastStore.getState().toast).toBeNull();
   });
 
   it('clears its timer on unmount instead of hiding a toast it no longer owns', async () => {

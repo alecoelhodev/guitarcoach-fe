@@ -1,4 +1,5 @@
 import { Checkbox, CheckboxIndicator, CheckboxLabel } from '@/components/ui/checkbox';
+import { tapped } from '@/lib/haptics';
 
 export type ChecklistRowProps = {
   label: string;
@@ -15,7 +16,12 @@ export function ChecklistRow({ label, checked, onToggle }: ChecklistRowProps) {
     <Checkbox
       value={label}
       isChecked={checked}
-      onChange={onToggle}
+      onChange={() => {
+        // Ticking a task off is the one repeated action in a practice session, and the user
+        // is looking at a guitar rather than the screen.
+        tapped();
+        onToggle();
+      }}
       accessibilityLabel={label}
       className="py-2"
     >

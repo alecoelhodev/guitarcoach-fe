@@ -163,8 +163,9 @@ export function HomeScreen() {
                 isWide={isWide}
                 onStart={isWide ? (target) => startPractice.mutate({ routine: target }) : undefined}
                 startingRoutineId={startingRoutineId}
+                isPending={!hasLoaded}
               />
-              <RecentSessions sessions={sessions} isWide={isWide} />
+              <RecentSessions sessions={sessions} isWide={isWide} isPending={isPending} />
             </>
           )}
         </ScrollView>

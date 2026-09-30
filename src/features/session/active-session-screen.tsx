@@ -19,6 +19,7 @@ import { Stepper } from '@/components/ui/stepper';
 import { SessionExitDialog } from '@/features/session/session-exit-dialog';
 import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { formatClock } from '@/lib/duration';
+import { succeeded } from '@/lib/haptics';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
 import { Colors, IconSize, IconStroke, Spacing } from '@/theme/tokens';
@@ -125,6 +126,7 @@ function ActiveSessionScreenBody() {
 
     reset();
     leave();
+    succeeded();
     showToast('Session saved', 'success');
   }
 

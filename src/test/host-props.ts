@@ -25,3 +25,19 @@ export function countHostProp(root: TestInstance | null, prop: string, value: un
   visit(root);
   return found;
 }
+
+/** The first host element carrying `prop`, or null. Same caveat as `countHostProp`. */
+export function findHostWithProp(
+  root: TestInstance | null,
+  prop: string,
+): TestInstance | null {
+  if (!root) return null;
+  if (root.props?.[prop] !== undefined) return root;
+
+  for (const child of root.children) {
+    if (typeof child === 'string') continue;
+    const hit = findHostWithProp(child, prop);
+    if (hit) return hit;
+  }
+  return null;
+}

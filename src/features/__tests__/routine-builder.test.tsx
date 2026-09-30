@@ -325,9 +325,29 @@ describe('editing', () => {
     await render(editing());
 
     await fireEvent.press(screen.getByText('Archive'));
+    // The footer action and the dialog's confirm share a label, as Delete already does.
+    await fireEvent.press(screen.getAllByText('Archive').at(-1) as never);
 
     await waitFor(() => expect(update.mutateAsync).toHaveBeenCalledWith({ status: 'archived' }));
     expect(deleteHook).toHaveBeenCalled();
+  });
+
+  // Archive used to fire on the first tap while Delete beside it asked. It is reversible, so
+  // the dialog explains rather than warns — but it still asks.
+  it('asks before archiving, and does nothing if the answer is no', async () => {
+    const update = mutationStub();
+    updateHook.mockReturnValue(update);
+    await render(editing());
+
+    await fireEvent.press(screen.getByText('Archive'));
+
+    expect(
+      screen.getByText('It moves to the Archived tab. You can restore it from there.'),
+    ).toBeTruthy();
+    expect(update.mutateAsync).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('Cancel'));
+    expect(update.mutateAsync).not.toHaveBeenCalled();
   });
 });
 
@@ -564,6 +584,22 @@ describe('task duration and removal', () => {
     expect(updateTask.mutate).toHaveBeenCalledTimes(2);
     expect(updateTask.mutate.mock.calls[1]?.[0]).toEqual(firstCall);
     expect(update.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('confirms a new routine, as the edit path already did', async () => {
+    const create = mutationStub(makeRoutine({ id: 'new-1' }));
+    createHook.mockReturnValue(create);
+    await render(creating());
+
+    await fireEvent.changeText(screen.getByTestId('routine-title'), 'Evening drills');
+    await fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(useToastStore.getState().toast).toMatchObject({
+        message: 'Routine created',
+        variant: 'success',
+      }),
+    );
   });
 
   it('links to the picker for this routine', async () => {

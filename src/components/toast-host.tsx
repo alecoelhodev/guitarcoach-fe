@@ -27,9 +27,12 @@ export function ToastHost() {
     <SafeAreaView
       style={[styles.container, { paddingBottom: bottomInset + Spacing[3] }]}
       edges={['bottom']}
-      pointerEvents="none"
+      // `box-none` rather than `none`: the container must stay transparent to taps so it
+      // does not block the screen underneath, but the toast itself has to receive them or
+      // it cannot be dismissed before its four seconds are up.
+      pointerEvents="box-none"
     >
-      <Toast message={toast.message} variant={toast.variant} />
+      <Toast message={toast.message} variant={toast.variant} onDismiss={hide} />
     </SafeAreaView>
   );
 }

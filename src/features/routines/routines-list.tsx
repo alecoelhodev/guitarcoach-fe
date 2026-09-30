@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRoutines } from '@/api/routines.queries';
@@ -10,9 +10,11 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
 import { Segmented, type SegmentedOption } from '@/components/ui/segmented';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { RoutineCard } from '@/features/routines/routine-card';
 import { useBottomInset } from '@/hooks/use-bottom-inset';
-import { MaxContentWidth, Spacing } from '@/theme/tokens';
+import { usePaginatedList } from '@/hooks/use-paginated-list';
+import { Colors, MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { RoutineStatus } from '@/types/routine';
 
 const SEGMENTS: SegmentedOption<RoutineStatus>[] = [
@@ -33,7 +35,16 @@ export function RoutinesList() {
   const [status, setStatus] = useState<RoutineStatus>('active');
 
   const query = useRoutines({ status });
-  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  const {
+    listState,
+    isRefreshing,
+    refresh,
+    hasNextPage,
+    isFetchingNextPage,
+    isNextPageError,
+    loadMore,
+    retryNextPage,
+  } = usePaginatedList(query);
   const routines = query.data?.pages.flatMap((page) => page.data) ?? [];
   const archived = status === 'archived';
 
@@ -49,7 +60,8 @@ export function RoutinesList() {
         </View>
 
         <QueryState
-          query={query}
+          query={listState}
+          skeleton={<SkeletonList />}
           errorTitle="Couldn't load your routines"
           isEmpty={routines.length === 0}
           empty={
@@ -72,21 +84,36 @@ export function RoutinesList() {
           {() => (
             <FlatList
               data={routines}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={refresh}
+                  tintColor={Colors.accentRamp[700]}
+                  colors={[Colors.accentRamp[700]]}
+                />
+              }
               keyExtractor={(routine) => routine.id}
               renderItem={({ item }) => <RoutineCard routine={item} />}
               contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
               ListFooterComponent={
                 <>
-                  {hasNextPage && (
+                  {isNextPageError ? (
                     <View style={styles.footer}>
-                      <Button
-                        variant="tertiary"
-                        disabled={isFetchingNextPage}
-                        onPress={() => fetchNextPage()}
-                      >
-                        {isFetchingNextPage ? 'Loading…' : 'Load more'}
+                      <ThemedText type="body" color="textMuted">
+                        {"Couldn't load more routines."}
+                      </ThemedText>
+                      <Button variant="tertiary" onPress={retryNextPage}>
+                        Try again
                       </Button>
                     </View>
+                  ) : (
+                    hasNextPage && (
+                      <View style={styles.footer}>
+                        <Button variant="tertiary" disabled={isFetchingNextPage} onPress={loadMore}>
+                          {isFetchingNextPage ? 'Loading…' : 'Load more'}
+                        </Button>
+                      </View>
+                    )
                   )}
                   {/* Creating from the Archived tab would land the user back on Active with
                       no explanation, so that tab offers nothing. */}
