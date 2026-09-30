@@ -14,7 +14,7 @@ import { AddTasksScreen } from '@/features/routines/add-tasks-screen';
 import { useToastStore } from '@/stores/toast-store';
 import { mockRouter } from '@/test/expo-router';
 import { makePage, makeRoutineTaskWithTask, makeTask } from '@/test/fixtures';
-import { infinitePages, mutationStub, successQuery } from '@/test/query-hooks';
+import { errorQuery, infinitePages, mutationStub, successQuery } from '@/test/query-hooks';
 
 /**
  * The library in pick mode. The backend rejects a duplicate task with a 409 and races
@@ -175,4 +175,21 @@ it('closes without adding anything when cancelled', async () => {
   await fireEvent.press(screen.getByText('Cancel'));
 
   expect(mockRouter.back).toHaveBeenCalledTimes(1);
+});
+
+// With the routine's own tasks unavailable, the filter that keeps duplicates off this screen
+// silently becomes a no-op — the list looked normal and the first already-added task 409'd
+// halfway through the batch.
+it('says the list may be wrong when it could not read the routine', async () => {
+  tasksHook.mockReturnValue(infinitePages([makePage(LIBRARY)]));
+  const routineTasks = errorQuery<never>(new ApiError('boom', OFFLINE_STATUS));
+  routineTasksHook.mockReturnValue(routineTasks);
+  await render(screen_());
+
+  expect(screen.getByText('This list may include tasks you already added')).toBeTruthy();
+  // The screen stays usable — the 409 path still covers an actual duplicate.
+  expect(screen.getByText('Alternate picking')).toBeTruthy();
+
+  await fireEvent.press(screen.getByText('Try again'));
+  expect(routineTasks.refetch).toHaveBeenCalled();
 });

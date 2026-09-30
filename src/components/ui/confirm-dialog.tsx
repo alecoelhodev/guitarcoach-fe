@@ -19,6 +19,12 @@ export type ConfirmDialogProps = {
   destructive?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /**
+   * Backdrop tap, Escape and hardware back. Defaults to `onCancel`, which is only safe when
+   * cancelling does nothing. Home's resume prompt makes cancel *discard the session*, so a
+   * stray backdrop tap destroyed unsaved practice — a dismiss must never be destructive.
+   */
+  onDismiss?: () => void;
 };
 
 /**
@@ -34,10 +40,12 @@ export function ConfirmDialog({
   destructive = false,
   onConfirm,
   onCancel,
+  onDismiss,
 }: ConfirmDialogProps) {
   return (
-    <AlertDialog isOpen={visible} onClose={onCancel}>
-      <AlertDialogBackdrop />
+    <AlertDialog isOpen={visible} onClose={onDismiss ?? onCancel}>
+      {/* Named so the dismiss-is-not-cancel rule has a regression test. */}
+      <AlertDialogBackdrop testID="confirm-dialog-backdrop" />
       <AlertDialogContent className="w-full max-w-[400px]">
         <AlertDialogHeader>
           <ThemedText type="label">{title}</ThemedText>

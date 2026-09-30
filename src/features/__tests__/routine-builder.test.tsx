@@ -522,6 +522,49 @@ describe('task duration and removal', () => {
     expect(screen.queryByText('Remove')).toBeNull();
   });
 
+  // The panel is shared by six actions. It used to hold a bare string and always retry
+  // `submit()`, so "Couldn't remove this task" offered a Try again that saved the form and
+  // left the task exactly where it was.
+  it('retries the removal that failed, not the form save', async () => {
+    const remove = mutationStub();
+    remove.mutate.mockImplementation((_taskId: string, options: { onError: (e: Error) => void }) =>
+      options.onError(new ApiError('boom', 500)),
+    );
+    const update = mutationStub();
+    removeTaskHook.mockReturnValue(remove);
+    updateHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Barre chords');
+    await fireEvent.press(screen.getByText('Remove'));
+    await fireEvent.press(screen.getByText('Try again'));
+
+    expect(remove.mutate).toHaveBeenCalledTimes(2);
+    expect(remove.mutate).toHaveBeenLastCalledWith('b', expect.anything());
+    expect(update.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('retries the duration that failed, not the form save', async () => {
+    const updateTask = mutationStub();
+    updateTask.mutate.mockImplementation(
+      (_input: unknown, options: { onError: (e: Error) => void }) =>
+        options.onError(new ApiError('boom', 500)),
+    );
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(updateTask);
+    updateHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Barre chords');
+    await fireEvent.press(screen.getByLabelText('Increase minutes'));
+    const firstCall = updateTask.mutate.mock.calls[0]?.[0];
+    await fireEvent.press(screen.getByText('Try again'));
+
+    expect(updateTask.mutate).toHaveBeenCalledTimes(2);
+    expect(updateTask.mutate.mock.calls[1]?.[0]).toEqual(firstCall);
+    expect(update.mutateAsync).not.toHaveBeenCalled();
+  });
+
   it('links to the picker for this routine', async () => {
     await render(editing());
 
@@ -590,6 +633,24 @@ describe('reordering', () => {
     expect(
       screen.getByText('Another change was in progress. The list is back to the last saved order.'),
     ).toBeTruthy();
+  });
+
+  // `reset()` only dismissed the panel, leaving the tasks in the order the rollback restored —
+  // a Try again that visibly changed nothing.
+  it('resends the order that lost the race rather than just dismissing', async () => {
+    const reorder = { ...mutationStub(), isError: true };
+    reorderHook.mockReturnValue(reorder);
+    await render(editing());
+
+    await expand('Alternate picking');
+    await fireEvent.press(screen.getByText('Move down'));
+    expect(reorder.mutate).toHaveBeenCalledWith(['b', 'a', 'c']);
+
+    await fireEvent.press(screen.getByText('Try again'));
+
+    expect(reorder.mutate).toHaveBeenCalledTimes(2);
+    expect(reorder.mutate).toHaveBeenLastCalledWith(['b', 'a', 'c']);
+    expect(reorder.reset).not.toHaveBeenCalled();
   });
 });
 

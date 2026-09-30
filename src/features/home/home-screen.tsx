@@ -182,6 +182,10 @@ export function HomeScreen() {
           setResumeDismissed(true);
           resetActiveSession();
         }}
+        // Discarding is only ever a deliberate tap on "Discard". A backdrop tap, Escape or
+        // hardware back used to reach `onCancel` too, which reset the store — so dismissing
+        // the prompt by accident destroyed the minutes and notes it was offering to restore.
+        onDismiss={() => setResumeDismissed(true)}
       />
     </ThemedView>
   );

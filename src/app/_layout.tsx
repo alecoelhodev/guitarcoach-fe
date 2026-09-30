@@ -63,10 +63,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     // Same teardown as the deliberate sign-out path, and shared with it: an expired cookie
-    // leaves the previous user's cached data — and their in-progress practice session —
-    // for whoever signs in next.
+    // leaves the previous user's cached data for whoever signs in next. The in-progress
+    // practice session is the exception — it is owner-stamped, so it stays and the user can
+    // finish it after signing back in rather than losing unsaved minutes to a dead cookie.
     setUnauthorizedHandler(() => {
-      void clearLocalSession(queryClient);
+      void clearLocalSession(queryClient, { keepActiveSession: true });
     });
   }, []);
 

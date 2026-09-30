@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { requestPasswordReset, signIn } from '@/api/auth';
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { AuthForm } from '@/features/auth/auth-form';
+import { useActiveSessionStore } from '@/features/session/session-store';
 import { makeUser } from '@/test/fixtures';
 
 const mockReplace = jest.fn();
@@ -152,5 +153,35 @@ describe('mode switching', () => {
     // Display name exists only in create mode, Forgot password only in sign-in mode.
     expect(screen.getByText('Display name')).toBeTruthy();
     expect(screen.queryByText('Forgot password?')).toBeNull();
+  });
+});
+
+describe('unsaved practice', () => {
+  // A 401 keeps the practice on disk rather than discarding it, so the screen the user lands
+  // on has to say so — otherwise it looks exactly like having lost the session.
+  const startPractice = () =>
+    useActiveSessionStore.getState().start({
+      userId: 'user-1',
+      tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+    });
+
+  it('says the session survived when one is still on the device', async () => {
+    startPractice();
+    await render(<AuthForm />);
+
+    expect(screen.getByText('Your practice is still here')).toBeTruthy();
+  });
+
+  it('says nothing after a deliberate sign-out, which clears the store', async () => {
+    await render(<AuthForm />);
+
+    expect(screen.queryByText('Your practice is still here')).toBeNull();
+  });
+
+  it('does not offer it on the create-account side, where it means nothing', async () => {
+    startPractice();
+    await render(<AuthForm initialMode="create" />);
+
+    expect(screen.queryByText('Your practice is still here')).toBeNull();
   });
 });

@@ -311,6 +311,23 @@ describe('recording deletion', () => {
     expect(screen.queryByText('take.m4a')).toBeNull();
   });
 
+  // The catch used to discard the cause and set a boolean, so being offline read exactly like
+  // a 500 — and the panel named no way back.
+  it('names why the delete failed and retries it from the panel', async () => {
+    deletion.mutateAsync.mockRejectedValueOnce(new ApiError('No connection', OFFLINE_STATUS));
+    await renderRow();
+    await fireEvent.press(screen.getByLabelText('Delete take.m4a'));
+    await fireEvent.press(screen.getByRole('button', { name: /^Delete$/ }));
+
+    expect(screen.getByText('No connection')).toBeTruthy();
+    expect(screen.queryByText("Couldn't delete recording")).toBeNull();
+
+    // Retrying is one tap, not a second trip through the confirmation.
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(deletion.mutateAsync).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('take.m4a')).toBeNull();
+  });
+
   it('disables actions while deleting and prevents a late URL from starting playback', async () => {
     let resolveUrl!: (value: { url: string }) => void;
     let finishDelete!: () => void;

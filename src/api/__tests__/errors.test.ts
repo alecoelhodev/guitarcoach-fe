@@ -1,4 +1,4 @@
-import { ApiError, OFFLINE_STATUS } from '@/api/client';
+import { ApiError, OFFLINE_STATUS, TIMEOUT_STATUS } from '@/api/client';
 import { describeError, shouldRetry } from '@/api/errors';
 import { asShippedBuild } from '@/test/dev-flag';
 
@@ -50,6 +50,16 @@ describe('describeError', () => {
     expect(message).toBe('Routine name already taken');
   });
 
+  it('tells a slow server apart from a dead network', () => {
+    const timedOut = describeError(new ApiError('Timed out', TIMEOUT_STATUS));
+    const offline = describeError(new ApiError('No connection', OFFLINE_STATUS));
+
+    expect(timedOut.title).toBe('This is taking too long');
+    // "Check your connection" is wrong advice when the connection is fine.
+    expect(timedOut.message).not.toMatch(/connection/i);
+    expect(timedOut.title).not.toBe(offline.title);
+  });
+
   it('does not leak non-ApiError details to the user', () => {
     const { title, message } = describeError(new Error('connect ECONNREFUSED 10.0.0.4:5432'));
 
@@ -67,6 +77,10 @@ describe('shouldRetry', () => {
     expect(shouldRetry(0, new ApiError('No connection', OFFLINE_STATUS))).toBe(true);
     expect(shouldRetry(1, new ApiError('boom', 500))).toBe(true);
     expect(shouldRetry(2, new ApiError('boom', 500))).toBe(false);
+  });
+
+  it('does not retry a timeout, which would cost the whole ceiling again', () => {
+    expect(shouldRetry(0, new ApiError('Timed out', TIMEOUT_STATUS))).toBe(false);
   });
 
   it('does not retry a non-ApiError, which is a bug in our own code rather than the network', () => {

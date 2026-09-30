@@ -6,7 +6,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { z } from 'zod';
 
 import { requestPasswordReset, signIn, signUp } from '@/api/auth';
-import { ApiError, OFFLINE_STATUS } from '@/api/client';
+import { ApiError, OFFLINE_STATUS, TIMEOUT_STATUS } from '@/api/client';
 import { describeError } from '@/api/errors';
 import { ThemedText } from '@/components/themed-text';
 import { Banner, type BannerProps } from '@/components/ui/banner';
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Segmented } from '@/components/ui/segmented';
 import { ValidationMessage } from '@/components/ui/validation-message';
+import { useActiveSessionStore } from '@/features/session/session-store';
 import { safeNextPath } from '@/lib/next-path';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
@@ -36,6 +37,9 @@ function bannerForError(error: unknown, onRetry: () => void): BannerProps {
     if (error.status === OFFLINE_STATUS) {
       return { title: 'No connection', actionLabel: 'Retry', onAction: onRetry };
     }
+    if (error.status === TIMEOUT_STATUS) {
+      return { ...describeError(error), actionLabel: 'Retry', onAction: onRetry };
+    }
     if (error.status === 401) {
       return { title: 'Email or password is incorrect', message: 'Check both and try again.' };
     }
@@ -53,6 +57,9 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
   const router = useRouter();
   const setUser = useSessionStore((state) => state.setUser);
   const showToast = useToastStore((state) => state.show);
+  // A 401 no longer discards the practice on disk, so say it survived. Signing out clears the
+  // store, which is what keeps this off the screen for anyone who left deliberately.
+  const unsavedPractice = useActiveSessionStore((state) => state.tasks.length > 0);
 
   const [mode, setMode] = useState<Mode>(initialMode);
   const [banner, setBanner] = useState<BannerProps | null>(null);
@@ -194,6 +201,14 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
         value={mode}
         onChange={switchMode}
       />
+
+      {mode === 'signin' && unsavedPractice && !banner && (
+        <Banner
+          tone="info"
+          title="Your practice is still here"
+          message="Sign back in to finish saving the session you had in progress."
+        />
+      )}
 
       {banner && <Banner {...banner} />}
 

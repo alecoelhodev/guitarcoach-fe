@@ -38,7 +38,7 @@ export function RecordingRow({ recording }: { recording: Recording }) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleted, setDeleted] = useState(false);
-  const [deleteError, setDeleteError] = useState(false);
+  const [deleteError, setDeleteError] = useState<ErrorDescription | null>(null);
   const requestId = useRef(0);
   const fetching = useRef(false);
   const removing = useRef(false);
@@ -97,13 +97,15 @@ export function RecordingRow({ recording }: { recording: Recording }) {
     setLoading(false);
     setConfirming(false);
     setDeleting(true);
-    setDeleteError(false);
+    setDeleteError(null);
     try {
       player.pause();
       await deletion.mutateAsync(recording.id);
       setDeleted(true);
-    } catch {
-      setDeleteError(true);
+    } catch (deleteFailure) {
+      // A boolean here meant every failure read "Couldn't delete recording / Try deleting it
+      // again" — including being offline, which is the one the user can act on.
+      setDeleteError(describeError(deleteFailure, "Couldn't delete recording"));
     } finally {
       removing.current = false;
       setDeleting(false);
@@ -181,7 +183,13 @@ export function RecordingRow({ recording }: { recording: Recording }) {
         </View>
       )}
       {deleteError && (
-        <ErrorPanel title="Couldn't delete recording" message="Try deleting it again." />
+        <ErrorPanel
+          title={deleteError.title}
+          message={deleteError.message}
+          onRetry={() => {
+            void deleteFile();
+          }}
+        />
       )}
       <Button
         variant="tertiary"

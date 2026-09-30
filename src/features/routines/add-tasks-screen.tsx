@@ -95,6 +95,19 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
           </Button>
         </View>
 
+        {/* Without the routine's own tasks the filter above is a no-op, so the list offers
+            tasks that are already in the routine and the first of them 409s mid-batch. The
+            screen still works — the 409 is handled — but the user deserves to know why. */}
+        {routineTasksQuery.isError && (
+          <Banner
+            tone="info"
+            title="This list may include tasks you already added"
+            message="We couldn't check what's already in this routine."
+            actionLabel="Try again"
+            onAction={() => routineTasksQuery.refetch()}
+          />
+        )}
+
         <QueryState
           query={tasksQuery}
           errorTitle="Couldn't load the library"

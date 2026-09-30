@@ -649,6 +649,26 @@ describe('resume prompt', () => {
     expect(useActiveSessionStore.getState().tasks).toEqual([]);
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
+
+  // "Discard" is this dialog's *cancel* action, and a backdrop tap used to reach it — so
+  // brushing the prompt away threw out the minutes and notes it was offering to restore.
+  // Only the button discards.
+  it('keeps the session when the prompt is dismissed rather than discarded', async () => {
+    useActiveSessionStore.getState().start({
+      userId: OWNER.id,
+      title: 'Morning warm-up',
+      tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+    });
+    await render(withGluestack(<HomeScreen />));
+
+    await fireEvent.press(
+      screen.getByTestId('confirm-dialog-backdrop', { includeHiddenElements: true }),
+    );
+
+    expect(useActiveSessionStore.getState().tasks).toHaveLength(1);
+    expect(screen.queryByText('Resume practice session?')).toBeNull();
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
 });
 
 describe('primary actions', () => {
