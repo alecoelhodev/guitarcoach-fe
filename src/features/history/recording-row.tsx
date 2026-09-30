@@ -3,6 +3,7 @@ import { Pause, Play } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { describeError, type ErrorDescription } from '@/api/errors';
 import { getRecordingDownloadUrl } from '@/api/recordings';
 import { useDeleteRecording } from '@/api/recordings.queries';
 import { ThemedText } from '@/components/themed-text';
@@ -30,7 +31,9 @@ export function RecordingRow({ recording }: { recording: Recording }) {
   const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
   const deletion = useDeleteRecording(recording.practiceSessionId);
-  const [error, setError] = useState(false);
+  // The description, not a flag: a 500 from the signed-URL endpoint and a player that cannot
+  // decode an already-issued URL are different failures and used to read identically.
+  const [error, setError] = useState<ErrorDescription | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -56,7 +59,7 @@ export function RecordingRow({ recording }: { recording: Recording }) {
     if (fetching.current || removing.current) return;
     fetching.current = true;
     const attempt = ++requestId.current;
-    setError(false);
+    setError(null);
     setLoading(true);
     try {
       // URLs are requested only on intent to play. Preserve the position when refreshing.
@@ -67,8 +70,11 @@ export function RecordingRow({ recording }: { recording: Recording }) {
       if (position > 0) await player.seekTo(position);
       if (attempt !== requestId.current) return;
       player.play();
-    } catch {
-      if (attempt === requestId.current) setError(true);
+    } catch (cause) {
+      // The service failing to issue a link is not an expired link — no URL was involved.
+      if (attempt === requestId.current) {
+        setError(describeError(cause, "Couldn't get a playback link"));
+      }
     } finally {
       if (attempt === requestId.current) {
         fetching.current = false;
@@ -105,7 +111,11 @@ export function RecordingRow({ recording }: { recording: Recording }) {
   }
 
   if (deleted) return null;
-  const playbackError = error || Boolean(status.error);
+  // A player error is the one case where "expired" is a fair guess: the link was issued, then
+  // the fetch behind it failed. Anything the transport reported names itself instead.
+  const playbackError =
+    error ??
+    (status.error ? { title: 'This playback link has expired.', message: undefined } : null);
   const progress = status.duration > 0 ? (status.currentTime / status.duration) * 100 : 0;
 
   return (
@@ -152,8 +162,13 @@ export function RecordingRow({ recording }: { recording: Recording }) {
       {playbackError && (
         <View accessibilityRole="alert" style={styles.error}>
           <ThemedText type="caption" style={{ color: Colors.dangerRamp[700] }}>
-            This playback link has expired.
+            {playbackError.title}
           </ThemedText>
+          {playbackError.message && (
+            <ThemedText type="caption" color="textMuted">
+              {playbackError.message}
+            </ThemedText>
+          )}
           <Button
             variant="secondary"
             disabled={loading || deleting || confirming}

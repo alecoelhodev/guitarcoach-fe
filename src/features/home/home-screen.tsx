@@ -1,6 +1,6 @@
-import { Link, useRouter } from 'expo-router';
+import { Link, usePathname, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { describeError } from '@/api/errors';
@@ -37,6 +37,7 @@ function partOfDay(hour = new Date().getHours()) {
 
 export function HomeScreen() {
   const router = useRouter();
+  const pathname = usePathname();
   const isWide = useIsWide();
   const user = useSessionStore((state) => state.user);
   const { data, isPending } = useSessionsSummary();
@@ -48,12 +49,24 @@ export function HomeScreen() {
     : undefined;
 
   const activeSessionTasks = useActiveSessionStore((state) => state.tasks);
+  const activeSessionOwner = useActiveSessionStore((state) => state.userId);
   const resetActiveSession = useActiveSessionStore((state) => state.reset);
   // Derived rather than latched into state: `persist` rehydrates AsyncStorage asynchronously,
   // so the task list is still empty on the first render and a `useState` initializer would
   // capture "no session" permanently.
   const [resumeDismissed, setResumeDismissed] = useState(false);
-  const showResumePrompt = !resumeDismissed && activeSessionTasks.length > 0;
+  // Three conditions, each for its own failure:
+  //  - not while the session screen is the route, or the prompt portals over the session it
+  //    is offering to resume — and a second mounted Home stacks a second copy of it;
+  //  - only the owner's own session, so an account switch cannot surface the previous user's
+  //    notes even if the teardown in `clearLocalSession` was missed;
+  //  - and only when there is something to resume.
+  const onSessionRoute = pathname.startsWith('/session');
+  const showResumePrompt =
+    !resumeDismissed &&
+    !onSessionRoute &&
+    activeSessionTasks.length > 0 &&
+    activeSessionOwner === user?.id;
 
   const sessions = data?.data ?? [];
   const thisWeek = filterThisWeek(sessions);
@@ -92,11 +105,16 @@ export function HomeScreen() {
 
             {user && (
               <Link href="/(app)/(main)/(tabs)/profile" asChild>
-                <View style={styles.avatar} accessibilityRole="button" accessibilityLabel="Profile">
+                {/* Pressable, not View: `asChild` forwards `onPress`, which a View drops. */}
+                <Pressable
+                  style={styles.avatar}
+                  accessibilityRole="button"
+                  accessibilityLabel="Profile"
+                >
                   <ThemedText type="label" color="textMuted">
                     {user.name.slice(0, 1).toUpperCase()}
                   </ThemedText>
-                </View>
+                </Pressable>
               </Link>
             )}
           </View>

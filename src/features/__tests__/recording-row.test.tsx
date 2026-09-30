@@ -5,6 +5,7 @@ jest.mock('@/api/recordings', () => ({ getRecordingDownloadUrl: jest.fn() }));
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 
+import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { getRecordingDownloadUrl } from '@/api/recordings';
 import { useDeleteRecording } from '@/api/recordings.queries';
 import { RecordingRow } from '@/features/history/recording-row';
@@ -113,14 +114,45 @@ describe('RecordingRow', () => {
     expect(player.play).not.toHaveBeenCalled();
   });
 
-  it('tells the user the link expired rather than failing silently', async () => {
+  it('reports a failure to issue a link rather than failing silently', async () => {
     getUrlMock.mockRejectedValue(new Error('410 Gone'));
     await render(<RecordingRow recording={makeRecording()} />);
 
     await fireEvent.press(screen.getByLabelText('Play recording'));
 
-    expect(await screen.findByText('This playback link has expired.')).toBeTruthy();
+    expect(await screen.findByText("Couldn't get a playback link")).toBeTruthy();
+    expect(screen.getByText('Get a new link')).toBeTruthy();
     expect(player.play).not.toHaveBeenCalled();
+  });
+
+  /**
+   * QA-08. Every failure read "This playback link has expired." — including a 500 and a
+   * dropped connection, where the service never issued a link at all and nothing had expired.
+   * The URL is requested fresh on every play, so an expired link is only plausible once one
+   * has been handed to the player.
+   */
+  it.each([
+    { status: 500, title: 'Something went wrong on our end' },
+    { status: OFFLINE_STATUS, title: 'No connection' },
+  ])('names a $status from the link endpoint for what it is', async ({ status, title }) => {
+    getUrlMock.mockRejectedValue(new ApiError('boom', status));
+    await render(<RecordingRow recording={makeRecording()} />);
+
+    await fireEvent.press(screen.getByLabelText('Play recording'));
+
+    expect(await screen.findByText(title)).toBeTruthy();
+    expect(screen.queryByText('This playback link has expired.')).toBeNull();
+    // Recovery is unchanged: the link is re-requested, which is the right retry either way.
+    expect(screen.getByText('Get a new link')).toBeTruthy();
+  });
+
+  it('still blames an expired link when the player is the thing that failed', async () => {
+    // A URL was issued and the player could not fetch it — the one case where the signed
+    // URL's ~15 minute TTL is a fair explanation.
+    setStatus({ error: 'decode failed' });
+    await render(<RecordingRow recording={makeRecording()} />);
+
+    expect(screen.getByText('This playback link has expired.')).toBeTruthy();
   });
 
   it('hides the scrubber until the clip is loaded and has a duration', async () => {

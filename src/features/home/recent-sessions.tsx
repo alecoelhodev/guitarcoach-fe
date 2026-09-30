@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Badge } from '@/components/ui/badge';
@@ -62,14 +62,15 @@ function SessionRow({ session }: { session: PracticeSession }) {
 
   return (
     <Link href={{ pathname: '/history/[id]', params: { id: session.id } }} asChild>
-      <View style={styles.row}>
+      {/* Pressable, not View: `asChild` forwards `onPress`, and a View drops it on native. */}
+      <Pressable style={styles.row}>
         <ThemedText type="label" numberOfLines={1} style={styles.rowTitle}>
           {session.title ?? 'Practice session'}
         </ThemedText>
         {/* Per-task minutes are optional, so a session can legitimately have none. */}
         {minutes > 0 && <Badge label={formatMinutes(minutes)} />}
         {total > 0 && <Badge label={`${completed} of ${total}`} />}
-      </View>
+      </Pressable>
     </Link>
   );
 }

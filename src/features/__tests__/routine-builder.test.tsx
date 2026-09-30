@@ -613,4 +613,16 @@ describe('starting practice', () => {
 
     expect(screen.getByText('Starting…')).toBeTruthy();
   });
+
+  // QA-06: the button was enabled on a routine with no tasks and led straight to
+  // "No active session". Blank practice is a separate capability (spec 07).
+  it('will not start a routine that has no tasks, and says why', async () => {
+    ready([]);
+    await render(editing());
+
+    await fireEvent.press(screen.getByText('Start Practice'));
+
+    expect(startPractice.mutate).not.toHaveBeenCalled();
+    expect(screen.getByText('Add at least one task before practising this routine.')).toBeTruthy();
+  });
 });

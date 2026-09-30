@@ -372,6 +372,10 @@ function EditRoutineBody({
       {/* The tasks are already loaded here, so they are passed rather than refetched. */}
       <Button
         block
+        // QA-06: an empty routine used to start a session that immediately rendered
+        // "No active session". Blank sessions are a separate capability (spec 07); until
+        // they exist, this is an action the editor cannot complete.
+        disabled={tasks.length === 0}
         loading={startPractice.isPending}
         loadingLabel="Starting…"
         onPress={() =>
@@ -380,6 +384,11 @@ function EditRoutineBody({
       >
         Start Practice
       </Button>
+      {tasks.length === 0 && (
+        <ThemedText type="caption" color="textMuted" style={styles.startHint}>
+          Add at least one task before practising this routine.
+        </ThemedText>
+      )}
 
       {/* Canvas 1h: destructive actions go last and never sit beside the confirm action. */}
       <View style={styles.footerActions}>
@@ -570,6 +579,7 @@ const styles = StyleSheet.create({
   index: { width: 14 },
   moveButtons: { flexDirection: 'row', gap: Spacing[1] },
   footerActions: { flexDirection: 'row', gap: Spacing[2] },
+  startHint: { textAlign: 'center' },
   footerAction: { flex: 1 },
   deleteLabel: { color: Colors.dangerRamp[700] },
 });

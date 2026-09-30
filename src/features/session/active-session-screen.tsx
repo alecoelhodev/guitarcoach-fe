@@ -18,6 +18,7 @@ import { Stepper } from '@/components/ui/stepper';
 import { SessionExitDialog } from '@/features/session/session-exit-dialog';
 import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { formatClock } from '@/lib/duration';
+import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
 import { Spacing } from '@/theme/tokens';
 
@@ -65,6 +66,7 @@ export function ActiveSessionScreen() {
 function ActiveSessionScreenBody() {
   const router = useRouter();
   const {
+    userId,
     routineId,
     routineTitle,
     title,
@@ -82,7 +84,7 @@ function ActiveSessionScreenBody() {
   // minutes. "Planned" is the sum of the routine's target durations.
   const plannedMinutes = tasks.reduce((sum, task) => sum + (task.targetDurationMinutes ?? 0), 0);
   const [confirmExit, setConfirmExit] = useState(false);
-  const [startedWithNoTasks] = useState(() => tasks.length === 0);
+  const signedInUserId = useSessionStore((state) => state.user?.id);
   const createSessionMutation = useCreateSession();
   const showToast = useToastStore((state) => state.show);
   const [failure, setFailure] = useState<ErrorDescription | null>(null);
@@ -118,22 +120,36 @@ function ActiveSessionScreenBody() {
     }
 
     reset();
-    router.back();
+    leave();
     showToast('Session saved', 'success');
   }
 
   function handleExit() {
     reset();
-    router.back();
+    leave();
   }
 
-  if (startedWithNoTasks) {
-    // Navigated here directly without starting from a routine — nothing to practice.
+  /**
+   * This route is a `fullScreenModal` that is always pushed, so `back()` is normally right —
+   * but a web reload or a deep link onto it leaves nothing to pop, and `back()` is then a
+   * no-op that stranded the user on a session that had just been reset: a 0:00 clock, no
+   * tasks, and a live Finish button that would POST an empty session.
+   */
+  function leave() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(app)/(main)/(tabs)');
+  }
+
+  // Derived, not latched at mount: the hydration gate above guarantees the store has settled
+  // before this body renders, and a latch left the screen showing a live session after
+  // `reset()` had already emptied it. An owner mismatch counts as no session — the store is
+  // persisted under one device-wide key, so it can outlive the account that wrote it.
+  if (tasks.length === 0 || userId !== signedInUserId) {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="h5">No active session</ThemedText>
-          <Button variant="secondary" onPress={() => router.back()}>
+          <Button variant="secondary" onPress={leave}>
             Go back
           </Button>
         </SafeAreaView>

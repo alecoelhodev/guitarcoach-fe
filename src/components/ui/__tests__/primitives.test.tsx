@@ -7,6 +7,7 @@ import { FieldLabel } from '@/components/ui/field-label';
 import { Segmented } from '@/components/ui/segmented';
 import { Toast } from '@/components/ui/toast';
 import { ValidationMessage } from '@/components/ui/validation-message';
+import { pressLinkTarget } from '@/test/press';
 
 /**
  * The presentational primitives, grouped because each carries one or two branches. What is
@@ -41,6 +42,33 @@ describe('Card', () => {
     );
 
     expect(screen.getByText('inside')).toBeTruthy();
+  });
+
+  // The reason `onPress` exists at all: a card handed to `<Link asChild>` receives the
+  // router's press, and until it rendered a Pressable that press went nowhere on native.
+  it('becomes a real touch target once it is given an onPress', async () => {
+    const onPress = jest.fn();
+    await render(
+      <Card onPress={onPress}>
+        <Badge label="inside" />
+      </Card>,
+    );
+
+    await pressLinkTarget(screen.getByText('inside'));
+
+    expect(onPress).toHaveBeenCalled();
+  });
+
+  it('stays an inert view without one, so a plain card traps no touches', async () => {
+    await render(
+      <Card>
+        <Badge label="inside" />
+      </Card>,
+    );
+
+    await expect(pressLinkTarget(screen.getByText('inside'))).rejects.toThrow(
+      /no element with onPress or a touch responder/,
+    );
   });
 });
 

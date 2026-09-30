@@ -4,6 +4,7 @@ import { signOut } from '@/api/auth';
 import { useSignOut } from '@/api/auth.queries';
 import { purgePersistedCache } from '@/api/persist';
 import { queryKeys } from '@/api/query-keys';
+import { useActiveSessionStore } from '@/features/session/session-store';
 import { useSessionStore } from '@/stores/session-store';
 import { makeUser } from '@/test/fixtures';
 import { withQueryClient } from '@/test/query-client';
@@ -40,6 +41,22 @@ describe('useSignOut', () => {
     expect(useSessionStore.getState()).toMatchObject({ status: 'unauthenticated', user: null });
     expect(queryClient.getQueryData(queryKeys.me)).toBeUndefined();
     expect(purgeMock).toHaveBeenCalledTimes(1);
+  });
+
+  // QA-01. Sign-out cleared three things and forgot the fourth; `clearLocalSession` is what
+  // keeps this path and the 401 path from forgetting different ones.
+  it('discards an in-progress practice session, not just the caches', async () => {
+    signOutMock.mockResolvedValue(undefined as never);
+    useActiveSessionStore.getState().start({
+      userId: 'user-1',
+      tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+    });
+
+    const { result } = await setup();
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(useActiveSessionStore.getState().tasks).toEqual([]);
   });
 
   it('still signs the user out locally when the request fails', async () => {

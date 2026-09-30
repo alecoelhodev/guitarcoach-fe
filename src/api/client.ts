@@ -151,17 +151,32 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return response.json() as Promise<T>;
 }
 
-export async function upload<T>(
-  path: string,
-  file: { uri: string; name: string; mimeType: string },
-): Promise<T> {
+export type UploadFile = {
+  uri: string;
+  name: string;
+  mimeType: string;
+  /**
+   * The browser's own `File`, when there is one. `expo-document-picker` sets it on web only
+   * (SDK 57 `DocumentPickerAsset.file`), and on web it is the *only* usable form: a browser
+   * `FormData.append` stringifies a plain object to "[object Object]", so the server received
+   * a text field instead of a file and answered 400. React Native's `FormData` is the one that
+   * understands `{ uri, name, type }`.
+   */
+  file?: Blob;
+};
+
+export async function upload<T>(path: string, file: UploadFile): Promise<T> {
   const formData = new FormData();
-  // React Native's FormData accepts this shape for file uploads; the DOM File type doesn't apply here.
-  formData.append('file', {
-    uri: file.uri,
-    name: file.name,
-    type: file.mimeType,
-  } as unknown as Blob);
+
+  if (file.file) {
+    formData.append('file', file.file, file.name);
+  } else {
+    formData.append('file', {
+      uri: file.uri,
+      name: file.name,
+      type: file.mimeType,
+    } as unknown as Blob);
+  }
 
   const response = await send(
     buildUrl(path),

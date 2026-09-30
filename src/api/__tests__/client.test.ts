@@ -195,6 +195,48 @@ describe('upload', () => {
     expect(init.body.has('file')).toBe(true);
   });
 
+  /**
+   * QA-03. The assertion above can only check presence, and that is exactly how this shipped:
+   * the `{ uri, name, type }` object is a React Native idiom, and a browser's `FormData`
+   * coerces any non-Blob value to a string. The server therefore received the literal text
+   * "[object Object]" as the `file` field, answered 400, and the screen reported "That file
+   * can't be uploaded" for a perfectly valid WAV. On web the picker's own `File` is the only
+   * form that survives, so `upload` has to prefer it.
+   */
+  it('sends the picker File itself when there is one, rather than a stringified object', async () => {
+    const { upload } = loadClient('web');
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(201, { id: 'rec-1' }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const picked = new Blob(['RIFF'], { type: 'audio/wav' });
+
+    await upload('/practice-sessions/s1/recordings', {
+      uri: 'blob:http://localhost/abc',
+      name: 'take-1.wav',
+      mimeType: 'audio/wav',
+      file: picked,
+    });
+
+    const sent = fetchMock.mock.calls[0][1].body.get('file');
+    expect(sent).toBeInstanceOf(Blob);
+    expect(sent).not.toBe('[object Object]');
+  });
+
+  it('keeps the React Native object form when the picker gave no File', async () => {
+    const { upload } = loadClient('ios');
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(201, { id: 'rec-1' }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await upload('/practice-sessions/s1/recordings', {
+      uri: 'file:///take-1.m4a',
+      name: 'take-1.m4a',
+      mimeType: 'audio/x-m4a',
+    });
+
+    // Coerced to a string by *this* environment's FormData, which is the tell: React Native's
+    // own implementation reads the object and streams the file at `uri`.
+    expect(fetchMock.mock.calls[0][1].body.get('file')).toBe('[object Object]');
+  });
+
   it('carries the Origin header on native, like every other request', async () => {
     const { upload } = loadClient('ios');
     const fetchMock = jest.fn().mockResolvedValue(jsonResponse(201));
