@@ -5,6 +5,28 @@ export type ErrorDescription = { title: string; message?: string };
 
 const GENERIC_TITLE = 'Something went wrong';
 
+const ACCOUNT_EXISTS: ErrorDescription = {
+  title: 'That email already has an account',
+  message: 'Sign in instead, or use another email.',
+};
+
+/**
+ * better-auth codes worth naming to the user, keyed by the `code` in its error body. Nothing
+ * else the server says reaches the screen: a Nest validation message is a DTO path
+ * ("tasks.0.durationMinutes must not be less than 1"), not copy.
+ */
+const AUTH_ERRORS = new Map<string, ErrorDescription>([
+  [
+    'INVALID_EMAIL_OR_PASSWORD',
+    { title: 'Email or password is incorrect', message: 'Check both and try again.' },
+  ],
+  ['USER_ALREADY_EXISTS', ACCOUNT_EXISTS],
+  ['USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', ACCOUNT_EXISTS],
+  ['INVALID_EMAIL', { title: "That email doesn't look right", message: 'Check it and try again.' }],
+  ['PASSWORD_TOO_SHORT', { title: 'That password is too short', message: 'Choose a longer one.' }],
+  ['PASSWORD_TOO_LONG', { title: 'That password is too long', message: 'Choose a shorter one.' }],
+]);
+
 /**
  * The one place an `ApiError` becomes words a user reads. Screens pass the result straight
  * to `ErrorPanel`/`Banner` rather than inventing their own copy, so "no connection" reads
@@ -16,6 +38,9 @@ const GENERIC_TITLE = 'Something went wrong';
  */
 export function describeError(error: unknown, fallbackTitle = GENERIC_TITLE): ErrorDescription {
   if (!(error instanceof ApiError)) return { title: fallbackTitle, message: 'Try again.' };
+
+  const known = error.code === undefined ? undefined : AUTH_ERRORS.get(error.code);
+  if (known) return known;
 
   switch (true) {
     case error.status === OFFLINE_STATUS:
@@ -40,9 +65,13 @@ export function describeError(error: unknown, fallbackTitle = GENERIC_TITLE): Er
       return { title: 'Too many attempts', message: 'Try again in about a minute.' };
     case error.status >= 500:
       return { title: 'Something went wrong on our end', message: 'Try again in a moment.' };
-    // The server's own message ("Routine name already taken") beats anything generic.
-    case Boolean(error.message):
-      return { title: fallbackTitle, message: error.message };
+    case error.status === 400 || error.status === 422:
+      return { title: fallbackTitle, message: 'Check what you entered and try again.' };
+    case error.status === 409:
+      return {
+        title: fallbackTitle,
+        message: 'That clashes with something already saved. Refresh and try again.',
+      };
     default:
       return { title: fallbackTitle, message: 'Try again.' };
   }
