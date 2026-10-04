@@ -35,7 +35,16 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
-    'expo-audio',
+    [
+      'expo-audio',
+      {
+        // Playback only (recording-row); uploads go through DocumentPicker. The defaults add a
+        // mic prompt, RECORD_AUDIO and background-audio modes the app never uses.
+        microphonePermission: false,
+        recordAudioAndroid: false,
+        enableBackgroundPlayback: false,
+      },
+    ],
     'expo-asset',
     [
       'expo-splash-screen',
