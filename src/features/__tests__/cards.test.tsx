@@ -254,6 +254,13 @@ describe('SessionCard', () => {
 
     expect(screen.getByText('Felt sloppy')).toBeTruthy();
   });
+
+  // S3: History restored from the device cache has `notes: null` (persist.ts strips them).
+  it('renders a session restored without its notes', async () => {
+    await render(<SessionCard session={makeSession({ title: 'Blues in A', notes: null })} />);
+
+    expect(screen.getByText('Blues in A')).toBeTruthy();
+  });
 });
 
 describe('PlanPreviewCard', () => {

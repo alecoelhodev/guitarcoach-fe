@@ -482,7 +482,12 @@ export interface components {
       routineId?: string;
       tasks?: components['schemas']['CreatePracticeSessionTaskDto'][];
     };
+    PracticeSessionTaskSummaryResponseDto: {
+      id: string;
+      title: string;
+    };
     PracticeSessionTaskResponseDto: {
+      task: components['schemas']['PracticeSessionTaskSummaryResponseDto'];
       durationMinutes?: number | null;
       practiceSessionId: string;
       taskId: string;

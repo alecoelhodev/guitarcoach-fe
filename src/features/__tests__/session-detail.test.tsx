@@ -5,7 +5,6 @@ jest.mock('@/api/recordings.queries', () => ({
 }));
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 jest.mock('@/api/sessions.queries', () => ({ useSession: jest.fn() }));
-jest.mock('@/api/tasks.queries', () => ({ useTask: jest.fn() }));
 jest.mock('@/api/recordings', () => ({ getRecordingDownloadUrl: jest.fn() }));
 
 import { render, screen } from '@testing-library/react-native';
@@ -13,29 +12,25 @@ import { render, screen } from '@testing-library/react-native';
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { useRecordings } from '@/api/recordings.queries';
 import { useSession } from '@/api/sessions.queries';
-import { useTask } from '@/api/tasks.queries';
 import { SessionDetail } from '@/features/history/session-detail';
-import { makeRecording, makeSession, makeSessionTask, makeTask } from '@/test/fixtures';
-import { emptyQuery, errorQuery, pendingQuery, successQuery } from '@/test/query-hooks';
+import { makeRecording, makeSession, makeSessionTask } from '@/test/fixtures';
+import { errorQuery, pendingQuery, successQuery } from '@/test/query-hooks';
 
 /**
  * This screen hand-rolls its pending/error/data ladder instead of using `QueryState`, so the
- * ladder is driven directly. It also renders a private `SessionTaskRow` that calls `useTask`
- * itself to resolve a task title — hence the third mocked hook.
+ * ladder is driven directly.
  */
 
 type AnyHook = jest.MockedFunction<(...args: never[]) => unknown>;
 
 const sessionHook = useSession as unknown as AnyHook;
 const recordingsHook = useRecordings as unknown as AnyHook;
-const taskHook = useTask as unknown as AnyHook;
 
 const SESSION_ID = 's1';
 
 beforeEach(() => {
   jest.clearAllMocks();
   recordingsHook.mockReturnValue(successQuery([]));
-  taskHook.mockReturnValue(emptyQuery());
 });
 
 describe('loading and failure', () => {
@@ -116,12 +111,19 @@ describe('a finished session', () => {
 });
 
 describe('task rows', () => {
-  it('resolves each task title through useTask', async () => {
-    taskHook.mockReturnValue(successQuery(makeTask({ title: 'Alternate picking' })));
+  // P7: the title arrives on the session task itself, so a row no longer fetches its task.
+  it('titles each row from the task summary the session carries', async () => {
     sessionHook.mockReturnValue(
       successQuery(
         makeSession({
-          sessionTasks: [makeSessionTask({ taskId: 't1', durationMinutes: 15, completed: true })],
+          sessionTasks: [
+            makeSessionTask({
+              taskId: 't1',
+              task: { id: 't1', title: 'Alternate picking' },
+              durationMinutes: 15,
+              completed: true,
+            }),
+          ],
         }),
       ),
     );
@@ -131,15 +133,6 @@ describe('task rows', () => {
     // Twice: the session total in the "Practiced" header and the task row itself.
     expect(screen.getAllByText('15 min')).toHaveLength(2);
     expect(screen.queryByText('Not completed')).toBeNull();
-  });
-
-  it('falls back to the raw task id when the task lookup has not resolved', async () => {
-    sessionHook.mockReturnValue(
-      successQuery(makeSession({ sessionTasks: [makeSessionTask({ taskId: 'task-42' })] })),
-    );
-    await render(<SessionDetail sessionId={SESSION_ID} />);
-
-    expect(screen.getByText('task-42')).toBeTruthy();
   });
 
   it('marks an incomplete task and shows an em dash when it logged no minutes', async () => {
