@@ -51,10 +51,14 @@ export function LibraryList() {
     refresh,
     isFetchingNextPage,
     isNextPageError,
-    loadMore,
+    loadMore: loadNextPage,
     retryNextPage,
   } = usePaginatedList(query);
   const tasks = query.data?.pages.flatMap((page) => page.data) ?? [];
+  // Placeholder pages belong to the previous filters; paging them would mix the two lists.
+  const loadMore = () => {
+    if (!query.isPlaceholderData) loadNextPage();
+  };
 
   const footer = isNextPageError ? (
     <View style={styles.footer}>
@@ -113,7 +117,7 @@ export function LibraryList() {
               </Pressable>
             )}
           </View>
-          {!query.isPending && !listState.isError && query.data && (
+          {!query.isPending && !listState.isError && !query.isPlaceholderData && query.data && (
             <ThemedText type="body" color="textMuted">
               {count}
             </ThemedText>

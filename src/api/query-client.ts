@@ -32,6 +32,9 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
     },
-    mutations: { retry: 0 },
+    // 'always': under the default 'online' mode a mutation fired offline pauses instead of
+    // failing, so sign-out never reached its local teardown and Finish/Upload spun forever.
+    // The transport already turns a dead network into `ApiError(OFFLINE_STATUS)`.
+    mutations: { retry: 0, networkMode: 'always' },
   },
 });

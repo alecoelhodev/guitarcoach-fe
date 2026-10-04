@@ -105,7 +105,7 @@ describe('QueryState', () => {
       );
 
       expect(screen.getByText("Couldn't save")).toBeTruthy();
-      expect(screen.getByText('Routine name taken')).toBeTruthy();
+      expect(screen.queryByText('Routine name taken')).toBeNull();
     });
 
     it('renders the error panel instead of the data it already holds', async () => {

@@ -241,8 +241,8 @@ src/types/      generated api.d.ts + per-resource re-exports
   errors ("missing the required default export", `ErrorBoundary of undefined`).
 - **Use `src/lib/storage.ts` (AsyncStorage) for persistence, not `expo-secure-store`.**
   SecureStore has no web implementation and throws at runtime on web; AsyncStorage is in Expo
-  Go and falls back to `localStorage` on web. (`expo-secure-store` remains a config plugin in
-  `app.config.ts` but is unused in `src/` — safe to remove.)
+  Go and falls back to `localStorage` on web. (`expo-secure-store` has been removed from both
+  the dependencies and the `app.config.ts` plugins.)
 - **`storage` is asynchronous, so persisted state is absent on the first render.** Anything
   that reads it during render must gate on hydration rather than latch it into a
   `useState(() => …)` initialiser, which is decided once and would capture the pre-hydration

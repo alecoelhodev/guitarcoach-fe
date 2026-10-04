@@ -24,6 +24,12 @@ if (!target) {
   );
 }
 
+// A shipped build sends the session cookie on every call, so plain http would hand it to anyone
+// on the path. `expo export` loads `.env` (`http://localhost:3000`), which is how one could ship.
+if (!__DEV__ && new URL(target.url).protocol !== 'https:') {
+  throw new Error('The API base URL must use https:// in a production build.');
+}
+
 /** Which backend this build is talking to. Read by the dev-only row on the profile screen. */
 export const apiTarget: ApiTarget = target;
 
@@ -35,6 +41,7 @@ const baseUrl = target.url;
 // `NODE_ENV !== 'test'` because jest-expo leaves `__DEV__` true: without it this prints once
 // per suite for all 47 of them.
 if (__DEV__ && process.env.NODE_ENV !== 'test') {
+  // eslint-disable-next-line no-console -- dev-only and deliberate, as above
   console.log(`[api] ${describeApiTarget(target)} — via ${target.source}`);
 }
 
@@ -63,6 +70,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    /** better-auth's machine-readable `code` (e.g. `USER_ALREADY_EXISTS`), when the body has one. */
+    public code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -90,6 +99,21 @@ export function setUnauthorizedHandler(handler: () => void) {
  */
 const originHeader = Platform.OS === 'web' ? undefined : { Origin: new URL(baseUrl).origin };
 
+/** Ids that `encodeURIComponent` leaves intact but URL resolution treats as navigation. */
+const UNSAFE_SEGMENTS = new Set(['', '.', '..']);
+
+/**
+ * Tag for API paths: each interpolated value is encoded as exactly one path segment, so a route
+ * param like `../users/x` stays inside the resource it was meant for.
+ */
+export function apiPath(strings: TemplateStringsArray, ...segments: string[]) {
+  return segments.reduce((path, segment, index) => {
+    // No such resource can exist, and a 404 is what the screens already know how to show.
+    if (UNSAFE_SEGMENTS.has(segment)) throw new ApiError('Not found', 404);
+    return path + encodeURIComponent(segment) + strings[index + 1];
+  }, strings[0]);
+}
+
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
@@ -108,14 +132,16 @@ function buildUrl(path: string, query?: RequestOptions['query'], unprefixed?: bo
   return url.toString();
 }
 
-async function parseErrorMessage(response: Response) {
+async function toApiError(response: Response) {
   try {
     const data = await response.json();
-    return Array.isArray(data.message)
+    const message = Array.isArray(data.message)
       ? data.message.join(', ')
       : (data.message ?? response.statusText);
+    const code = typeof data.code === 'string' ? data.code : undefined;
+    return new ApiError(message, response.status, code);
   } catch {
-    return response.statusText;
+    return new ApiError(response.statusText, response.status);
   }
 }
 
@@ -145,7 +171,7 @@ async function send(url: string, init: RequestInit, prefixed: boolean, timeoutMs
     // with 401 as well, and treating that as an expired session would sign the user
     // out in the middle of signing in.
     if (response.status === 401 && prefixed) onUnauthorized?.();
-    throw new ApiError(await parseErrorMessage(response), response.status);
+    throw await toApiError(response);
   }
 
   return response;

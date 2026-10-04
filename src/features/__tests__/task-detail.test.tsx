@@ -74,6 +74,17 @@ describe('TaskDetail', () => {
     expect(screen.getByText('Opens outside the app')).toBeTruthy();
   });
 
+  // A card that says "Opens outside the app" over plain text would read as a dead link.
+  it.each(['javascript:alert(1)', 'example.com/lesson', 'mailto:coach@example.com'])(
+    'hides the reference card for %s, which is not an http(s) URL',
+    async (referenceLink) => {
+      mock.mockReturnValue(successQuery(makeTask({ referenceLink })));
+      await render(<TaskDetail taskId="t1" />);
+
+      expect(screen.queryByText('Reference link')).toBeNull();
+    },
+  );
+
   it('always says tasks are read-only, since write routes are admin-gated', async () => {
     mock.mockReturnValue(successQuery(makeTask()));
     await render(<TaskDetail taskId="t1" />);

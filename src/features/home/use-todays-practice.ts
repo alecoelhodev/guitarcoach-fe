@@ -27,6 +27,10 @@ export function useTodaysPractice() {
   // `useRoutine` calls share a cache key whenever the pick stands, so resolving
   // the status costs no extra request in the common case.
   const lastPractised = useRoutine(lastPractisedId);
+  // Fetched alongside the status check rather than after it: in the common case it is the
+  // pick, and the third request in a chain was most of Home's cold start. When the routine
+  // turns out archived these tasks are simply never read — `tasks` below keys on the pick.
+  useRoutineTasks(lastPractisedId);
   const routineId =
     lastPractisedId && lastPractised.data?.status === 'active'
       ? lastPractisedId

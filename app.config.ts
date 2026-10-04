@@ -10,12 +10,36 @@ const config: ExpoConfig = {
   backgroundColor: '#0a0b0d',
   icon: './assets/images/icon.png',
   scheme: 'guitarcoachfe',
-  userInterfaceStyle: 'automatic',
+  // The UI is dark-only. Android applies this through expo-system-ui.
+  userInterfaceStyle: 'dark',
   ios: {
     icon: './assets/expo.icon',
     bundleIdentifier: 'com.coelhoadevsteam.guitarcoach',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+    },
+    // Apple does not reliably read the PrivacyInfo.xcprivacy that static CocoaPods ship, so the
+    // Expo docs say to copy them here. This is the union of those in node_modules (react-native,
+    // async-storage, expo-constants, expo-file-system, expo-system-ui); re-check after upgrades.
+    privacyManifests: {
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+          NSPrivacyAccessedAPITypeReasons: ['CA92.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+          NSPrivacyAccessedAPITypeReasons: ['C617.1', '0A2A.1', '3B52.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace',
+          NSPrivacyAccessedAPITypeReasons: ['E174.1', '85F4.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime',
+          NSPrivacyAccessedAPITypeReasons: ['35F9.1'],
+        },
+      ],
     },
   },
   android: {
@@ -30,12 +54,24 @@ const config: ExpoConfig = {
   },
   web: {
     output: 'static',
+    name: 'Guitar Coach',
+    shortName: 'Guitar Coach',
+    themeColor: '#0a0b0d',
     favicon: './assets/images/favicon.png',
     backgroundColor: '#0a0b0d',
   },
   plugins: [
     'expo-router',
-    'expo-audio',
+    [
+      'expo-audio',
+      {
+        // Playback only (recording-row); uploads go through DocumentPicker. The defaults add a
+        // mic prompt, RECORD_AUDIO and background-audio modes the app never uses.
+        microphonePermission: false,
+        recordAudioAndroid: false,
+        enableBackgroundPlayback: false,
+      },
+    ],
     'expo-asset',
     [
       'expo-splash-screen',

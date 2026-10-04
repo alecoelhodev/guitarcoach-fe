@@ -1,12 +1,12 @@
-import { request, type UploadFile, upload } from '@/api/client';
+import { apiPath, request, type UploadFile, upload } from '@/api/client';
 import type { Recording } from '@/types/recording';
 
 export function uploadRecording(sessionId: string, file: UploadFile) {
-  return upload<Recording>(`/practice-sessions/${sessionId}/recordings`, file);
+  return upload<Recording>(apiPath`/practice-sessions/${sessionId}/recordings`, file);
 }
 
 export function listRecordings(sessionId: string) {
-  return request<Recording[]>(`/practice-sessions/${sessionId}/recordings`);
+  return request<Recording[]>(apiPath`/practice-sessions/${sessionId}/recordings`);
 }
 
 /**
@@ -14,9 +14,9 @@ export function listRecordings(sessionId: string) {
  * state is a real state, not an edge case.
  */
 export function getRecordingDownloadUrl(recordingId: string) {
-  return request<{ url: string }>(`/recordings/${recordingId}/download-url`);
+  return request<{ url: string }>(apiPath`/recordings/${recordingId}/download-url`);
 }
 
 export function deleteRecording(recordingId: string) {
-  return request<void>(`/recordings/${recordingId}`, { method: 'DELETE' });
+  return request<void>(apiPath`/recordings/${recordingId}`, { method: 'DELETE' });
 }

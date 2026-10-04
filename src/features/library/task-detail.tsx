@@ -36,7 +36,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                   </Card>
                 )}
 
-                {task.referenceLink && (
+                {task.referenceLink && isWebUrl(task.referenceLink) && (
                   <ExternalLink href={task.referenceLink as `${string}:${string}`}>
                     <Card>
                       <View style={styles.referenceRow}>
@@ -62,6 +62,16 @@ export function TaskDetail({ taskId }: { taskId: string }) {
       </SafeAreaView>
     </ThemedView>
   );
+}
+
+/** `ExternalLink` renders anything but an absolute http(s) URL as plain text, not a link. */
+function isWebUrl(value: string) {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === 'https:' || protocol === 'http:';
+  } catch {
+    return false;
+  }
 }
 
 const styles = StyleSheet.create({

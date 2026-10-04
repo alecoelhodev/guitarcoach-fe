@@ -93,7 +93,7 @@ export function useReorderRoutineTasks(routineId: string) {
  * are computed server-side and sit on the *list* response, so adding a task or editing its
  * duration goes stale on the list cards too, not just on the routine being edited.
  */
-function useInvalidateRoutines() {
+export function useInvalidateRoutines() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: queryKeys.routinesRoot });
 }
@@ -126,20 +126,56 @@ export function useDeleteRoutine() {
   });
 }
 
+/**
+ * Leaves invalidation to the caller: tasks are added as a batch, one at a time, and an
+ * invalidation per add was a full refetch round per task. Call `useInvalidateRoutines` once
+ * after the batch.
+ */
 export function useAddRoutineTask(routineId: string) {
-  const invalidate = useInvalidateRoutines();
   return useMutation({
     mutationFn: (input: AddRoutineTaskInput) => addRoutineTask(routineId, input),
-    onSuccess: invalidate,
   });
 }
 
+/**
+ * Optimistic, like the reorder. The shared `scope` makes PATCHes for one routine run in the
+ * order they were made, so a slow earlier write can never land after a later one; the
+ * `isMutating` check holds the refetch until the last of them settles, so a burst costs one
+ * round instead of one per write.
+ */
 export function useUpdateRoutineTask(routineId: string) {
-  const invalidate = useInvalidateRoutines();
+  const queryClient = useQueryClient();
+  const queryKey = queryKeys.routineTasks(routineId);
+  const mutationKey = ['routines', 'update-task', routineId];
+
   return useMutation({
+    mutationKey,
+    scope: { id: `routine-tasks:${routineId}` },
     mutationFn: ({ taskId, input }: { taskId: string; input: UpdateRoutineTaskInput }) =>
       updateRoutineTask(routineId, taskId, input),
-    onSuccess: invalidate,
+    onMutate: async ({ taskId, input }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<RoutineTaskWithTask[]>(queryKey);
+      if (previous) {
+        queryClient.setQueryData(
+          queryKey,
+          previous.map((task) =>
+            task.taskId === taskId
+              ? { ...task, targetDurationMinutes: input.targetDurationMinutes ?? null }
+              : task,
+          ),
+        );
+      }
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => {
+      if (queryClient.isMutating({ mutationKey }) === 1) {
+        return queryClient.invalidateQueries({ queryKey: queryKeys.routinesRoot });
+      }
+    },
   });
 }
 
