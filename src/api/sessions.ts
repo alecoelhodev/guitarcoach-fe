@@ -1,4 +1,4 @@
-import { request } from '@/api/client';
+import { apiPath, request } from '@/api/client';
 import type { Paginated } from '@/types/pagination';
 import type { PracticeSession } from '@/types/session';
 
@@ -20,7 +20,7 @@ export function listSessions(query: { page?: number; limit?: number } = {}) {
 }
 
 export function getSession(sessionId: string) {
-  return request<PracticeSession>(`/practice-sessions/${sessionId}`);
+  return request<PracticeSession>(apiPath`/practice-sessions/${sessionId}`);
 }
 
 export function deleteSessionsByTitle(title: string) {

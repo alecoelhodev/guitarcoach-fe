@@ -98,6 +98,21 @@ export function setUnauthorizedHandler(handler: () => void) {
  */
 const originHeader = Platform.OS === 'web' ? undefined : { Origin: new URL(baseUrl).origin };
 
+/** Ids that `encodeURIComponent` leaves intact but URL resolution treats as navigation. */
+const UNSAFE_SEGMENTS = new Set(['', '.', '..']);
+
+/**
+ * Tag for API paths: each interpolated value is encoded as exactly one path segment, so a route
+ * param like `../users/x` stays inside the resource it was meant for.
+ */
+export function apiPath(strings: TemplateStringsArray, ...segments: string[]) {
+  return segments.reduce((path, segment, index) => {
+    // No such resource can exist, and a 404 is what the screens already know how to show.
+    if (UNSAFE_SEGMENTS.has(segment)) throw new ApiError('Not found', 404);
+    return path + encodeURIComponent(segment) + strings[index + 1];
+  }, strings[0]);
+}
+
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
