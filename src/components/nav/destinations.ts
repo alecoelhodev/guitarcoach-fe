@@ -1,4 +1,10 @@
-import { BookOpen, History, House, ListMusic, MessageCircle, User } from 'lucide-react-native';
+import BookOpen from 'lucide-react-native/icons/book-open';
+import House from 'lucide-react-native/icons/house';
+import ListMusic from 'lucide-react-native/icons/list-music';
+import MessageCircle from 'lucide-react-native/icons/message-circle';
+// `History` is an alias on the root export; the file is named for the glyph.
+import History from 'lucide-react-native/icons/rotate-ccw-clock';
+import User from 'lucide-react-native/icons/user';
 
 /**
  * The single list of nav destinations, shared by the web rail (canvas 2a) and

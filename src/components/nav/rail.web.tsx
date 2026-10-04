@@ -1,5 +1,5 @@
 import { Link, usePathname } from 'expo-router';
-import { Play } from 'lucide-react-native';
+import Play from 'lucide-react-native/icons/play';
 import { StyleSheet, View } from 'react-native';
 
 import {

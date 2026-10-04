@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { X } from 'lucide-react-native';
+import X from 'lucide-react-native/icons/x';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

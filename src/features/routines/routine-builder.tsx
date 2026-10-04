@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
-import { ChevronLeft } from 'lucide-react-native';
+import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import { useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ScrollView, StyleSheet, View } from 'react-native';
