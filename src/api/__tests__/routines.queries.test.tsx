@@ -349,6 +349,80 @@ describe('useUpdateRoutineTask', () => {
   });
 });
 
+describe('useUpdateRoutineTask optimism', () => {
+  afterEach(() => jest.resetAllMocks());
+
+  function seedMinutes(queryClient: ReturnType<typeof withQueryClient>['queryClient']) {
+    queryClient.setQueryData(queryKeys.routineTasks(ROUTINE_ID), [
+      { ...task('a'), targetDurationMinutes: 15 },
+    ]);
+    return () =>
+      queryClient.getQueryData<RoutineTaskWithTask[]>(queryKeys.routineTasks(ROUTINE_ID))?.[0]
+        .targetDurationMinutes;
+  }
+
+  it('shows the new minutes before the request goes out', async () => {
+    let minutesWhenRequested: number | null | undefined;
+    const { queryClient, wrapper } = withQueryClient();
+    const minutes = seedMinutes(queryClient);
+    updateRoutineTaskMock.mockImplementation(async () => {
+      minutesWhenRequested = minutes();
+      return {} as Awaited<ReturnType<typeof updateRoutineTask>>;
+    });
+
+    const { result } = await renderHook(() => useUpdateRoutineTask(ROUTINE_ID), { wrapper });
+    result.current.mutate({ taskId: 'a', input: { targetDurationMinutes: 18 } });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(minutesWhenRequested).toBe(18);
+  });
+
+  it('restores the saved minutes when the write fails, then refetches', async () => {
+    updateRoutineTaskMock.mockRejectedValue(new ApiError('nope', 500));
+    const { queryClient, wrapper } = withQueryClient();
+    const minutes = seedMinutes(queryClient);
+
+    const { result } = await renderHook(() => useUpdateRoutineTask(ROUTINE_ID), { wrapper });
+    result.current.mutate({ taskId: 'a', input: { targetDurationMinutes: 18 } });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(minutes()).toBe(15);
+    expect(queryClient.getQueryState(queryKeys.routineTasks(ROUTINE_ID))?.isInvalidated).toBe(true);
+  });
+
+  // A slow first write must not land after a later one, and the burst refetches once.
+  it('runs overlapping writes in order and invalidates once, after the last', async () => {
+    const calls: number[] = [];
+    let releaseFirst: () => void = () => {};
+    updateRoutineTaskMock
+      .mockImplementationOnce(async (_routineId, _taskId, input) => {
+        await new Promise<void>((resolve) => {
+          releaseFirst = resolve;
+        });
+        calls.push(input.targetDurationMinutes as number);
+        return {} as Awaited<ReturnType<typeof updateRoutineTask>>;
+      })
+      .mockImplementationOnce(async (_routineId, _taskId, input) => {
+        calls.push(input.targetDurationMinutes as number);
+        return {} as Awaited<ReturnType<typeof updateRoutineTask>>;
+      });
+    const { queryClient, wrapper } = withQueryClient();
+    seedMinutes(queryClient);
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = await renderHook(() => useUpdateRoutineTask(ROUTINE_ID), { wrapper });
+    result.current.mutate({ taskId: 'a', input: { targetDurationMinutes: 16 } });
+    result.current.mutate({ taskId: 'a', input: { targetDurationMinutes: 17 } });
+
+    await waitFor(() => expect(updateRoutineTaskMock).toHaveBeenCalledTimes(1));
+    releaseFirst();
+
+    await waitFor(() => expect(calls).toEqual([16, 17]));
+    await waitFor(() => expect(queryClient.isMutating()).toBe(0));
+    expect(invalidate).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('useRemoveRoutineTask', () => {
   afterEach(() => jest.resetAllMocks());
 

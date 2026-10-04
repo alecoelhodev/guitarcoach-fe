@@ -134,12 +134,45 @@ export function useAddRoutineTask(routineId: string) {
   });
 }
 
+/**
+ * Optimistic, like the reorder. The shared `scope` makes PATCHes for one routine run in the
+ * order they were made, so a slow earlier write can never land after a later one; the
+ * `isMutating` check holds the refetch until the last of them settles, so a burst costs one
+ * round instead of one per write.
+ */
 export function useUpdateRoutineTask(routineId: string) {
-  const invalidate = useInvalidateRoutines();
+  const queryClient = useQueryClient();
+  const queryKey = queryKeys.routineTasks(routineId);
+  const mutationKey = ['routines', 'update-task', routineId];
+
   return useMutation({
+    mutationKey,
+    scope: { id: `routine-tasks:${routineId}` },
     mutationFn: ({ taskId, input }: { taskId: string; input: UpdateRoutineTaskInput }) =>
       updateRoutineTask(routineId, taskId, input),
-    onSuccess: invalidate,
+    onMutate: async ({ taskId, input }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<RoutineTaskWithTask[]>(queryKey);
+      if (previous) {
+        queryClient.setQueryData(
+          queryKey,
+          previous.map((task) =>
+            task.taskId === taskId
+              ? { ...task, targetDurationMinutes: input.targetDurationMinutes ?? null }
+              : task,
+          ),
+        );
+      }
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => {
+      if (queryClient.isMutating({ mutationKey }) === 1) {
+        return queryClient.invalidateQueries({ queryKey: queryKeys.routinesRoot });
+      }
+    },
   });
 }
 
