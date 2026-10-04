@@ -309,6 +309,24 @@ describe('LibraryList', () => {
     expect(query.fetchNextPage).toHaveBeenCalledTimes(1);
   });
 
+  // P12: a filter change keeps the previous list as placeholder until the new one lands.
+  it('keeps the previous list during a filter change, without paging or counting it', async () => {
+    const query = {
+      ...infinitePages([makePage([makeTask({ title: 'Modes' })], { total: 8 })], {
+        hasNextPage: true,
+      }),
+      isPlaceholderData: true,
+    };
+    mock.mockReturnValue(query);
+    await render(<LibraryList />);
+
+    await scrollToEnd();
+
+    expect(screen.getByText('Modes')).toBeTruthy();
+    expect(screen.queryByText('8 tasks')).toBeNull();
+    expect(query.fetchNextPage).not.toHaveBeenCalled();
+  });
+
   it('stops at the last page', async () => {
     const query = infinitePages([makePage([makeTask()])]);
     mock.mockReturnValue(query);

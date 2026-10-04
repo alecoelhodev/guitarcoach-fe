@@ -31,6 +31,7 @@ import {
   useUpdateRoutineTask,
 } from '@/api/routines.queries';
 import { RoutineBuilder } from '@/features/routines/routine-builder';
+import { MINUTES_COMMIT_DELAY_MS } from '@/features/routines/routine-task-row';
 import { useStartPractice } from '@/features/session/use-start-practice';
 import { useToastStore } from '@/stores/toast-store';
 import { linkHrefs, mockNavigation, mockRouter } from '@/test/expo-router';
@@ -483,53 +484,6 @@ describe('task duration and removal', () => {
     expect(screen.queryByText('0 min')).toBeNull();
   });
 
-  it('offers a starting duration for a task that has none', async () => {
-    const update = mutationStub();
-    updateTaskHook.mockReturnValue(update);
-    await render(editing());
-
-    await expand('Modes');
-    await fireEvent.press(screen.getByText('Add duration'));
-
-    expect(update.mutate).toHaveBeenCalledWith(
-      { taskId: 'c', input: { targetDurationMinutes: 15 } },
-      expect.anything(),
-    );
-  });
-
-  it('steps an existing duration up', async () => {
-    const update = mutationStub();
-    updateTaskHook.mockReturnValue(update);
-    await render(editing());
-
-    await expand('Alternate picking');
-    await fireEvent.press(screen.getByLabelText('Increase minutes'));
-
-    expect(update.mutate).toHaveBeenCalledWith(
-      { taskId: 'a', input: { targetDurationMinutes: 11 } },
-      expect.anything(),
-    );
-  });
-
-  /**
-   * `targetDurationMinutes` is `@Min(1)` on the backend, so the stepper must never produce 0.
-   * Decrementing at the floor clears instead — the field is optional by design.
-   */
-  it('clears rather than reaching zero at the floor', async () => {
-    const update = mutationStub();
-    updateTaskHook.mockReturnValue(update);
-    ready([routineTask('a', 'Alternate picking', 1)]);
-    await render(editing());
-
-    await expand('Alternate picking');
-    await fireEvent.press(screen.getByLabelText('Clear duration'));
-
-    expect(update.mutate).toHaveBeenCalledWith(
-      { taskId: 'a', input: { targetDurationMinutes: undefined } },
-      expect.anything(),
-    );
-  });
-
   it('removes a task without asking, since re-adding it is one tap', async () => {
     const remove = mutationStub();
     removeTaskHook.mockReturnValue(remove);
@@ -565,27 +519,6 @@ describe('task duration and removal', () => {
     expect(update.mutateAsync).not.toHaveBeenCalled();
   });
 
-  it('retries the duration that failed, not the form save', async () => {
-    const updateTask = mutationStub();
-    updateTask.mutate.mockImplementation(
-      (_input: unknown, options: { onError: (e: Error) => void }) =>
-        options.onError(new ApiError('boom', 500)),
-    );
-    const update = mutationStub();
-    updateTaskHook.mockReturnValue(updateTask);
-    updateHook.mockReturnValue(update);
-    await render(editing());
-
-    await expand('Barre chords');
-    await fireEvent.press(screen.getByLabelText('Increase minutes'));
-    const firstCall = updateTask.mutate.mock.calls[0]?.[0];
-    await fireEvent.press(screen.getByText('Try again'));
-
-    expect(updateTask.mutate).toHaveBeenCalledTimes(2);
-    expect(updateTask.mutate.mock.calls[1]?.[0]).toEqual(firstCall);
-    expect(update.mutateAsync).not.toHaveBeenCalled();
-  });
-
   it('confirms a new routine, as the edit path already did', async () => {
     const create = mutationStub(makeRoutine({ id: 'new-1' }));
     createHook.mockReturnValue(create);
@@ -610,6 +543,126 @@ describe('task duration and removal', () => {
       pathname: '/routines/[id]/add-tasks',
       params: { id: ROUTINE_ID },
     });
+  });
+});
+
+/**
+ * The stepper writes the last value of a burst, not one PATCH per tap: per-tap writes all
+ * computed from the same saved number, so 15 → + + + sent 16, 16, 16.
+ */
+describe('task duration writes', () => {
+  beforeEach(() => jest.useFakeTimers({ doNotFake: ['performance'] }));
+  afterEach(() => jest.useRealTimers());
+
+  const settle = () => act(() => jest.advanceTimersByTime(MINUTES_COMMIT_DELAY_MS));
+
+  it('retries the duration that failed, not the form save', async () => {
+    const updateTask = mutationStub();
+    updateTask.mutate.mockImplementation(
+      (_input: unknown, options: { onError: (e: Error) => void }) =>
+        options.onError(new ApiError('boom', 500)),
+    );
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(updateTask);
+    updateHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Barre chords');
+    await fireEvent.press(screen.getByLabelText('Increase minutes'));
+    await settle();
+    const firstCall = updateTask.mutate.mock.calls[0]?.[0];
+    await fireEvent.press(screen.getByText('Try again'));
+
+    expect(updateTask.mutate).toHaveBeenCalledTimes(2);
+    expect(updateTask.mutate.mock.calls[1]?.[0]).toEqual(firstCall);
+    expect(update.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('offers a starting duration for a task that has none', async () => {
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Modes');
+    await fireEvent.press(screen.getByText('Add duration'));
+    await settle();
+
+    expect(update.mutate).toHaveBeenCalledWith(
+      { taskId: 'c', input: { targetDurationMinutes: 15 } },
+      expect.anything(),
+    );
+  });
+
+  it('sends one write with the final value for a burst of taps', async () => {
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Alternate picking');
+    for (let tap = 0; tap < 3; tap += 1) {
+      await fireEvent.press(screen.getByLabelText('Increase minutes'));
+    }
+
+    // Every tap counts on screen before anything is sent.
+    expect(screen.getAllByText('13 min').length).toBeGreaterThan(0);
+    expect(update.mutate).not.toHaveBeenCalled();
+
+    await settle();
+
+    expect(update.mutate).toHaveBeenCalledTimes(1);
+    expect(update.mutate).toHaveBeenCalledWith(
+      { taskId: 'a', input: { targetDurationMinutes: 13 } },
+      expect.anything(),
+    );
+  });
+
+  it('sends nothing when a burst ends where it started', async () => {
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Alternate picking');
+    await fireEvent.press(screen.getByLabelText('Increase minutes'));
+    await fireEvent.press(screen.getByLabelText('Decrease minutes'));
+    await settle();
+
+    expect(update.mutate).not.toHaveBeenCalled();
+    expect(screen.getAllByText('10 min').length).toBeGreaterThan(0);
+  });
+
+  it('still writes a pending value when the screen goes away first', async () => {
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Alternate picking');
+    await fireEvent.press(screen.getByLabelText('Increase minutes'));
+    await screen.unmount();
+
+    expect(update.mutate).toHaveBeenCalledWith(
+      { taskId: 'a', input: { targetDurationMinutes: 11 } },
+      expect.anything(),
+    );
+  });
+
+  /**
+   * `targetDurationMinutes` is `@Min(1)` on the backend, so the stepper must never produce 0.
+   * Decrementing at the floor clears instead — the field is optional by design.
+   */
+  it('clears rather than reaching zero at the floor', async () => {
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(update);
+    ready([routineTask('a', 'Alternate picking', 1)]);
+    await render(editing());
+
+    await expand('Alternate picking');
+    await fireEvent.press(screen.getByLabelText('Clear duration'));
+    await settle();
+
+    expect(update.mutate).toHaveBeenCalledWith(
+      { taskId: 'a', input: { targetDurationMinutes: undefined } },
+      expect.anything(),
+    );
   });
 });
 

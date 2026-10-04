@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
@@ -13,6 +14,9 @@ const DEFAULT_MINUTES = 15;
 
 /** `@Min(1)` on the backend — the stepper must never be able to reach 0. */
 const MIN_MINUTES = 1;
+
+/** Long enough to swallow a burst of taps; only the last value of a burst is written. */
+export const MINUTES_COMMIT_DELAY_MS = 400;
 
 export type RoutineTaskRowProps = {
   routineTask: RoutineTaskWithTask;
@@ -44,7 +48,10 @@ export function RoutineTaskRow({
   onSetMinutes,
   onRemove,
 }: RoutineTaskRowProps) {
-  const minutes = routineTask.targetDurationMinutes ?? undefined;
+  const [minutes, setMinutes] = useMinutesDraft(
+    routineTask.targetDurationMinutes ?? undefined,
+    onSetMinutes,
+  );
   const title = routineTask.task.title;
 
   return (
@@ -86,16 +93,16 @@ export function RoutineTaskRow({
                 <Stepper
                   minutes={minutes}
                   min={MIN_MINUTES}
-                  onChange={onSetMinutes}
+                  onChange={setMinutes}
                   // Decrementing at the floor clears rather than dead-ends, so the value can be
                   // removed without the stepper ever producing the 0 the backend rejects.
-                  onClear={() => onSetMinutes(undefined)}
+                  onClear={() => setMinutes(undefined)}
                 />
               ) : (
                 <Button
                   variant="tertiary"
                   disabled={busy}
-                  onPress={() => onSetMinutes(DEFAULT_MINUTES)}
+                  onPress={() => setMinutes(DEFAULT_MINUTES)}
                 >
                   Add duration
                 </Button>
@@ -132,6 +139,50 @@ export function RoutineTaskRow({
       </Card>
     </Animated.View>
   );
+}
+
+type Draft = { minutes: number | undefined; saved: number | undefined; committed: boolean };
+
+/**
+ * The stepper steps a local value and writes only the last one of a burst. Stepping the saved
+ * value instead lost taps — every tap in a burst computed from the same stale number — and
+ * sent a PATCH per tap. A pending value is still written if the row unmounts first.
+ */
+function useMinutesDraft(saved: number | undefined, commit: (minutes: number | undefined) => void) {
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const flushPending = useRef<(() => void) | null>(null);
+
+  // A written draft gives way once the cache moves: to the optimistic value, or back on rollback.
+  if (draft?.committed && draft.saved !== saved) setDraft(null);
+
+  useEffect(() => {
+    const pending = flushPending;
+    return () => {
+      clearTimeout(timer.current);
+      pending.current?.();
+    };
+  }, []);
+
+  function change(minutes: number | undefined) {
+    const from = draft ? draft.saved : saved;
+    setDraft({ minutes, saved: from, committed: false });
+
+    const flush = () => {
+      flushPending.current = null;
+      if (minutes === from) {
+        setDraft(null);
+        return;
+      }
+      setDraft({ minutes, saved: from, committed: true });
+      commit(minutes);
+    };
+    clearTimeout(timer.current);
+    flushPending.current = flush;
+    timer.current = setTimeout(flush, MINUTES_COMMIT_DELAY_MS);
+  }
+
+  return [draft ? draft.minutes : saved, change] as const;
 }
 
 const styles = StyleSheet.create({

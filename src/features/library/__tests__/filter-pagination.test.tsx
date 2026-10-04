@@ -20,7 +20,12 @@ it('starts a new filter at page one after loading multiple catalog pages', async
   const { result, rerender } = await renderHook(
     ({ category }: { category?: TaskCategory }) => {
       const query = useTasks({ category });
-      return { data: query.data, isSuccess: query.isSuccess, fetchNextPage: query.fetchNextPage };
+      return {
+        data: query.data,
+        isSuccess: query.isSuccess,
+        isPlaceholderData: query.isPlaceholderData,
+        fetchNextPage: query.fetchNextPage,
+      };
     },
     { wrapper, initialProps: { category: undefined } },
   );
@@ -31,7 +36,8 @@ it('starts a new filter at page one after loading multiple catalog pages', async
   await waitFor(() => expect(result.current.data?.pages).toHaveLength(2));
 
   await rerender({ category: 'theory' });
-  await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  // The previous filter's pages stand in as placeholder data, which also reads as success.
+  await waitFor(() => expect(result.current.isPlaceholderData).toBe(false));
   expect(list).toHaveBeenLastCalledWith({ category: 'theory', page: 1 });
   expect(result.current.data?.pages).toHaveLength(1);
 });

@@ -55,6 +55,26 @@ describe('useTasks pagination', () => {
   });
 });
 
+describe('useTasks filter changes', () => {
+  it('keeps the previous list on screen while the new filter loads', async () => {
+    listMock.mockResolvedValueOnce(makePage([makeTask({ id: 'all' })], { page: 1, totalPages: 1 }));
+    listMock.mockReturnValueOnce(new Promise(() => {}));
+
+    const { wrapper } = withQueryClient();
+    const { result, rerender } = await renderHook(
+      ({ category }: { category?: 'theory' }) => useTasks({ category }),
+      { wrapper, initialProps: {} },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    await rerender({ category: 'theory' });
+
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
+    expect(result.current.isPlaceholderData).toBe(true);
+    expect(result.current.data?.pages[0].data[0].id).toBe('all');
+  });
+});
+
 describe('useTask', () => {
   it('fetches one task by id', async () => {
     getMock.mockResolvedValue(makeTask({ id: 'task-9', title: 'Sweep picking' }));
