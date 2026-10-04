@@ -72,6 +72,7 @@ export function makeSessionTask(overrides: Partial<PracticeSessionTask> = {}): P
   return {
     practiceSessionId: 'session-1',
     taskId: 'task-1',
+    task: { id: overrides.taskId ?? 'task-1', title: 'Alternate picking' },
     completed: false,
     createdAt: TIMESTAMP,
     updatedAt: TIMESTAMP,

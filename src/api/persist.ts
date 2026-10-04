@@ -10,6 +10,8 @@ import type { PersistedClient } from '@tanstack/react-query-persist-client';
 
 import { queryKeys } from '@/api/query-keys';
 import { storage } from '@/lib/storage';
+import type { Paginated } from '@/types/pagination';
+import type { PracticeSession } from '@/types/session';
 
 const CACHE_KEY = 'guitar-coach.query-cache';
 
@@ -21,23 +23,26 @@ const CACHE_KEY = 'guitar-coach.query-cache';
 export const queryPersister = createAsyncStoragePersister({
   key: CACHE_KEY,
   storage,
-  serialize: (client) => JSON.stringify(firstPagesOnly(client)),
+  serialize: (client) => JSON.stringify(forDisk(client)),
 });
 
 type DehydratedQuery = DehydratedState['queries'][number];
 
-/**
- * An infinite list restores fine from its first page and refetches the rest on demand, so
- * every page past it is disk and parse time on each cold start for nothing.
- */
-function firstPagesOnly(client: PersistedClient): PersistedClient {
+function forDisk(client: PersistedClient): PersistedClient {
   return {
     ...client,
-    clientState: { ...client.clientState, queries: client.clientState.queries.map(firstPage) },
+    clientState: {
+      ...client.clientState,
+      queries: client.clientState.queries.map((query) => withoutSessionNotes(firstPage(query))),
+    },
   };
 }
 
-// Builds new objects: the dehydrated state shares `data` with the live cache.
+/**
+ * An infinite list restores fine from its first page and refetches the rest on demand, so
+ * every page past it is disk and parse time on each cold start for nothing. Builds new
+ * objects: the dehydrated state shares `data` with the live cache.
+ */
 function firstPage(query: DehydratedQuery): DehydratedQuery {
   const data = query.state.data as InfiniteData<unknown> | undefined;
   if (query.queryType !== 'infinite' || !data) return query;
@@ -50,6 +55,33 @@ function firstPage(query: DehydratedQuery): DehydratedQuery {
   };
 }
 
+type SessionPage = Paginated<PracticeSession>;
+
+function stripNotes(page: SessionPage): SessionPage {
+  return { ...page, data: page.data.map((session) => ({ ...session, notes: null })) };
+}
+
+/**
+ * S3: practice notes come from the server only. History (`list`, infinite) and Home
+ * (`summary`) still restore offline, just without the notes. Builds new objects, as above.
+ */
+function withoutSessionNotes(query: DehydratedQuery): DehydratedQuery {
+  const [root, kind] = query.queryKey;
+  if (root !== queryKeys.sessionsRoot[0] || !query.state.data) return query;
+  if (kind === 'summary') {
+    return {
+      ...query,
+      state: { ...query.state, data: stripNotes(query.state.data as SessionPage) },
+    };
+  }
+  if (kind !== 'list') return query;
+  const data = query.state.data as InfiniteData<SessionPage>;
+  return {
+    ...query,
+    state: { ...query.state, data: { ...data, pages: data.pages.map(stripNotes) } },
+  };
+}
+
 function isSessionDetail({ queryKey }: Query) {
   const [root, kind] = queryKeys.session('');
   return queryKey.length === 3 && queryKey[0] === root && queryKey[1] === kind;
@@ -57,8 +89,8 @@ function isSessionDetail({ queryKey }: Query) {
 
 /**
  * Passed to `PersistQueryClientProvider`. A session detail carries free-text practice notes,
- * which stay off the disk. Mutations never persist: a paused write replayed on the next
- * launch could land under a different account.
+ * which stay off the disk (lists drop theirs in `withoutSessionNotes`). Mutations never
+ * persist: a paused write replayed on the next launch could land under a different account.
  */
 export const dehydrateOptions: DehydrateOptions = {
   shouldDehydrateQuery: (query) => defaultShouldDehydrateQuery(query) && !isSessionDetail(query),
@@ -66,7 +98,7 @@ export const dehydrateOptions: DehydrateOptions = {
 };
 
 /** Bump when a cached response shape changes; restoring old shapes into new screens crashes. */
-export const CACHE_BUSTER = 'v1';
+export const CACHE_BUSTER = 'v2';
 
 export const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 

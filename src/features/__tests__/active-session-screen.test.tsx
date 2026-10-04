@@ -553,6 +553,121 @@ describe('with an active session', () => {
     expect(screen.getByText('Following · Morning warm-up')).toBeTruthy();
   });
 
+  describe('note and title drafts', () => {
+    /** `persist` writes the whole session on every `set()`; these count those writes. */
+    function sessionWrites(spy: jest.SpyInstance) {
+      return spy.mock.calls.filter(([key]) => key === 'active-session');
+    }
+
+    it('commits a burst of typing once, after the pause, not per keystroke', async () => {
+      startSession();
+      await render(withGluestack(<ActiveSessionScreen />));
+      const setItem = jest.spyOn(storage, 'setItem');
+
+      const text = 'Metronome!';
+      for (let i = 1; i <= text.length; i += 1) {
+        await fireEvent.changeText(screen.getByTestId('session-notes'), text.slice(0, i));
+        await act(async () => {
+          jest.advanceTimersByTime(100);
+        });
+      }
+      expect(sessionWrites(setItem)).toHaveLength(0);
+
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(sessionWrites(setItem).length).toBeGreaterThanOrEqual(1);
+      expect(sessionWrites(setItem).length).toBeLessThanOrEqual(2);
+      expect(useActiveSessionStore.getState().notes).toBe('Metronome!');
+    });
+
+    it('commits immediately on blur', async () => {
+      startSession();
+      await render(withGluestack(<ActiveSessionScreen />));
+
+      await fireEvent.changeText(screen.getByTestId('session-notes'), 'Slow first');
+      expect(useActiveSessionStore.getState().notes).toBeUndefined();
+      await fireEvent(screen.getByTestId('session-notes'), 'blur');
+      expect(useActiveSessionStore.getState().notes).toBe('Slow first');
+
+      await fireEvent.press(screen.getByLabelText('Rename session'));
+      await fireEvent.changeText(screen.getByTestId('session-title'), 'Evening');
+      await fireEvent(screen.getByTestId('session-title'), 'blur');
+      expect(useActiveSessionStore.getState().title).toBe('Evening');
+    });
+
+    // The debounce must never cost the last words typed before Finish.
+    it('finishes with the latest text even inside the debounce window', async () => {
+      const mutation = mutationStub();
+      useCreateSessionMock.mockReturnValue(mutation);
+      startSession();
+      await render(withGluestack(<ActiveSessionScreen />));
+
+      await fireEvent.press(screen.getByLabelText('Rename session'));
+      await fireEvent.changeText(screen.getByTestId('session-title'), 'Evening practice');
+      await fireEvent.changeText(screen.getByTestId('session-notes'), 'Last words');
+      await act(async () => {
+        await fireEvent.press(screen.getByText('Finish Session'));
+      });
+
+      expect(mutation.mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Evening practice', notes: 'Last words' }),
+      );
+    });
+
+    it('keeps the latest text in the session when the save fails', async () => {
+      const mutation = mutationStub();
+      mutation.mutateAsync = jest.fn(async () => {
+        throw new ApiError('boom', OFFLINE_STATUS);
+      });
+      useCreateSessionMock.mockReturnValue(mutation);
+      startSession();
+      await render(withGluestack(<ActiveSessionScreen />));
+
+      await fireEvent.changeText(screen.getByTestId('session-notes'), 'Unsaved');
+      await act(async () => {
+        await fireEvent.press(screen.getByText('Finish Session'));
+      });
+
+      expect(useActiveSessionStore.getState().notes).toBe('Unsaved');
+    });
+
+    it('flushes a pending draft on unmount', async () => {
+      startSession();
+      const view = await render(withGluestack(<ActiveSessionScreen />));
+
+      await fireEvent.changeText(screen.getByTestId('session-notes'), 'Backgrounded');
+      await view.unmount();
+
+      expect(useActiveSessionStore.getState().notes).toBe('Backgrounded');
+    });
+
+    // A draft landing after a discard would write notes back into the emptied store.
+    it('drops a pending draft when the session is discarded', async () => {
+      startSession();
+      await render(withGluestack(<ActiveSessionScreen />));
+
+      await fireEvent.changeText(screen.getByTestId('session-notes'), 'Throwaway');
+      await fireEvent.press(screen.getByLabelText('Exit practice'));
+      await fireEvent.press(screen.getByText('Discard session'));
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      expect(useActiveSessionStore.getState().notes).toBeUndefined();
+    });
+
+    it('starts from the notes restored with the session', async () => {
+      startSession();
+      useActiveSessionStore.getState().setNotes('From before');
+
+      await render(withGluestack(<ActiveSessionScreen />));
+
+      expect(screen.getByTestId('session-notes').props.value).toBe('From before');
+    });
+  });
+
   it('makes clear nothing is stored until finish', async () => {
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));

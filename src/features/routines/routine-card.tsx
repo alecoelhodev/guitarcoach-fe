@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
+import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { describeError } from '@/api/errors';
