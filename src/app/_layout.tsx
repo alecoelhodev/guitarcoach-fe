@@ -45,6 +45,12 @@ const navigationTheme: Theme = {
 
 export { ErrorBoundaryFallback as ErrorBoundary };
 
+// The restore runs alongside `hydrate`, so it can land after a null session has already
+// cleared the client and put the previous account's snapshot back into memory.
+function dropRestoreAfterSignOut() {
+  if (useSessionStore.getState().status === 'unauthenticated') queryClient.clear();
+}
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -72,7 +78,7 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    hydrate();
+    hydrate(() => clearLocalSession(queryClient, { keepActiveSession: true }));
   }, [hydrate]);
 
   useEffect(() => {
@@ -102,6 +108,7 @@ export default function RootLayout() {
               buster: CACHE_BUSTER,
               maxAge: CACHE_MAX_AGE_MS,
             }}
+            onSuccess={dropRestoreAfterSignOut}
           >
             {ready && (
               <ThemeProvider value={navigationTheme}>
