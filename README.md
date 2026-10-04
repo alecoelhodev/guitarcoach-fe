@@ -38,11 +38,11 @@ One command per backend. Nothing to edit, and no `.env` file can override them �
 already set in the shell wins, because Expo's loader never overwrites a key that is already
 defined in `process.env`.
 
-| Command                 | Browser      | Phone (Expo Go)                           |
-| ----------------------- | ------------ | ----------------------------------------- |
-| `npm run dev:local`     | local Docker | local Docker, over your Mac's LAN address |
-| `npm run dev:cloud`     | local Docker | the deployed Cloud Run service            |
-| `npm run dev:cloud-web` | Cloud Run    | Cloud Run                                 |
+| Command                 | Browser                          | Phone (Expo Go)                           |
+| ----------------------- | -------------------------------- | ----------------------------------------- |
+| `npm run dev:local`     | local Docker                     | local Docker, over your Mac's LAN address |
+| `npm run dev:cloud`     | local Docker                     | the deployed Cloud Run service            |
+| `npm run dev:cloud-web` | Cloud Run (via a proxy on :8082) | Cloud Run                                 |
 
 A bare `npm start` — or `npx expo start` — uses `.env`, which is `http://localhost:3000`. Adding a
 `.env.local` silently outranks it; see
@@ -90,11 +90,14 @@ anything.
   authenticates against the deployed backend and the browser against your local one, so you need
   an account on each. There is no separate staging service; the deployed one is pre-production
   and not serving real traffic (see the backend's `docs/deployment.md`).
-- **`dev:cloud-web` will probably not let you sign in.** The backend's `CORS_ORIGINS` trusts
-  only its own origin, so a browser's real `Origin` (`http://localhost:8081`) is rejected at
-  preflight, and better-auth's `SameSite=Lax` cookie would not be stored cross-site anyway. Native
-  is fine — `src/api/client.ts` synthesizes a matching `Origin` on iOS/Android. That is the whole
-  reason the native-only override exists.
+- **`dev:cloud-web` reaches Cloud Run through a proxy on `localhost:8082`.** Called directly, the
+  backend's `CORS_ORIGINS` rejects `http://localhost:8081` at preflight, and better-auth's
+  `SameSite=Lax` cookie is never stored cross-site anyway. `scripts/dev-cloud-web.mjs` starts a
+  proxy, which is same-site with the dev server because ports don't count, and then runs
+  `expo start`. It answers CORS for local origins only, and rewrites `Origin` to the backend's own
+  for those alone, so better-auth's origin check still rejects every other site. The cookie is
+  `Secure`, which Chrome and Firefox accept on `http://localhost`. Safari is untested. Native
+  bypasses the proxy, because `src/api/client.ts` synthesizes a matching `Origin` on iOS/Android.
 - **The first launch after a Cloud Run cold start may bounce you to sign-in.** `getSession()` is
   capped at 5s (`src/api/auth.ts`) because the splash waits on it, and a cold start can take ~14s.
   Reopen the app and the session holds. The fix is backend side
