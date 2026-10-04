@@ -41,6 +41,7 @@ const baseUrl = target.url;
 // `NODE_ENV !== 'test'` because jest-expo leaves `__DEV__` true: without it this prints once
 // per suite for all 47 of them.
 if (__DEV__ && process.env.NODE_ENV !== 'test') {
+  // eslint-disable-next-line no-console -- dev-only and deliberate, as above
   console.log(`[api] ${describeApiTarget(target)} — via ${target.source}`);
 }
 
