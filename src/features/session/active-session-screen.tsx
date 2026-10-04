@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { X } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import X from 'lucide-react-native/icons/x';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -56,6 +56,61 @@ function SessionClock({ startedAt }: { startedAt: number | undefined }) {
   return <ThemedText type="display">{formatClock(elapsedSecondsAt(startedAt, now))}</ThemedText>;
 }
 
+/** Long enough to span a burst of typing, short enough that a killed app loses half a second. */
+const DRAFT_COMMIT_MS = 500;
+
+/**
+ * A text field's local copy of a persisted store value.
+ *
+ * `persist` serialises the whole session to AsyncStorage on every `set()`, so binding the
+ * input straight to the store rewrote that JSON once per keystroke. The draft commits on blur,
+ * after `DRAFT_COMMIT_MS` without typing, on unmount, and whenever a caller `flush()`es.
+ *
+ * `commit` must be stable (module scope): the unmount effect depends on it, and a new identity
+ * per render would flush on every keystroke and undo the whole point.
+ */
+function useDraft(initial: string | undefined, commit: (text: string) => void) {
+  const [value, setValue] = useState(initial ?? '');
+  const pending = useRef<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  function flush() {
+    clearTimeout(timer.current);
+    if (pending.current === null) return;
+    commit(pending.current);
+    pending.current = null;
+  }
+
+  function onChangeText(text: string) {
+    setValue(text);
+    pending.current = text;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(flush, DRAFT_COMMIT_MS);
+  }
+
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+      if (pending.current !== null) commit(pending.current);
+    },
+    [commit],
+  );
+
+  return { value, onChangeText, flush };
+}
+
+// A draft that lands after the session is gone — discarded, finished, or reset by sign-out —
+// would write one field back into an emptied store, and with it a previous user's notes.
+function commitTitle(title: string) {
+  const state = useActiveSessionStore.getState();
+  if (state.tasks.length > 0) state.setTitle(title);
+}
+
+function commitNotes(notes: string) {
+  const state = useActiveSessionStore.getState();
+  if (state.tasks.length > 0) state.setNotes(notes);
+}
+
 /**
  * `persist` rehydrates AsyncStorage asynchronously, so the store is still empty on the first
  * render. The body below latches `startedWithNoTasks` from that first render, so it has to
@@ -91,8 +146,10 @@ function ActiveSessionScreenBody() {
   const notes = useActiveSessionStore((state) => state.notes);
   const startedAt = useActiveSessionStore((state) => state.startedAt);
   const tasks = useActiveSessionStore((state) => state.tasks);
-  const setTitle = useActiveSessionStore((state) => state.setTitle);
-  const setNotes = useActiveSessionStore((state) => state.setNotes);
+  // Initialised once, which is safe only because the hydration gate mounts this body after the
+  // store has settled — the store is the draft's source exactly once, then the draft leads.
+  const titleDraft = useDraft(title, commitTitle);
+  const notesDraft = useDraft(notes, commitNotes);
   const setTaskMinutes = useActiveSessionStore((state) => state.setTaskMinutes);
   const toggleTaskCompleted = useActiveSessionStore((state) => state.toggleTaskCompleted);
   const reset = useActiveSessionStore((state) => state.reset);
@@ -107,14 +164,19 @@ function ActiveSessionScreenBody() {
 
   async function handleFinish() {
     setFailure(null);
+    // Read from the drafts, which are never behind; flushed so a failed save keeps the text.
+    const finalTitle = titleDraft.value.trim();
+    const finalNotes = notesDraft.value.trim();
+    titleDraft.flush();
+    notesDraft.flush();
     try {
       await createSessionMutation.mutateAsync({
         routineId,
         // Both are optional and both reject the empty string — `title` is `@Length(1, 200)`,
         // and `forbidNonWhitelisted` means a stray '' is a 400 rather than an ignored field.
         // Omit, never blank.
-        ...(title?.trim() ? { title: title.trim() } : {}),
-        ...(notes?.trim() ? { notes: notes.trim() } : {}),
+        ...(finalTitle ? { title: finalTitle } : {}),
+        ...(finalNotes ? { notes: finalNotes } : {}),
         tasks: tasks.map((task) => ({
           taskId: task.taskId,
           // 0 is the local "nothing logged" value — a routine task carries no target duration
@@ -194,7 +256,11 @@ function ActiveSessionScreenBody() {
                 Following · {routineTitle}
               </ThemedText>
             )}
-            <SessionTitle title={title} onChange={setTitle} />
+            <SessionTitle
+              title={titleDraft.value}
+              onChange={titleDraft.onChangeText}
+              onCommit={titleDraft.flush}
+            />
           </View>
 
           <Card style={styles.clockCard}>
@@ -235,8 +301,9 @@ function ActiveSessionScreenBody() {
             <FieldLabel>Session notes</FieldLabel>
             <Input
               testID="session-notes"
-              value={notes ?? ''}
-              onChangeText={setNotes}
+              value={notesDraft.value}
+              onChangeText={notesDraft.onChangeText}
+              onBlur={notesDraft.flush}
               multiline
               // `Input` only sets minHeight: 44, which is one line — a notes box has to ask.
               style={styles.notes}
@@ -289,8 +356,21 @@ function ActiveSessionScreenBody() {
  * input, commit on blur. An emptied title is legitimate — Finish omits the key rather than
  * sending '', which `@Length(1, 200)` rejects.
  */
-function SessionTitle({ title, onChange }: { title?: string; onChange: (title: string) => void }) {
+function SessionTitle({
+  title,
+  onChange,
+  onCommit,
+}: {
+  title: string;
+  onChange: (title: string) => void;
+  onCommit: () => void;
+}) {
   const [editing, setEditing] = useState(false);
+
+  function finishEditing() {
+    onCommit();
+    setEditing(false);
+  }
 
   if (!editing) {
     return (
@@ -299,7 +379,7 @@ function SessionTitle({ title, onChange }: { title?: string; onChange: (title: s
         accessibilityLabel="Rename session"
         onPress={() => setEditing(true)}
       >
-        <ThemedText type="h3">{title?.trim() || 'Practice session'}</ThemedText>
+        <ThemedText type="h3">{title.trim() || 'Practice session'}</ThemedText>
       </Pressable>
     );
   }
@@ -308,10 +388,10 @@ function SessionTitle({ title, onChange }: { title?: string; onChange: (title: s
     <Input
       testID="session-title"
       autoFocus
-      value={title ?? ''}
+      value={title}
       onChangeText={onChange}
-      onBlur={() => setEditing(false)}
-      onSubmitEditing={() => setEditing(false)}
+      onBlur={finishEditing}
+      onSubmitEditing={finishEditing}
       returnKeyType="done"
       placeholder="Practice session"
     />
