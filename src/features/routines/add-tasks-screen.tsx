@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiError } from '@/api/client';
 import { describeError } from '@/api/errors';
-import { useAddRoutineTask, useRoutineTasks } from '@/api/routines.queries';
+import { useAddRoutineTask, useInvalidateRoutines, useRoutineTasks } from '@/api/routines.queries';
 import { useTasks } from '@/api/tasks.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -32,6 +32,7 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
   const tasksQuery = useTasks();
   const routineTasksQuery = useRoutineTasks(routineId);
   const addRoutineTask = useAddRoutineTask(routineId);
+  const invalidateRoutines = useInvalidateRoutines();
 
   const [selected, setSelected] = useState<string[]>([]);
   const [failure, setFailure] = useState<string | null>(null);
@@ -59,23 +60,26 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
     setFailure(null);
     let added = 0;
 
-    for (const taskId of selected) {
-      try {
+    try {
+      for (const taskId of selected) {
         await addRoutineTask.mutateAsync({ taskId });
         added += 1;
-      } catch (error) {
-        const alreadyPresent = error instanceof ApiError && error.status === 409;
-        setFailure(
-          alreadyPresent
-            ? 'One of those tasks is already in this routine. Change its duration there instead.'
-            : describeError(error, "Couldn't add the task").title,
-        );
-        setAdding(false);
-        // Keep what landed: the tasks already added are real, and re-running the whole
-        // selection would 409 on every one of them.
-        setSelected((current) => current.slice(added));
-        return;
       }
+    } catch (error) {
+      const alreadyPresent = error instanceof ApiError && error.status === 409;
+      setFailure(
+        alreadyPresent
+          ? 'One of those tasks is already in this routine. Change its duration there instead.'
+          : describeError(error, "Couldn't add the task").title,
+      );
+      setAdding(false);
+      // Keep what landed: the tasks already added are real, and re-running the whole
+      // selection would 409 on every one of them.
+      setSelected((current) => current.slice(added));
+      return;
+    } finally {
+      // Once for the batch, success or not: a 409 means this screen's view was stale too.
+      void invalidateRoutines();
     }
 
     setAdding(false);

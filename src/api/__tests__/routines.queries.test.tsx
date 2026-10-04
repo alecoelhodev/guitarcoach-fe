@@ -18,6 +18,7 @@ import {
   useAddRoutineTask,
   useCreateRoutine,
   useDeleteRoutine,
+  useInvalidateRoutines,
   useRemoveRoutineTask,
   useReorderRoutineTasks,
   useRoutine,
@@ -302,9 +303,9 @@ describe('useDeleteRoutine', () => {
 describe('useAddRoutineTask', () => {
   afterEach(() => jest.resetAllMocks());
 
-  // `taskCount` and `totalTargetDurationMinutes` are server-computed and live on the list
-  // response, so the list cards go stale too — not just the routine being edited.
-  it('adds a task and stales the list, the detail and the task list', async () => {
+  // The add-tasks screen adds a batch one at a time and invalidates once after it, so a
+  // per-add invalidation here would be a refetch round per task.
+  it('adds a task and leaves invalidation to the caller', async () => {
     addRoutineTaskMock.mockResolvedValue({} as Awaited<ReturnType<typeof addRoutineTask>>);
     const { wrapper, staleness } = seedRoutineCache();
 
@@ -313,7 +314,7 @@ describe('useAddRoutineTask', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(addRoutineTaskMock).toHaveBeenCalledWith(ROUTINE_ID, { taskId: 'task-9' });
-    expect(staleness()).toEqual(ALL_STALE);
+    expect(staleness()).toEqual(NONE_STALE);
   });
 
   // A task may appear at most once per routine; a duplicate is the wireframe's
@@ -420,6 +421,19 @@ describe('useUpdateRoutineTask optimism', () => {
     await waitFor(() => expect(calls).toEqual([16, 17]));
     await waitFor(() => expect(queryClient.isMutating()).toBe(0));
     expect(invalidate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useInvalidateRoutines', () => {
+  // `taskCount` and `totalTargetDurationMinutes` are server-computed and live on the list
+  // response, so the list cards go stale too — not just the routine being edited.
+  it('stales the list, the detail and the task list in one call', async () => {
+    const { wrapper, staleness } = seedRoutineCache();
+
+    const { result } = await renderHook(() => useInvalidateRoutines(), { wrapper });
+    await result.current();
+
+    expect(staleness()).toEqual(ALL_STALE);
   });
 });
 

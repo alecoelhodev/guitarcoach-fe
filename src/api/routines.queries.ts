@@ -93,7 +93,7 @@ export function useReorderRoutineTasks(routineId: string) {
  * are computed server-side and sit on the *list* response, so adding a task or editing its
  * duration goes stale on the list cards too, not just on the routine being edited.
  */
-function useInvalidateRoutines() {
+export function useInvalidateRoutines() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: queryKeys.routinesRoot });
 }
@@ -126,11 +126,14 @@ export function useDeleteRoutine() {
   });
 }
 
+/**
+ * Leaves invalidation to the caller: tasks are added as a batch, one at a time, and an
+ * invalidation per add was a full refetch round per task. Call `useInvalidateRoutines` once
+ * after the batch.
+ */
 export function useAddRoutineTask(routineId: string) {
-  const invalidate = useInvalidateRoutines();
   return useMutation({
     mutationFn: (input: AddRoutineTaskInput) => addRoutineTask(routineId, input),
-    onSuccess: invalidate,
   });
 }
 

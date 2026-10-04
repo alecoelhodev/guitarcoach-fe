@@ -2,13 +2,14 @@ jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
 jest.mock('@/api/tasks.queries', () => ({ useTasks: jest.fn() }));
 jest.mock('@/api/routines.queries', () => ({
   useAddRoutineTask: jest.fn(),
+  useInvalidateRoutines: jest.fn(),
   useRoutineTasks: jest.fn(),
 }));
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
-import { useAddRoutineTask, useRoutineTasks } from '@/api/routines.queries';
+import { useAddRoutineTask, useInvalidateRoutines, useRoutineTasks } from '@/api/routines.queries';
 import { useTasks } from '@/api/tasks.queries';
 import { AddTasksScreen } from '@/features/routines/add-tasks-screen';
 import { useToastStore } from '@/stores/toast-store';
@@ -27,6 +28,8 @@ type AnyHook = jest.MockedFunction<(...args: never[]) => unknown>;
 const tasksHook = useTasks as unknown as AnyHook;
 const routineTasksHook = useRoutineTasks as unknown as AnyHook;
 const addHook = useAddRoutineTask as unknown as AnyHook;
+const invalidateHook = useInvalidateRoutines as unknown as AnyHook;
+const invalidate = jest.fn();
 
 const ROUTINE_ID = 'r1';
 
@@ -48,6 +51,7 @@ const screen_ = () => <AddTasksScreen routineId={ROUTINE_ID} />;
 beforeEach(() => {
   jest.clearAllMocks();
   addHook.mockReturnValue(mutationStub());
+  invalidateHook.mockReturnValue(invalidate);
   ready();
 });
 
@@ -109,6 +113,8 @@ it('adds the picked tasks one at a time, in the order picked', async () => {
   expect(order).toEqual(['t3', 't1']);
   // `position` is omitted so the backend appends; supplying one only creates a 409 to lose.
   expect(add.mutateAsync).toHaveBeenNthCalledWith(1, { taskId: 't3' });
+  // One refetch round for the batch, not one per task.
+  expect(invalidate).toHaveBeenCalledTimes(1);
 });
 
 it('confirms and closes once the adds land', async () => {
@@ -167,6 +173,8 @@ it('stops at the first failure and keeps what already landed', async () => {
   // The one that landed is dropped from the selection — retrying it would only 409.
   expect(screen.getByText('Add 1 task')).toBeTruthy();
   expect(mockRouter.back).not.toHaveBeenCalled();
+  // The task that landed is real, so the routine still refetches — once.
+  expect(invalidate).toHaveBeenCalledTimes(1);
 });
 
 it('closes without adding anything when cancelled', async () => {
