@@ -54,6 +54,9 @@ const config: ExpoConfig = {
   },
   web: {
     output: 'static',
+    name: 'Guitar Coach',
+    shortName: 'Guitar Coach',
+    themeColor: '#0a0b0d',
     favicon: './assets/images/favicon.png',
     backgroundColor: '#0a0b0d',
   },
