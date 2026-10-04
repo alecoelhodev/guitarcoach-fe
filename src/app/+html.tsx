@@ -9,8 +9,8 @@ const DESCRIPTION = 'Practice with a plan.';
 
 /** Web-only root HTML for static rendering; runs in Node at build time, never on native. */
 export default function Root({ children }: PropsWithChildren) {
-  // No <title> here: the renderer always prepends Helmet's (empty) <title> to <head>, and the
-  // first one wins. Page titles must come from `expo-router/head` in a route.
+  // No <title> here: the renderer always prepends Helmet's <title> to <head>, and the first one
+  // wins. The default title comes from `expo-router/head` in `src/app/_layout.tsx`.
   return (
     <html lang="en">
       <head>

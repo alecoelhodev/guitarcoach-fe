@@ -7,6 +7,7 @@ import * as Sentry from '@sentry/react-native';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
 import { Stack, type Theme, ThemeProvider } from 'expo-router';
+import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -96,6 +97,10 @@ function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* Above the `ready` gate so static web rendering, which never loads fonts, still emits it. */}
+      <Head>
+        <title>Guitar Coach</title>
+      </Head>
       {/*
         Mounted explicitly rather than relying on the one react-navigation installs inside
         `<Stack>`: `ToastHost` below is a *sibling* of the Stack, so it sat outside that
