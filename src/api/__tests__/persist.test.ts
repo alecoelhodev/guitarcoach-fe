@@ -8,7 +8,10 @@ import {
 } from '@/api/persist';
 import { queryKeys } from '@/api/query-keys';
 import { storage } from '@/lib/storage';
+import { makeSession } from '@/test/fixtures';
 import { makeTestQueryClient } from '@/test/query-client';
+import type { Paginated } from '@/types/pagination';
+import type { PracticeSession } from '@/types/session';
 
 const CACHE_KEY = 'guitar-coach.query-cache';
 
@@ -52,7 +55,7 @@ describe('queryPersister', () => {
   });
 
   // P9: every page of every infinite list used to go to disk on each write. This is the
-  // suite's only `persistClient` call, so the one-second throttle never delays it.
+  // suite's first `persistClient` call, so the one-second throttle never delays it.
   it('writes only the first page of an infinite query', async () => {
     const queryClient = makeTestQueryClient();
     await queryClient.fetchInfiniteQuery({
@@ -79,6 +82,70 @@ describe('queryPersister', () => {
     });
     // Only the copy on disk is trimmed; the live cache keeps what the screen scrolled to.
     expect(livePages()).toHaveLength(3);
+  });
+
+  describe('S3: session notes stay on the server', () => {
+    const NOTE = 'PRIVATE-NOTE';
+    const page = (sessionPage: number): Paginated<PracticeSession> => ({
+      data: [makeSession({ id: `s${sessionPage}`, title: 'Scales', notes: NOTE })],
+      meta: { page: sessionPage, limit: 1, total: 2, totalPages: 2 },
+    });
+
+    // The throttle measures `Date.now()` against the previous write; jumping the fake clock
+    // past it lets this suite write a second time without a real one-second wait.
+    beforeEach(() => {
+      jest.useFakeTimers({ now: Date.now() + 60_000 });
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('writes History and Home without note text, and leaves the live cache alone', async () => {
+      const queryClient = makeTestQueryClient();
+      await queryClient.fetchInfiniteQuery({
+        queryKey: queryKeys.sessions({}),
+        queryFn: ({ pageParam }) => Promise.resolve(page(pageParam)),
+        initialPageParam: 1,
+        getNextPageParam: (last) => last.meta.page + 1,
+        pages: 2,
+      });
+      queryClient.setQueryData(queryKeys.sessionsSummary(100), page(1));
+      queryClient.setQueryData(queryKeys.session('s1'), makeSession({ notes: NOTE }));
+      queryClient.setQueryData(queryKeys.routine('r1'), { id: 'r1', notes: 'routine note' });
+
+      await queryPersister.persistClient({
+        timestamp: 1,
+        buster: 'v2',
+        clientState: dehydrate(queryClient, dehydrateOptions),
+      });
+
+      const raw = await storage.getItem(CACHE_KEY);
+      expect(raw).not.toContain(NOTE);
+
+      const restored = await queryPersister.restoreClient();
+      const byKind = Object.fromEntries(
+        restored?.clientState.queries.map((query) => [query.queryKey[1], query.state.data]) ?? [],
+      );
+      expect(Object.keys(byKind).sort()).toEqual(['detail', 'list', 'summary']);
+      // Composes with the first-page trim, and keeps everything but the notes.
+      expect(byKind.list).toEqual({
+        pages: [{ ...page(1), data: [{ ...page(1).data[0], notes: null }] }],
+        pageParams: [1],
+      });
+      expect(byKind.summary).toEqual({ ...page(1), data: [{ ...page(1).data[0], notes: null }] });
+      // The only `detail` is the routine's: a session detail never reaches the disk. And only
+      // session notes are stripped — a routine's still persist.
+      expect(byKind.detail).toEqual({ id: 'r1', notes: 'routine note' });
+
+      const live = queryClient.getQueryData<InfiniteData<Paginated<PracticeSession>>>(
+        queryKeys.sessions({}),
+      );
+      expect(live?.pages.map((p) => p.data[0].notes)).toEqual([NOTE, NOTE]);
+      expect(
+        queryClient.getQueryData<Paginated<PracticeSession>>(queryKeys.sessionsSummary(100))
+          ?.data[0].notes,
+      ).toBe(NOTE);
+    });
   });
 });
 
