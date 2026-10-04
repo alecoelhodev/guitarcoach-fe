@@ -63,6 +63,12 @@ That is the loop. Everything in phases 1–3 below serves it; nothing outside it
 - [11 — Blocked, deferred, out of scope](11-blocked-and-out-of-scope.md) — read before adding
   anything not listed above
 
+### Release
+
+- [12 — Release readiness and open decisions](12-release-readiness-and-open-decisions.md) — the
+  human-only steps left before the first store submission: security checks, device verification,
+  Sentry, open decisions and store prerequisites
+
 ## Parallelisation
 
 After spec 01 lands, these run independently: **06**, **07**, **08** (no dependency on 01 at all),
