@@ -48,4 +48,32 @@ describe('ExternalLink', () => {
 
     expect(screen.getByText('Open lesson')).toBeTruthy();
   });
+
+  /**
+   * S5. `href` is `task.referenceLink`, straight from the API — so a `javascript:` URL, an
+   * Android `intent:` or a deep link back into this app must not become a pressable link.
+   */
+  it.each([
+    'javascript:alert(1)',
+    'intent://scan/#Intent;scheme=zxing;end',
+    'guitarcoach://routines/r1',
+    'file:///etc/passwd',
+    '/routines/r1',
+    'not a url',
+  ])('renders %p as plain text with nothing to open', async (unsafe) => {
+    await render(<ExternalLink href={unsafe as `${string}:${string}`}>Open lesson</ExternalLink>);
+
+    const text = screen.getByText('Open lesson');
+    await fireEvent.press(text);
+
+    expect(linkHrefs).toEqual([]);
+    expect(text.props.accessibilityRole).not.toBe('link');
+    expect(openBrowserAsyncMock).not.toHaveBeenCalled();
+  });
+
+  it('accepts plain http as well as https', async () => {
+    await render(<ExternalLink href="http://example.com/lesson">Open lesson</ExternalLink>);
+
+    expect(linkHrefs).toEqual(['http://example.com/lesson']);
+  });
 });
