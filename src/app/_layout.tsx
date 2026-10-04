@@ -12,12 +12,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { setUnauthorizedHandler } from '@/api/client';
-import { CACHE_BUSTER, CACHE_MAX_AGE_MS, queryPersister } from '@/api/persist';
+import { CACHE_BUSTER, CACHE_MAX_AGE_MS, dehydrateOptions, queryPersister } from '@/api/persist';
 import { queryClient } from '@/api/query-client';
 import { ErrorBoundaryFallback } from '@/components/error-boundary-fallback';
 import { ToastHost } from '@/components/toast-host';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
-import { clearLocalSession } from '@/stores/clear-local-session';
+import { clearLocalSession, expireSession } from '@/stores/clear-local-session';
 import { useSessionStore } from '@/stores/session-store';
 import { Colors } from '@/theme/tokens';
 
@@ -45,8 +45,14 @@ const navigationTheme: Theme = {
 
 export { ErrorBoundaryFallback as ErrorBoundary };
 
+// The restore runs alongside `hydrate`, so it can land after a null session has already
+// cleared the client and put the previous account's snapshot back into memory.
+function dropRestoreAfterSignOut() {
+  if (useSessionStore.getState().status === 'unauthenticated') queryClient.clear();
+}
+
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -58,8 +64,9 @@ export default function RootLayout() {
 
   // Session restore is a network round-trip, so hold the splash until it settles —
   // otherwise `status === 'loading'` falls through both group guards and whichever
-  // group the URL points at mounts and starts firing queries.
-  const ready = fontsLoaded && status !== 'loading';
+  // group the URL points at mounts and starts firing queries. A font that fails to load
+  // falls back to the system face rather than holding the splash forever.
+  const ready = (fontsLoaded || fontError !== null) && status !== 'loading';
 
   useEffect(() => {
     // Same teardown as the deliberate sign-out path, and shared with it: an expired cookie
@@ -67,12 +74,12 @@ export default function RootLayout() {
     // practice session is the exception — it is owner-stamped, so it stays and the user can
     // finish it after signing back in rather than losing unsaved minutes to a dead cookie.
     setUnauthorizedHandler(() => {
-      void clearLocalSession(queryClient, { keepActiveSession: true });
+      void expireSession(queryClient);
     });
   }, []);
 
   useEffect(() => {
-    hydrate();
+    hydrate(() => clearLocalSession(queryClient, { keepActiveSession: true }));
   }, [hydrate]);
 
   useEffect(() => {
@@ -101,7 +108,9 @@ export default function RootLayout() {
               persister: queryPersister,
               buster: CACHE_BUSTER,
               maxAge: CACHE_MAX_AGE_MS,
+              dehydrateOptions,
             }}
+            onSuccess={dropRestoreAfterSignOut}
           >
             {ready && (
               <ThemeProvider value={navigationTheme}>

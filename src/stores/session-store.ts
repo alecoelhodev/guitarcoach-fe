@@ -9,7 +9,7 @@ const SESSION_CACHE_KEY = 'guitar-coach.cached-user';
 type SessionState = {
   status: 'loading' | 'authenticated' | 'unauthenticated';
   user: User | null;
-  hydrate: () => Promise<void>;
+  hydrate: (forgetAccount: () => Promise<void>) => Promise<void>;
   setUser: (user: User) => Promise<void>;
   clear: () => Promise<void>;
 };
@@ -27,22 +27,36 @@ export const useSessionStore = create<SessionState>((set) => ({
   status: 'loading',
   user: null,
 
-  hydrate: async () => {
-    const cached = await storage.getItem(SESSION_CACHE_KEY);
-    if (cached) set({ user: JSON.parse(cached) as User });
-
+  hydrate: async (forgetAccount) => {
     try {
-      const session = await getSession();
-      if (session?.user) {
-        await storage.setItem(SESSION_CACHE_KEY, JSON.stringify(session.user));
-        set({ status: 'authenticated', user: session.user });
-      } else {
-        await storage.removeItem(SESSION_CACHE_KEY);
-        set({ status: 'unauthenticated', user: null });
-      }
+      const cached = await storage.getItem(SESSION_CACHE_KEY);
+      if (cached) set({ user: JSON.parse(cached) as User });
+    } catch {
+      // An unreadable or corrupt cache is no cache; `getSession()` below still decides.
+    }
+
+    let session: Awaited<ReturnType<typeof getSession>>;
+    try {
+      session = await getSession();
     } catch {
       // Network unreachable: fall back to the cached user rather than bouncing to sign-in.
       set((state) => ({ status: state.user ? 'authenticated' : 'unauthenticated' }));
+      return;
+    }
+
+    if (session?.user) {
+      set({ status: 'authenticated', user: session.user });
+      await storage.setItem(SESSION_CACHE_KEY, JSON.stringify(session.user));
+      return;
+    }
+
+    // The persisted query cache outlives the cookie, so dropping only the cached user left
+    // the previous account's data for whoever signs in next. `forgetAccount` is injected
+    // because the teardown imports this store.
+    try {
+      await forgetAccount();
+    } finally {
+      set({ status: 'unauthenticated', user: null });
     }
   },
 
