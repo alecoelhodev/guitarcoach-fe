@@ -54,25 +54,25 @@ None of the following has run on a device yet; the automated suites can't prove 
 
 ## 3. Turn on Sentry
 
-The integration is merged (`src/lib/monitoring.ts`), but it stays off without a DSN. Set
-everything below in the same sitting. **With the org and project set but no auth token, native
-builds fail** at the source-map upload step.
+The integration is merged (`src/lib/monitoring.ts`). Org `aga-projects` and project
+`react-native` exist, and these EAS variables are set for both `preview` and `production`:
+`SENTRY_ORG`, `SENTRY_PROJECT`, `EXPO_PUBLIC_SENTRY_DSN` and `EXPO_PUBLIC_SENTRY_ENVIRONMENT`.
 
-1. Create the Sentry organization and a React Native project.
-2. Add the EAS environment variables:
+**Left for you — before the next EAS build**, because with the org and project set, a native build
+fails at the source-map upload without the token:
+
+1. In Sentry, create an organization auth token (Settings → Organization Tokens).
+2. Store it as an EAS secret. Paste it at the prompt; never share it or commit it:
 
    ```bash
-   eas env:create --name SENTRY_ORG --value <org-slug> --environment preview
-   eas env:create --name SENTRY_PROJECT --value <project-slug> --environment preview
-   eas env:create --name SENTRY_AUTH_TOKEN --value <token> --visibility secret --environment preview
-   eas env:create --name EXPO_PUBLIC_SENTRY_DSN --value <dsn> --environment preview
-   # repeat all four with --environment production
+   eas env:set --name SENTRY_AUTH_TOKEN --visibility secret \
+     --environment preview --environment production
    ```
 
 3. In a preview build, throw a test error.
 
-**Done when:** the event shows up in Sentry with an opaque user id only, and no email, cookie or
-request body.
+**Done when:** the event shows up in Sentry with a symbolicated stack trace and an opaque user id
+only, and no email, cookie or request body.
 
 ## 4. Open decisions
 
