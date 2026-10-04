@@ -10,7 +10,8 @@ const config: ExpoConfig = {
   backgroundColor: '#0a0b0d',
   icon: './assets/images/icon.png',
   scheme: 'guitarcoachfe',
-  userInterfaceStyle: 'automatic',
+  // The UI is dark-only. Android applies this through expo-system-ui.
+  userInterfaceStyle: 'dark',
   ios: {
     icon: './assets/expo.icon',
     bundleIdentifier: 'com.coelhoadevsteam.guitarcoach',
