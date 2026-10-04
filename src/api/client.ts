@@ -24,6 +24,12 @@ if (!target) {
   );
 }
 
+// A shipped build sends the session cookie on every call, so plain http would hand it to anyone
+// on the path. `expo export` loads `.env` (`http://localhost:3000`), which is how one could ship.
+if (!__DEV__ && new URL(target.url).protocol !== 'https:') {
+  throw new Error('The API base URL must use https:// in a production build.');
+}
+
 /** Which backend this build is talking to. Read by the dev-only row on the profile screen. */
 export const apiTarget: ApiTarget = target;
 
@@ -63,6 +69,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    /** better-auth's machine-readable `code` (e.g. `USER_ALREADY_EXISTS`), when the body has one. */
+    public code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -108,14 +116,16 @@ function buildUrl(path: string, query?: RequestOptions['query'], unprefixed?: bo
   return url.toString();
 }
 
-async function parseErrorMessage(response: Response) {
+async function toApiError(response: Response) {
   try {
     const data = await response.json();
-    return Array.isArray(data.message)
+    const message = Array.isArray(data.message)
       ? data.message.join(', ')
       : (data.message ?? response.statusText);
+    const code = typeof data.code === 'string' ? data.code : undefined;
+    return new ApiError(message, response.status, code);
   } catch {
-    return response.statusText;
+    return new ApiError(response.statusText, response.status);
   }
 }
 
@@ -145,7 +155,7 @@ async function send(url: string, init: RequestInit, prefixed: boolean, timeoutMs
     // with 401 as well, and treating that as an expired session would sign the user
     // out in the middle of signing in.
     if (response.status === 401 && prefixed) onUnauthorized?.();
-    throw new ApiError(await parseErrorMessage(response), response.status);
+    throw await toApiError(response);
   }
 
   return response;

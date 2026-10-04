@@ -1,3 +1,5 @@
+import { asShippedBuild } from '@/test/dev-flag';
+
 type Client = typeof import('@/api/client');
 
 type ApiEnv = { apiBaseUrl?: string; apiBaseUrlNative?: string };
@@ -128,6 +130,35 @@ describe('request', () => {
       request('/auth/sign-in/email', { method: 'POST', body: {}, unprefixed: true }),
     ).rejects.toThrow('Invalid email or password');
     expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
+  it("carries better-auth's error code so the UI can word it without the server's text", async () => {
+    const { request } = loadClient('ios');
+    globalThis.fetch = jest.fn().mockResolvedValue(
+      jsonResponse(422, {
+        message: 'User already exists. Use another email.',
+        code: 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL',
+      }),
+    ) as unknown as typeof fetch;
+
+    await expect(
+      request('/auth/sign-up/email', { method: 'POST', body: {}, unprefixed: true }),
+    ).rejects.toMatchObject({ status: 422, code: 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL' });
+  });
+
+  it('leaves the code undefined for a Nest error, which has none', async () => {
+    const { request } = loadClient('ios');
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(400, { message: ['title should not be empty'], statusCode: 400 }),
+      ) as unknown as typeof fetch;
+
+    await expect(request('/routines', { method: 'POST', body: {} })).rejects.toMatchObject({
+      status: 400,
+      code: undefined,
+      message: 'title should not be empty',
+    });
   });
 
   it('aborts a request that outruns its timeout and reports it as a timeout, not offline', async () => {
@@ -328,5 +359,37 @@ describe('the resolved base URL', () => {
 
   it('refuses to load at all when nothing is configured', () => {
     expect(() => loadClient('web', {})).toThrow(/EXPO_PUBLIC_API_BASE_URL is not set/);
+  });
+
+  it('refuses to load in a shipped build pointed at plain http', async () => {
+    await asShippedBuild(() => {
+      expect(() => loadClient('web', { apiBaseUrl: 'http://localhost:3000' })).toThrow(
+        /must use https/,
+      );
+    });
+  });
+
+  it('checks the URL the platform actually uses, not just the shared one', async () => {
+    await asShippedBuild(() => {
+      expect(() =>
+        loadClient('ios', {
+          apiBaseUrl: 'https://api.example.com',
+          apiBaseUrlNative: 'http://192.168.1.20:3000',
+        }),
+      ).toThrow(/must use https/);
+    });
+  });
+
+  it('loads in a shipped build pointed at https', async () => {
+    await asShippedBuild(() => {
+      expect(loadClient('ios', { apiBaseUrl: 'https://api.example.com' }).apiTarget.url).toBe(
+        'https://api.example.com',
+      );
+    });
+  });
+
+  // jest-expo leaves `__DEV__` true, which is what every other case in this file relies on.
+  it('still allows http in development, where the backend is local', () => {
+    expect(() => loadClient('web', { apiBaseUrl: 'http://localhost:3000' })).not.toThrow();
   });
 });
