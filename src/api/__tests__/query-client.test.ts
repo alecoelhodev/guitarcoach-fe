@@ -73,6 +73,21 @@ describe('queryClient defaults', () => {
   it('never retries a mutation — a half-applied write is worse than a failed one', () => {
     expect(queryClient.getDefaultOptions().mutations?.retry).toBe(0);
   });
+
+  it('fails a mutation fired offline instead of pausing it', async () => {
+    onlineManager.setOnline(false);
+    try {
+      const mutation = queryClient.getMutationCache().build(queryClient, {
+        mutationFn: () => Promise.reject(new Error('No connection')),
+        gcTime: 0,
+      });
+
+      await expect(mutation.execute(undefined)).rejects.toThrow('No connection');
+      expect(mutation.state.isPaused).toBe(false);
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
 });
 
 describe('module-scope listeners', () => {

@@ -1,8 +1,10 @@
+import { onlineManager, QueryClient } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react-native';
 
 import { signOut } from '@/api/auth';
 import { useSignOut } from '@/api/auth.queries';
 import { purgePersistedCache } from '@/api/persist';
+import { queryClient as appQueryClient } from '@/api/query-client';
 import { queryKeys } from '@/api/query-keys';
 import { useActiveSessionStore } from '@/features/session/session-store';
 import { useSessionStore } from '@/stores/session-store';
@@ -19,8 +21,8 @@ const RETRY_WINDOW_MS = 5000;
 const signOutMock = signOut as jest.MockedFunction<typeof signOut>;
 const purgeMock = purgePersistedCache as jest.MockedFunction<typeof purgePersistedCache>;
 
-async function setup() {
-  const { queryClient, wrapper } = withQueryClient();
+async function setup(client?: QueryClient) {
+  const { queryClient, wrapper } = withQueryClient(client);
   queryClient.setQueryData(queryKeys.me, makeUser());
 
   const { result } = await renderHook(() => useSignOut(), { wrapper });
@@ -107,5 +109,32 @@ describe('useSignOut', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(signOutMock).toHaveBeenCalledTimes(1);
+  });
+
+  // P1: under TanStack's default `networkMode: 'online'` this mutation paused offline, so
+  // `onSettled` never ran and the user stayed signed in on the device they asked to leave.
+  describe('offline', () => {
+    afterEach(() => onlineManager.setOnline(true));
+
+    it('still clears local state with the app client defaults', async () => {
+      onlineManager.setOnline(false);
+      signOutMock.mockRejectedValue(new Error('No connection'));
+      const client = new QueryClient({
+        defaultOptions: {
+          mutations: { ...appQueryClient.getDefaultOptions().mutations, gcTime: 0 },
+        },
+      });
+
+      const { result } = await setup(client);
+      result.current.mutate();
+
+      await waitFor(() => expect(result.current.isError).toBe(true), {
+        timeout: RETRY_WINDOW_MS,
+      });
+      expect(result.current.isPaused).toBe(false);
+      expect(useSessionStore.getState()).toMatchObject({ status: 'unauthenticated', user: null });
+      expect(client.getQueryData(queryKeys.me)).toBeUndefined();
+      expect(purgeMock).toHaveBeenCalledTimes(1);
+    });
   });
 });
