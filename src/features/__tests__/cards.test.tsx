@@ -129,6 +129,18 @@ describe('RoutineCard', () => {
 
     expect(screen.getByText('Focus on the B string')).toBeTruthy();
   });
+
+  // `{'' && …}` renders a bare string outside <Text>, which crashes on native.
+  it('renders empty notes exactly as no notes', async () => {
+    const empty = await render(<RoutineCard routine={makeRoutine({ notes: '' })} />);
+    const emptyTree = screen.toJSON();
+    await empty.unmount();
+
+    await render(<RoutineCard routine={makeRoutine({ notes: undefined })} />);
+
+    // Serialised: the trees carry fresh handler closures, so deep equality never holds.
+    expect(JSON.stringify(emptyTree)).toBe(JSON.stringify(screen.toJSON()));
+  });
 });
 
 describe('TaskCard', () => {
@@ -183,6 +195,17 @@ describe('TaskCard', () => {
     await render(<TaskCard task={makeTask({ description: 'Down-up at 80bpm' })} />);
 
     expect(screen.getByText('Down-up at 80bpm')).toBeTruthy();
+  });
+
+  it('renders an empty description exactly as none', async () => {
+    const empty = await render(<TaskCard task={makeTask({ description: '' })} />);
+    const emptyTree = screen.toJSON();
+    await empty.unmount();
+
+    await render(<TaskCard task={makeTask({ description: null })} />);
+
+    // Serialised: the trees carry fresh handler closures, so deep equality never holds.
+    expect(JSON.stringify(emptyTree)).toBe(JSON.stringify(screen.toJSON()));
   });
 });
 
@@ -260,6 +283,17 @@ describe('SessionCard', () => {
     await render(<SessionCard session={makeSession({ title: 'Blues in A', notes: null })} />);
 
     expect(screen.getByText('Blues in A')).toBeTruthy();
+  });
+
+  it('renders empty notes exactly as no notes', async () => {
+    const empty = await render(<SessionCard session={makeSession({ notes: '' })} />);
+    const emptyTree = screen.toJSON();
+    await empty.unmount();
+
+    await render(<SessionCard session={makeSession({ notes: null })} />);
+
+    // Serialised: the trees carry fresh handler closures, so deep equality never holds.
+    expect(JSON.stringify(emptyTree)).toBe(JSON.stringify(screen.toJSON()));
   });
 });
 

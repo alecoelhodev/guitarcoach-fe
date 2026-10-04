@@ -19,11 +19,11 @@ export function TaskCard({ task }: { task: Task }) {
           <ChevronRight color={Colors.neutral[700]} size={IconSize.sm} strokeWidth={IconStroke} />
         </View>
 
-        {task.description && (
+        {task.description ? (
           <ThemedText type="body" color="textMuted" numberOfLines={2}>
             {task.description}
           </ThemedText>
-        )}
+        ) : null}
 
         <View style={styles.row}>
           <View style={styles.badges}>
