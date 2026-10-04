@@ -52,7 +52,7 @@ function dropRestoreAfterSignOut() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -64,8 +64,9 @@ export default function RootLayout() {
 
   // Session restore is a network round-trip, so hold the splash until it settles —
   // otherwise `status === 'loading'` falls through both group guards and whichever
-  // group the URL points at mounts and starts firing queries.
-  const ready = fontsLoaded && status !== 'loading';
+  // group the URL points at mounts and starts firing queries. A font that fails to load
+  // falls back to the system face rather than holding the splash forever.
+  const ready = (fontsLoaded || fontError !== null) && status !== 'loading';
 
   useEffect(() => {
     // Same teardown as the deliberate sign-out path, and shared with it: an expired cookie
