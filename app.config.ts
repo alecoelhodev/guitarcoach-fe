@@ -1,5 +1,16 @@
 import type { ExpoConfig } from 'expo/config';
 
+// The plugin itself tolerates missing slugs, but it adds a source-map upload step to the native
+// build that fails without SENTRY_AUTH_TOKEN. Until the project exists, leave it out entirely;
+// the JS SDK still links and runs (it is inert without a DSN). Once the slugs are set, the token
+// must be an EAS secret too, or set SENTRY_DISABLE_AUTO_UPLOAD=true.
+const sentryOrg = process.env.SENTRY_ORG || undefined;
+const sentryProject = process.env.SENTRY_PROJECT || undefined;
+const sentryPlugin: NonNullable<ExpoConfig['plugins']> =
+  sentryOrg && sentryProject
+    ? [['@sentry/react-native/expo', { organization: sentryOrg, project: sentryProject }]]
+    : [];
+
 const config: ExpoConfig = {
   name: 'guitar-coach-fe',
   slug: 'guitar-coach',
@@ -81,6 +92,7 @@ const config: ExpoConfig = {
         imageWidth: 76,
       },
     ],
+    ...sentryPlugin,
   ],
   experiments: {
     typedRoutes: true,

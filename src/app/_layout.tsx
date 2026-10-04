@@ -3,6 +3,7 @@ import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import { Inter_800ExtraBold } from '@expo-google-fonts/inter/800ExtraBold';
+import * as Sentry from '@sentry/react-native';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
 import { Stack, type Theme, ThemeProvider } from 'expo-router';
@@ -17,12 +18,14 @@ import { queryClient } from '@/api/query-client';
 import { ErrorBoundaryFallback } from '@/components/error-boundary-fallback';
 import { ToastHost } from '@/components/toast-host';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
+import { initMonitoring, setMonitoringUser } from '@/lib/monitoring';
 import { clearLocalSession, expireSession } from '@/stores/clear-local-session';
 import { useSessionStore } from '@/stores/session-store';
 import { Colors } from '@/theme/tokens';
 
 import '@/global.css';
 
+initMonitoring();
 SplashScreen.preventAutoHideAsync();
 
 const navigationTheme: Theme = {
@@ -51,7 +54,7 @@ function dropRestoreAfterSignOut() {
   if (useSessionStore.getState().status === 'unauthenticated') queryClient.clear();
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -61,6 +64,7 @@ export default function RootLayout() {
   });
   const hydrate = useSessionStore((state) => state.hydrate);
   const status = useSessionStore((state) => state.status);
+  const userId = useSessionStore((state) => state.user?.id ?? null);
 
   // Session restore is a network round-trip, so hold the splash until it settles —
   // otherwise `status === 'loading'` falls through both group guards and whichever
@@ -81,6 +85,10 @@ export default function RootLayout() {
   useEffect(() => {
     hydrate(() => clearLocalSession(queryClient, { keepActiveSession: true }));
   }, [hydrate]);
+
+  useEffect(() => {
+    setMonitoringUser(userId);
+  }, [userId]);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
@@ -127,3 +135,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);
