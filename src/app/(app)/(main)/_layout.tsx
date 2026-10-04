@@ -25,6 +25,7 @@ export default function MainLayout() {
             animation: 'slide_from_bottom',
           }}
         />
+        <Stack.Screen name="library/new" />
         <Stack.Screen name="library/[id]" />
         <Stack.Screen name="history/index" />
         <Stack.Screen name="history/[id]" />

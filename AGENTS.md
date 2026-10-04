@@ -307,7 +307,13 @@ Verified against the committed OpenAPI schema:
 - **Session totals are client-derived.** There is no total-elapsed field and no analytics
   endpoint; per-task minutes are optional, so every total is a client-side sum that must
   render correctly when minutes are absent.
-- **Tasks are read-only for ordinary users** — write routes are admin-gated.
+- **Tasks are read-only for ordinary users** — write routes are admin-gated. Admins get a
+  "New task" entry in the Library (`/library/new`); it is hidden unless the cached user's
+  `role` is `admin`, but that check is cosmetic — the backend's `@Roles(['admin'])` enforces it.
+- **Account deletion is `DELETE /api/v1/users/me`, not better-auth's `/auth/delete-user`.** The
+  backend purges routines, sessions and recordings (including the bucket objects) before the
+  user. `useDeleteAccount` runs `clearLocalSession` **only on success** — unlike sign-out, a
+  failed delete must leave the user signed in, because the account still exists.
 - **The two AI modes are separate endpoints.** Draft & Review persists nothing until
   confirmed; Instant Create persists on success.
 - Auth is a better-auth httpOnly cookie. `src/stores/session-store.ts` only caches the

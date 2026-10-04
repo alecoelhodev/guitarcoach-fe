@@ -51,6 +51,12 @@ None of the following has run on a device yet; the automated suites can't prove 
 - [ ] **Offline History and Home.** Lists render from cache, with no session notes.
 - [ ] **Links.** Every card or row that navigates actually navigates on native; see the
       `Link asChild` rules in `AGENTS.md`.
+- [ ] **Delete account.** With a throwaway account that has a routine, a finished session and a
+      recording: Profile → Delete account → confirm. The app lands on sign-in, and signing in
+      with that account fails. Cancel in the dialog deletes nothing.
+- [ ] **New task (admin).** After making your account an admin (§4.1), the Library shows **New
+      task**. Create one; it opens on its detail screen and appears in the Library. A non-admin
+      account doesn't see the button.
 
 ## 3. Turn on Sentry
 
@@ -78,13 +84,23 @@ only, and no email, cookie or request body.
 
 Each decision unblocks work that Claude can then do.
 
-| Decision                                                              | Recommendation                                                                 | Unblocks                                                          |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| **In-app account deletion**                                           | Yes. Apple guideline 5.1.1(v) and Google Play both require it for sign-up apps | Backend endpoint plus a profile-screen button; Claude builds both |
-| **OTA updates** (`expo-updates`)                                      | Yes, after the first store release                                             | `runtimeVersion` policy and an EAS Update channel per profile     |
-| **Optimistic boot** (skip the 5s session check when a user is cached) | Yes, if cold starts feel slow on device                                        | A change in `src/stores/session-store.ts`                         |
-| **Pin GitHub Actions to commit SHAs**                                 | Yes. It's cheap supply-chain hardening                                         | Workflow edits in both repos                                      |
-| **Keep routine notes off the device**                                 | Optional. Session notes already are                                            | A `persist.ts` serializer change                                  |
+| Decision                                                              | Recommendation                          | Unblocks                                                      |
+| --------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------- |
+| **OTA updates** (`expo-updates`)                                      | Yes, after the first store release      | `runtimeVersion` policy and an EAS Update channel per profile |
+| **Optimistic boot** (skip the 5s session check when a user is cached) | Yes, if cold starts feel slow on device | A change in `src/stores/session-store.ts`                     |
+| **Pin GitHub Actions to commit SHAs**                                 | Yes. It's cheap supply-chain hardening  | Workflow edits in both repos                                  |
+| **Keep routine notes off the device**                                 | Optional. Session notes already are     | A `persist.ts` serializer change                              |
+
+### 4.1 Make your account an admin
+
+Only admins can create tasks, and there's no self-service way to become one. Run this once
+against the production database for your own email:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = '<your-email>';
+```
+
+Then sign out and back in, so the app caches the new role.
 
 ## 5. Store prerequisites (before the first submission)
 

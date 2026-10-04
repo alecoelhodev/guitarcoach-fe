@@ -1,15 +1,21 @@
-jest.mock('@/api/auth.queries', () => ({ useSignOut: jest.fn() }));
+jest.mock('@/api/auth.queries', () => ({ useSignOut: jest.fn(), useDeleteAccount: jest.fn() }));
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import { useSignOut } from '@/api/auth.queries';
+import { useDeleteAccount, useSignOut } from '@/api/auth.queries';
+import { ApiError } from '@/api/client';
 import { ProfileScreen } from '@/features/profile/profile-screen';
 import { useSessionStore } from '@/stores/session-store';
+import { useToastStore } from '@/stores/toast-store';
 import { asShippedBuild } from '@/test/dev-flag';
 import { makeUser } from '@/test/fixtures';
+import { withGluestack } from '@/test/gluestack';
 import { mutationStub } from '@/test/query-hooks';
 
 const useSignOutMock = useSignOut as unknown as jest.MockedFunction<(...args: never[]) => unknown>;
+const useDeleteAccountMock = useDeleteAccount as unknown as jest.MockedFunction<
+  (...args: never[]) => unknown
+>;
 
 function signedIn(user = makeUser()) {
   useSessionStore.setState({ status: 'authenticated', user });
@@ -18,6 +24,7 @@ function signedIn(user = makeUser()) {
 beforeEach(() => {
   jest.clearAllMocks();
   useSignOutMock.mockReturnValue(mutationStub());
+  useDeleteAccountMock.mockReturnValue(mutationStub());
 });
 
 describe('ProfileScreen', () => {
@@ -131,5 +138,70 @@ describe('ProfileScreen', () => {
     // locale, which differs between a laptop and CI's ICU build. The TZ pin in
     // `jest.config.js` fixes the zone but not the locale.
     expect(screen.getByText(/2026/)).toBeTruthy();
+  });
+
+  describe('account deletion', () => {
+    it('asks before deleting, and cancelling deletes nothing', async () => {
+      const mutation = mutationStub();
+      useDeleteAccountMock.mockReturnValue(mutation);
+      signedIn();
+      await render(withGluestack(<ProfileScreen />));
+
+      await fireEvent.press(screen.getByText('Delete account'));
+      expect(screen.getByText('Delete your account?')).toBeTruthy();
+
+      await fireEvent.press(screen.getByText('Cancel'));
+
+      expect(mutation.mutate).not.toHaveBeenCalled();
+      expect(screen.queryByText('Delete your account?')).toBeNull();
+    });
+
+    it('deletes once confirmed', async () => {
+      const mutation = mutationStub();
+      useDeleteAccountMock.mockReturnValue(mutation);
+      signedIn();
+      await render(withGluestack(<ProfileScreen />));
+
+      await fireEvent.press(screen.getByText('Delete account'));
+      // The dialog's confirm repeats the label; the trigger is the first match.
+      const [, confirm] = screen.getAllByText('Delete account');
+      await fireEvent.press(confirm);
+
+      expect(mutation.mutate).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays signed in and says why when the delete fails', async () => {
+      const mutation = mutationStub();
+      mutation.mutate.mockImplementation((_vars, options?: { onError?: (e: unknown) => void }) =>
+        options?.onError?.(new ApiError('down', 503)),
+      );
+      useDeleteAccountMock.mockReturnValue(mutation);
+      signedIn();
+      await render(withGluestack(<ProfileScreen />));
+
+      await fireEvent.press(screen.getByText('Delete account'));
+      await fireEvent.press(screen.getAllByText('Delete account')[1]);
+
+      expect(useToastStore.getState().toast).toMatchObject({
+        message: 'Something went wrong on our end',
+        variant: 'error',
+      });
+      expect(useSessionStore.getState().status).toBe('authenticated');
+    });
+
+    it('blocks both account actions while deleting', async () => {
+      const deleting = { ...mutationStub(), isPending: true };
+      const signOut = mutationStub();
+      useDeleteAccountMock.mockReturnValue(deleting);
+      useSignOutMock.mockReturnValue(signOut);
+      await render(withGluestack(<ProfileScreen />));
+
+      expect(screen.getByText('Deleting account…')).toBeTruthy();
+      await fireEvent.press(screen.getByText('Sign out'));
+      await fireEvent.press(screen.getByText('Deleting account…'));
+
+      expect(signOut.mutate).not.toHaveBeenCalled();
+      expect(screen.queryByText('Delete your account?')).toBeNull();
+    });
   });
 });

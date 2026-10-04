@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { signOut } from '@/api/auth';
+import { deleteAccount, signOut } from '@/api/auth';
 import { clearLocalSession } from '@/stores/clear-local-session';
 
 /**
@@ -22,5 +22,18 @@ export function useSignOut() {
     retry: 2,
     retryDelay: (attempt) => 500 * 2 ** attempt,
     onSettled: () => clearLocalSession(queryClient),
+  });
+}
+
+/**
+ * Unlike sign-out, a failed delete clears nothing: the account still exists, and quietly
+ * signing out would make it look gone. Only a confirmed delete runs the teardown.
+ */
+export function useDeleteAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: () => clearLocalSession(queryClient),
   });
 }
