@@ -34,3 +34,18 @@ export async function clearLocalSession(
   client.clear();
   await purgePersistedCache();
 }
+
+let expiring: Promise<void> | undefined;
+
+/**
+ * The 401 handler. One expired cookie fails every request in flight at once, so this runs
+ * the teardown once: later 401s join the one in progress, and once it has settled the
+ * status stays 'unauthenticated' until the next sign-in re-arms it.
+ */
+export function expireSession(client: QueryClient) {
+  if (useSessionStore.getState().status === 'unauthenticated') return Promise.resolve();
+  expiring ??= clearLocalSession(client, { keepActiveSession: true }).finally(() => {
+    expiring = undefined;
+  });
+  return expiring;
+}

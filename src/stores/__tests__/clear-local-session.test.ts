@@ -3,7 +3,7 @@ jest.mock('@/api/persist', () => ({ purgePersistedCache: jest.fn() }));
 import { purgePersistedCache } from '@/api/persist';
 import { queryKeys } from '@/api/query-keys';
 import { useActiveSessionStore } from '@/features/session/session-store';
-import { clearLocalSession } from '@/stores/clear-local-session';
+import { clearLocalSession, expireSession } from '@/stores/clear-local-session';
 import { useSessionStore } from '@/stores/session-store';
 import { makeUser } from '@/test/fixtures';
 import { makeTestQueryClient } from '@/test/query-client';
@@ -98,5 +98,52 @@ describe('clearLocalSession', () => {
     await clearLocalSession(makeTestQueryClient());
 
     expect(useActiveSessionStore.getState().tasks).toEqual([]);
+  });
+});
+
+// S9: one expired cookie fails every request in flight, and each 401 used to run the
+// teardown again.
+describe('expireSession', () => {
+  it('tears down once for a burst of concurrent 401s', async () => {
+    await useSessionStore.getState().setUser(makeUser());
+    const client = makeTestQueryClient();
+
+    await Promise.all([expireSession(client), expireSession(client), expireSession(client)]);
+
+    expect(purgeMock).toHaveBeenCalledTimes(1);
+    expect(useSessionStore.getState().status).toBe('unauthenticated');
+  });
+
+  it('ignores a late 401 once the session is already gone', async () => {
+    await useSessionStore.getState().setUser(makeUser());
+    const client = makeTestQueryClient();
+    await expireSession(client);
+
+    await expireSession(client);
+
+    expect(purgeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-arms after the next sign-in', async () => {
+    const client = makeTestQueryClient();
+    await useSessionStore.getState().setUser(makeUser());
+    await expireSession(client);
+
+    await useSessionStore.getState().setUser(makeUser());
+    await expireSession(client);
+
+    expect(purgeMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the owner-stamped practice session for the user to finish', async () => {
+    await useSessionStore.getState().setUser(makeUser());
+    useActiveSessionStore.getState().start({
+      userId: 'user-1',
+      tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+    });
+
+    await expireSession(makeTestQueryClient());
+
+    expect(useActiveSessionStore.getState().tasks).toHaveLength(1);
   });
 });

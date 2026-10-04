@@ -17,7 +17,7 @@ import { queryClient } from '@/api/query-client';
 import { ErrorBoundaryFallback } from '@/components/error-boundary-fallback';
 import { ToastHost } from '@/components/toast-host';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
-import { clearLocalSession } from '@/stores/clear-local-session';
+import { clearLocalSession, expireSession } from '@/stores/clear-local-session';
 import { useSessionStore } from '@/stores/session-store';
 import { Colors } from '@/theme/tokens';
 
@@ -74,7 +74,7 @@ export default function RootLayout() {
     // practice session is the exception — it is owner-stamped, so it stays and the user can
     // finish it after signing back in rather than losing unsaved minutes to a dead cookie.
     setUnauthorizedHandler(() => {
-      void clearLocalSession(queryClient, { keepActiveSession: true });
+      void expireSession(queryClient);
     });
   }, []);
 
