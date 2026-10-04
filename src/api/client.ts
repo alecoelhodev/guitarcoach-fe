@@ -41,6 +41,24 @@ if (__DEV__ && process.env.NODE_ENV !== 'test') {
 /** `ApiError.status` when the request never reached the server. */
 export const OFFLINE_STATUS = 0;
 
+/**
+ * `ApiError.status` when we gave up waiting. Distinct from `OFFLINE_STATUS` because the
+ * two need different copy: "check your connection" is wrong advice for a server that is
+ * reachable and simply slow, which is what a stalled upload or a hung proxy looks like.
+ * Not a real HTTP status — 408 is what a *server* sends, and nothing sent this.
+ */
+export const TIMEOUT_STATUS = -1;
+
+/**
+ * Ceilings, not expectations. Without one, `fetch` waits on the platform default (~60s on
+ * iOS, indefinite on a black-holed socket), and the screen shows a spinner the user cannot
+ * cancel. Callers that legitimately take longer pass their own: `coach.ts` allows 60s for
+ * the planner, `auth.ts` allows the boot session only 5s because the splash waits on it.
+ */
+const DEFAULT_TIMEOUT_MS = 20_000;
+/** A 50 MB recording over a slow uplink is minutes of legitimate transfer, not a stall. */
+const UPLOAD_TIMEOUT_MS = 180_000;
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -78,7 +96,7 @@ type RequestOptions = {
   query?: Record<string, string | number | boolean | undefined>;
   /** /auth/* and /health/* sit outside the /api/v1 prefix. */
   unprefixed?: boolean;
-  /** Abort after this many ms. Surfaces as the same offline `ApiError` as an unreachable server. */
+  /** Abort after this many ms. Defaults to `DEFAULT_TIMEOUT_MS`; surfaces as `TIMEOUT_STATUS`. */
   timeoutMs?: number;
 };
 
@@ -101,21 +119,23 @@ async function parseErrorMessage(response: Response) {
   }
 }
 
-async function send(url: string, init: RequestInit, prefixed: boolean, timeoutMs?: number) {
+async function send(url: string, init: RequestInit, prefixed: boolean, timeoutMs: number) {
   // `AbortSignal.timeout` does not exist here: React Native polyfills AbortSignal from
   // abort-controller@3, which predates that static. whatwg-fetch does honour `signal`.
-  const controller = timeoutMs === undefined ? undefined : new AbortController();
-  const timer =
-    controller === undefined ? undefined : setTimeout(() => controller.abort(), timeoutMs);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
   try {
-    response = await fetch(url, { ...init, signal: controller?.signal });
+    response = await fetch(url, { ...init, signal: controller.signal });
   } catch {
     // fetch only rejects when the request never completed — no route, DNS, TLS, or our
     // own abort above. Anything the server actually answered arrives as a non-ok
-    // Response below.
-    throw new ApiError('No connection', OFFLINE_STATUS);
+    // Response below. The signal is what separates our abort from a dead network; the
+    // two used to collapse into one error and a timeout read as "no connection".
+    throw controller.signal.aborted
+      ? new ApiError('Timed out', TIMEOUT_STATUS)
+      : new ApiError('No connection', OFFLINE_STATUS);
   } finally {
     clearTimeout(timer);
   }
@@ -144,7 +164,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       body: options.body ? JSON.stringify(options.body) : undefined,
     },
     !options.unprefixed,
-    options.timeoutMs,
+    options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
   );
 
   if (response.status === 204) return undefined as T;
@@ -187,6 +207,7 @@ export async function upload<T>(path: string, file: UploadFile): Promise<T> {
       body: formData,
     },
     true,
+    UPLOAD_TIMEOUT_MS,
   );
 
   return response.json() as Promise<T>;

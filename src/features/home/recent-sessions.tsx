@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { SessionCard } from '@/features/history/session-card';
+import { SectionSkeleton } from '@/features/home/section-skeleton';
 import { countCompletedTasks, formatMinutes, sumSessionMinutes } from '@/lib/duration';
 import { Colors, Spacing } from '@/theme/tokens';
 import type { PracticeSession } from '@/types/session';
@@ -16,10 +17,17 @@ export type RecentSessionsProps = {
   sessions: PracticeSession[];
   /** Canvas 2a collapses the stacked cards into a table-like row set. */
   isWide?: boolean;
+  /** Renders a placeholder row rather than nothing, so the section does not pop in. */
+  isPending?: boolean;
 };
 
 /** Canvas 02 "Recent session" (singular) and 2a "Recent sessions" (a table). */
-export function RecentSessions({ sessions, isWide = false }: RecentSessionsProps) {
+export function RecentSessions({
+  sessions,
+  isWide = false,
+  isPending = false,
+}: RecentSessionsProps) {
+  if (isPending) return <SectionSkeleton title={isWide ? 'Recent sessions' : 'Recent session'} />;
   if (sessions.length === 0) return null;
 
   return (

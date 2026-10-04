@@ -1,4 +1,4 @@
-import { SectionList, StyleSheet, View } from 'react-native';
+import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSessions } from '@/api/sessions.queries';
@@ -7,13 +7,24 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { SessionCard } from '@/features/history/session-card';
+import { usePaginatedList } from '@/hooks/use-paginated-list';
 import { groupSessionsByDay } from '@/lib/date-grouping';
-import { MaxContentWidth, Spacing } from '@/theme/tokens';
+import { Colors, MaxContentWidth, Spacing } from '@/theme/tokens';
 
 export function HistoryList() {
   const query = useSessions();
-  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  const {
+    listState,
+    isRefreshing,
+    refresh,
+    hasNextPage,
+    isFetchingNextPage,
+    isNextPageError,
+    loadMore,
+    retryNextPage,
+  } = usePaginatedList(query);
   const sessions = query.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
@@ -24,7 +35,8 @@ export function HistoryList() {
         </ThemedText>
 
         <QueryState
-          query={query}
+          query={listState}
+          skeleton={<SkeletonList />}
           errorTitle="Couldn't load your history"
           isEmpty={sessions.length === 0}
           empty={
@@ -40,6 +52,14 @@ export function HistoryList() {
                 title: group.date,
                 data: group.sessions,
               }))}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={refresh}
+                  tintColor={Colors.accentRamp[700]}
+                  colors={[Colors.accentRamp[700]]}
+                />
+              }
               keyExtractor={(session) => session.id}
               renderItem={({ item }) => <SessionCard session={item} />}
               renderSectionHeader={({ section }) => (
@@ -49,13 +69,18 @@ export function HistoryList() {
               )}
               contentContainerStyle={styles.list}
               ListFooterComponent={
-                hasNextPage ? (
+                isNextPageError ? (
                   <View style={styles.footer}>
-                    <Button
-                      variant="tertiary"
-                      disabled={isFetchingNextPage}
-                      onPress={() => fetchNextPage()}
-                    >
+                    <ThemedText type="body" color="textMuted">
+                      {"Couldn't load older sessions."}
+                    </ThemedText>
+                    <Button variant="tertiary" onPress={retryNextPage}>
+                      Try again
+                    </Button>
+                  </View>
+                ) : hasNextPage ? (
+                  <View style={styles.footer}>
+                    <Button variant="tertiary" disabled={isFetchingNextPage} onPress={loadMore}>
                       {isFetchingNextPage ? 'Loading…' : 'Load older sessions'}
                     </Button>
                   </View>

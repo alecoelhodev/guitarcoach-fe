@@ -4,6 +4,8 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SectionSkeleton } from '@/features/home/section-skeleton';
 import { formatRoutineMeta } from '@/lib/routine-meta';
 import { Colors, Spacing } from '@/theme/tokens';
 import type { Routine } from '@/types/routine';
@@ -18,6 +20,8 @@ export type ActiveRoutinesProps = {
   /** Wide-only: the grid cards carry a real Start. The mobile strip has no such button. */
   onStart?: (routine: Routine) => void;
   startingRoutineId?: string;
+  /** Renders placeholder cards rather than nothing, so the section does not pop in. */
+  isPending?: boolean;
 };
 
 /**
@@ -31,7 +35,11 @@ export function ActiveRoutines({
   isWide = false,
   onStart,
   startingRoutineId,
+  isPending = false,
 }: ActiveRoutinesProps) {
+  // Two sibling sections already show skeletons while this one rendered nothing, so the
+  // screen settled in two stages and the layout jumped under the user's thumb.
+  if (isPending) return <SectionSkeleton title="Active routines" />;
   if (routines.length === 0) return null;
 
   return (

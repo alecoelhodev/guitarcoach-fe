@@ -47,6 +47,13 @@ describe('ConfirmDialog', () => {
   const onConfirm = jest.fn();
   const onCancel = jest.fn();
 
+  /**
+   * `includeHiddenElements` because the backdrop enters on reanimated's `FadeIn`, so its
+   * first frame is `opacity: 0` and RNTL otherwise treats it as hidden from accessibility.
+   */
+  const backdrop = () =>
+    screen.getByTestId('confirm-dialog-backdrop', { includeHiddenElements: true });
+
   beforeEach(() => jest.clearAllMocks());
 
   it('renders nothing while closed', async () => {
@@ -125,6 +132,42 @@ describe('ConfirmDialog', () => {
 
     await fireEvent.press(screen.getByText('Confirm'));
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  // Dismissing is not cancelling. Home's resume prompt makes "Discard" the cancel action, so
+  // routing a backdrop tap to `onCancel` destroyed the very session the dialog was offering
+  // to restore.
+  it('sends a backdrop tap to onDismiss, not to onCancel', async () => {
+    const onDismiss = jest.fn();
+    await render(
+      withGluestack(
+        <ConfirmDialog
+          visible
+          title="Resume?"
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+          onDismiss={onDismiss}
+        />,
+      ),
+    );
+
+    await fireEvent.press(backdrop());
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('falls back to onCancel for a dialog whose cancel is harmless', async () => {
+    await render(
+      withGluestack(
+        <ConfirmDialog visible title="Delete?" onConfirm={onConfirm} onCancel={onCancel} />,
+      ),
+    );
+
+    await fireEvent.press(backdrop());
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it('still confirms through the destructive variant', async () => {

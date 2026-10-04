@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { requestPasswordReset, signIn } from '@/api/auth';
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { AuthForm } from '@/features/auth/auth-form';
+import { useActiveSessionStore } from '@/features/session/session-store';
 import { makeUser } from '@/test/fixtures';
 
 const mockReplace = jest.fn();
@@ -152,5 +153,69 @@ describe('mode switching', () => {
     // Display name exists only in create mode, Forgot password only in sign-in mode.
     expect(screen.getByText('Display name')).toBeTruthy();
     expect(screen.queryByText('Forgot password?')).toBeNull();
+  });
+});
+
+describe('unsaved practice', () => {
+  // A 401 keeps the practice on disk rather than discarding it, so the screen the user lands
+  // on has to say so — otherwise it looks exactly like having lost the session.
+  const startPractice = () =>
+    useActiveSessionStore.getState().start({
+      userId: 'user-1',
+      tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+    });
+
+  it('says the session survived when one is still on the device', async () => {
+    startPractice();
+    await render(<AuthForm />);
+
+    expect(screen.getByText('Your practice is still here')).toBeTruthy();
+  });
+
+  it('says nothing after a deliberate sign-out, which clears the store', async () => {
+    await render(<AuthForm />);
+
+    expect(screen.queryByText('Your practice is still here')).toBeNull();
+  });
+
+  it('does not offer it on the create-account side, where it means nothing', async () => {
+    startPractice();
+    await render(<AuthForm initialMode="create" />);
+
+    expect(screen.queryByText('Your practice is still here')).toBeNull();
+  });
+});
+
+describe('keyboard', () => {
+  // One of nine inputs set a return key and none set `autoComplete`, so Android's autofill
+  // had nothing to match on and the keyboard's Return dismissed instead of advancing.
+  it('advances through the fields and submits from the password key', async () => {
+    signInMock.mockResolvedValue({ user });
+    await render(<AuthForm />);
+
+    const email = screen.getByPlaceholderText('jordan@example.com');
+    const password = screen.getByTestId('password-input');
+
+    expect(email.props.returnKeyType).toBe('next');
+    expect(email.props.autoComplete).toBe('email');
+    expect(password.props.returnKeyType).toBe('go');
+    expect(password.props.autoComplete).toBe('current-password');
+
+    await fireEvent.changeText(email, 'jordan@example.com');
+    await fireEvent.changeText(password, 'a-real-password');
+    await fireEvent(password, 'submitEditing');
+
+    await waitFor(() =>
+      expect(signInMock).toHaveBeenCalledWith({
+        email: 'jordan@example.com',
+        password: 'a-real-password',
+      }),
+    );
+  });
+
+  it('asks for a new password rather than the saved one when creating an account', async () => {
+    await render(<AuthForm initialMode="create" />);
+
+    expect(screen.getByTestId('password-input').props.autoComplete).toBe('new-password');
   });
 });

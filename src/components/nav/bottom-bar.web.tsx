@@ -8,8 +8,8 @@ import {
   PRACTICE_HREF,
 } from '@/components/nav/destinations';
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
-import { FontFamily } from '@/theme/typography';
+import { Colors, IconSize, IconStroke, Radius, Spacing } from '@/theme/tokens';
+import { FontFamily, Typography } from '@/theme/typography';
 
 const PRACTICE_SIZE = 58;
 
@@ -50,7 +50,11 @@ function TabItem({ href, label, active, Icon }: Destination & { active: boolean 
   return (
     <Link href={href} asChild>
       <View style={styles.item}>
-        <Icon color={active ? Colors.accent : Colors.neutral[600]} size={20} strokeWidth={2.75} />
+        <Icon
+          color={active ? Colors.accent : Colors.neutral[600]}
+          size={IconSize.lg}
+          strokeWidth={IconStroke}
+        />
         <ThemedText style={active ? activeTabLabelStyle : styles.itemLabel}>{label}</ThemedText>
       </View>
     </Link>
@@ -63,7 +67,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: Spacing[2],
-    paddingBottom: Spacing[3],
+    // `env()` is a CSS value react-native-web passes straight through. A mobile browser in
+    // standalone/PWA mode draws the home indicator over the page, and a fixed 13px left the
+    // bottom row of labels under it; the `max()` keeps the padding on a desktop browser,
+    // where the env var resolves to 0.
+    paddingBottom: `max(${Spacing[3]}px, env(safe-area-inset-bottom))` as unknown as number,
     paddingHorizontal: Spacing[3],
     backgroundColor: Colors.neutral[100],
     borderTopWidth: 1,
@@ -81,8 +89,7 @@ const styles = StyleSheet.create({
     gap: Spacing[1],
   },
   itemLabel: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 8.5,
+    ...Typography.navLabel,
     color: Colors.neutral[600],
   },
   itemLabelActive: {
@@ -105,10 +112,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
   },
   practiceLabel: {
+    ...Typography.navLabel,
     fontFamily: FontFamily.heading,
-    fontSize: 9.5,
-    lineHeight: 9.5 * 1.1,
-    color: '#ffffff',
+    color: Colors.white,
     textAlign: 'center',
   },
 });

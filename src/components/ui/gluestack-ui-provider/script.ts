@@ -11,7 +11,14 @@ export const script = (mode: string) => {
     documentElement.classList.remove(theme === 'light' ? 'dark' : 'light');
     documentElement.classList.add(theme);
     documentElement.style.colorScheme = theme;
-  } catch (e) {
-    console.error(e);
+  } catch {
+    // Deliberately silent in a shipped build. This was the one ungated `console.error` in
+    // the repo, and it runs in production web: the page renders correctly on the dark
+    // default without a colour-scheme class, so there is nothing here for a user to act on
+    // and nothing collecting it.
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.warn('[gluestack] could not set the colour scheme class');
+    }
   }
 };

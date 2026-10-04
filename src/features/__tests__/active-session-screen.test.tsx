@@ -1,10 +1,19 @@
 jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
 jest.mock('@/api/sessions.queries', () => ({ useCreateSession: jest.fn() }));
+// A render counter on a task row. The real component still renders — this only records that
+// it was asked to, which is the only way to prove the clock's tick stays out of the list.
+jest.mock('@/components/ui/checklist-row', () => {
+  const actual = jest.requireActual('@/components/ui/checklist-row');
+  return {
+    ChecklistRow: jest.fn((props) => actual.ChecklistRow(props)),
+  };
+});
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { useCreateSession } from '@/api/sessions.queries';
+import { ChecklistRow } from '@/components/ui/checklist-row';
 import { ActiveSessionScreen } from '@/features/session/active-session-screen';
 import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { storage } from '@/lib/storage';
@@ -13,6 +22,7 @@ import { useToastStore } from '@/stores/toast-store';
 import { mockRouter } from '@/test/expo-router';
 import { makeUser } from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
+import { countHostProp } from '@/test/host-props';
 import { mutationStub } from '@/test/query-hooks';
 
 /**
@@ -172,6 +182,31 @@ describe('with an active session', () => {
     });
 
     expect(screen.getByText('1:05')).toBeTruthy();
+  });
+
+  /**
+   * The tick used to live in the screen body, so every second re-rendered the whole session:
+   * each task card, its checkbox, its minutes stepper, and the notes field the user was
+   * typing into. `TextInput` is the one that shows — a controlled input re-rendered under a
+   * composing keyboard drops characters on Android.
+   *
+   * Asserted through a render counter on a sibling rather than a snapshot, because the
+   * clock's own text must still change.
+   */
+  it('advances the clock without re-rendering the rest of the session', async () => {
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    const rowRenders = (ChecklistRow as unknown as jest.Mock).mock.calls.length;
+    expect(rowRenders).toBeGreaterThan(0);
+
+    await act(async () => {
+      jest.advanceTimersByTime(3000);
+    });
+
+    expect(screen.getByText('0:03')).toBeTruthy();
+    // Three ticks, and the task row was not asked to render for any of them.
+    expect((ChecklistRow as unknown as jest.Mock).mock.calls).toHaveLength(rowRenders);
   });
 
   /**
@@ -525,4 +560,13 @@ describe('with an active session', () => {
     expect(screen.getByText('Saved when you finish.')).toBeTruthy();
     expect(screen.getByText('Elapsed · on this device')).toBeTruthy();
   });
+});
+
+// The screen puts its primary action directly under a text field, so the scroll view has to
+// keep taps rather than spend the first one dismissing the keyboard.
+it('keeps controls tappable while the keyboard is up', async () => {
+  startSession();
+  await render(withGluestack(<ActiveSessionScreen />));
+
+  expect(countHostProp(screen.root, 'keyboardShouldPersistTaps', 'handled')).toBeGreaterThan(0);
 });

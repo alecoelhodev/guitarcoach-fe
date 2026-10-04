@@ -1,13 +1,21 @@
 /**
- * Type scale from `wireframes/Guitar Coach Wireframes.dc.html`.
+ * Type scale from `wireframes/Guitar Coach Wireframes.dc.html`, **rescaled for a real
+ * viewport**.
+ *
+ * The canvas draws its phone inside a `max-width:318px` frame, so its px values are sized
+ * for a 318-wide viewport. React Native measures in density-independent points, where a
+ * modern handset is 390–440 — the scale had been ported 1:1 into that, which shipped body
+ * copy at 11.5pt and input text at 12.5pt. Every size below is the canvas value × 390/318,
+ * rounded to the nearest half point: the proportions the canvas specifies are unchanged,
+ * only the viewport they were drawn for is corrected. Do not "restore" the canvas numbers.
  *
  * One family (Inter) in five weights. React Native cannot synthesise weights on
  * Android, so each role names its own face rather than setting `fontWeight`.
  *
- * The canvas has exactly two real heading sizes: `.h1` at 21px for screen titles and
- * `.h2` at 16px for card titles. The ladder below is anchored so that the two roles
- * screens already use most — `h3` (10 call sites) and `h5` (16) — land on those two
- * sizes, which is why the migration needs no per-screen role changes.
+ * The canvas has exactly two real heading sizes: `.h1` for screen titles and `.h2` for card
+ * titles. The ladder below is anchored so that the two roles screens already use most —
+ * `h3` and `h5` — land on those two, which is why the migration needed no per-screen role
+ * changes.
  */
 
 export const FontFamily = {
@@ -18,74 +26,88 @@ export const FontFamily = {
   bodySemiBold: 'Inter_600SemiBold',
 } as const;
 
+/**
+ * Canvas frame width → phone width. Exported so anything that still needs to carry a raw
+ * canvas measurement into a style can apply the same correction rather than guessing.
+ */
+export const CANVAS_SCALE = 390 / 318;
+
 export const Typography = {
-  // `.big` — the session clock and the weekly stat figures.
+  // `.big` — the session clock and the weekly stat figures. Canvas 46.
   display: {
     fontFamily: FontFamily.display,
-    fontSize: 46,
-    lineHeight: 46,
-    letterSpacing: -0.03 * 46,
+    fontSize: 56,
+    lineHeight: 56,
+    letterSpacing: -0.03 * 56,
   },
+  // Canvas 28.
   h1: {
     fontFamily: FontFamily.heading,
-    fontSize: 28,
-    lineHeight: 28 * 1.15,
-    letterSpacing: -0.01 * 28,
+    fontSize: 34,
+    lineHeight: 34 * 1.15,
+    letterSpacing: -0.01 * 34,
   },
+  // Canvas 24.
   h2: {
     fontFamily: FontFamily.heading,
-    fontSize: 24,
-    lineHeight: 24 * 1.2,
-    letterSpacing: -0.01 * 24,
+    fontSize: 29.5,
+    lineHeight: 29.5 * 1.2,
+    letterSpacing: -0.01 * 29.5,
   },
-  // Canvas `.h1` — screen titles.
+  // Canvas `.h1` (21) — screen titles.
   h3: {
     fontFamily: FontFamily.heading,
-    fontSize: 21,
-    lineHeight: 21 * 1.15,
-    letterSpacing: -0.01 * 21,
+    fontSize: 26,
+    lineHeight: 26 * 1.15,
+    letterSpacing: -0.01 * 26,
   },
+  // Canvas 18.
   h4: {
     fontFamily: FontFamily.heading,
-    fontSize: 18,
-    lineHeight: 18 * 1.2,
-    letterSpacing: -0.01 * 18,
+    fontSize: 22,
+    lineHeight: 22 * 1.2,
+    letterSpacing: -0.01 * 22,
   },
-  // Canvas `.h2` — card titles.
+  // Canvas `.h2` (16) — card titles.
   h5: {
     fontFamily: FontFamily.heading,
-    fontSize: 16,
-    lineHeight: 16 * 1.25,
-    letterSpacing: -0.01 * 16,
+    fontSize: 20,
+    lineHeight: 20 * 1.25,
+    letterSpacing: -0.01 * 20,
   },
-  // `.xs`
+  // `.xs` (9.5)
   overline: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 9.5,
+    fontSize: 12,
     textTransform: 'uppercase' as const,
-    letterSpacing: 0.07 * 9.5,
+    letterSpacing: 0.07 * 12,
   },
-  // `.mt`
+  // `.mt` (11.5)
   body: {
     fontFamily: FontFamily.body,
-    fontSize: 11.5,
-    lineHeight: 11.5 * 1.45,
+    fontSize: 14,
+    lineHeight: 14 * 1.45,
   },
-  // `.btnp`
-  button: { fontFamily: FontFamily.bodySemiBold, fontSize: 14, lineHeight: 14 * 1.2 },
-  // `.in`
-  input: { fontFamily: FontFamily.body, fontSize: 12.5, lineHeight: 12.5 * 1.2 },
-  // `.lb`
-  label: { fontFamily: FontFamily.bodySemiBold, fontSize: 12.5, lineHeight: 12.5 * 1.35 },
-  // `.bdg`
+  // `.btnp` (14)
+  button: { fontFamily: FontFamily.bodySemiBold, fontSize: 17, lineHeight: 17 * 1.2 },
+  // `.in` (12.5)
+  input: { fontFamily: FontFamily.body, fontSize: 15.5, lineHeight: 15.5 * 1.2 },
+  // `.lb` (12.5)
+  label: { fontFamily: FontFamily.bodySemiBold, fontSize: 15.5, lineHeight: 15.5 * 1.35 },
+  // `.bdg` (9)
   badge: {
     fontFamily: FontFamily.heading,
-    fontSize: 9,
+    fontSize: 11,
     textTransform: 'uppercase' as const,
-    letterSpacing: 0.05 * 9,
+    letterSpacing: 0.05 * 11,
   },
-  // `.err` / `.ok`
-  caption: { fontFamily: FontFamily.bodySemiBold, fontSize: 10.5, lineHeight: 10.5 * 1.35 },
+  // `.err` / `.ok` (10.5)
+  caption: { fontFamily: FontFamily.bodySemiBold, fontSize: 13, lineHeight: 13 * 1.35 },
+  /**
+   * Tab-bar and rail labels. Not a canvas role — the nav chrome carried raw `fontSize`
+   * literals at two different values (8.5 and 9.5) for what is visually one thing.
+   */
+  navLabel: { fontFamily: FontFamily.bodySemiBold, fontSize: 12, lineHeight: 12 * 1.2 },
 } as const;
 
 export type TypographyRole = keyof typeof Typography;

@@ -61,4 +61,42 @@ describe('clearLocalSession', () => {
 
     expect(useActiveSessionStore.getState().tasks).toEqual([]);
   });
+
+  // An expired cookie is not a change of user. The practice session carries the `userId` that
+  // wrote it and every reader checks it, so keeping it costs no isolation — while wiping it
+  // threw away minutes and notes that had never been anywhere but this device.
+  it('keeps the practice in progress when only the cookie expired', async () => {
+    const client = makeTestQueryClient();
+    client.setQueryData(queryKeys.me, makeUser());
+    await useSessionStore.getState().setUser(makeUser());
+    useActiveSessionStore.getState().start({
+      userId: 'user-1',
+      tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+    });
+    useActiveSessionStore.getState().setNotes('UNSAVED');
+
+    await clearLocalSession(client, { keepActiveSession: true });
+
+    // Everything account-scoped still goes.
+    expect(useSessionStore.getState()).toMatchObject({ status: 'unauthenticated', user: null });
+    expect(client.getQueryData(queryKeys.me)).toBeUndefined();
+    expect(purgeMock).toHaveBeenCalledTimes(1);
+    // The unsaved practice does not.
+    expect(useActiveSessionStore.getState()).toMatchObject({
+      userId: 'user-1',
+      notes: 'UNSAVED',
+    });
+    expect(useActiveSessionStore.getState().tasks).toHaveLength(1);
+  });
+
+  it('still clears the practice on a deliberate sign-out, which is the default', async () => {
+    useActiveSessionStore.getState().start({
+      userId: 'user-1',
+      tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+    });
+
+    await clearLocalSession(makeTestQueryClient());
+
+    expect(useActiveSessionStore.getState().tasks).toEqual([]);
+  });
 });

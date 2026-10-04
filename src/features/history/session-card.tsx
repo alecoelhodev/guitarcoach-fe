@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { countCompletedTasks, formatMinutes, sumSessionMinutes } from '@/lib/duration';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, IconSize, IconStroke, Spacing } from '@/theme/tokens';
 import type { PracticeSession } from '@/types/session';
 
 export function SessionCard({ session }: { session: PracticeSession }) {
@@ -20,7 +20,7 @@ export function SessionCard({ session }: { session: PracticeSession }) {
           <ThemedText type="label" style={styles.title}>
             {session.title ?? 'Practice session'}
           </ThemedText>
-          <ChevronRight color={Colors.neutral[700]} size={16} strokeWidth={2.75} />
+          <ChevronRight color={Colors.neutral[700]} size={IconSize.sm} strokeWidth={IconStroke} />
         </View>
 
         {session.notes && (

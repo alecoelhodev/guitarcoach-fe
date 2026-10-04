@@ -139,7 +139,7 @@ describe('Segmented', () => {
 
 describe('Toast', () => {
   it('defaults to the neutral variant and carries the alert role', async () => {
-    await render(<Toast message="Session saved" />);
+    await render(<Toast message="Session saved" onDismiss={jest.fn()} />);
 
     expect(screen.getByText('Session saved')).toBeTruthy();
     // Queried by prop rather than `getByRole('alert')`: the View sets `accessibilityRole`
@@ -149,7 +149,7 @@ describe('Toast', () => {
   });
 
   it.each(['default', 'success', 'error'] as const)('renders the %s variant', async (variant) => {
-    await render(<Toast message="Saved" variant={variant} />);
+    await render(<Toast message="Saved" variant={variant} onDismiss={jest.fn()} />);
 
     expect(screen.getByText('Saved')).toBeTruthy();
   });

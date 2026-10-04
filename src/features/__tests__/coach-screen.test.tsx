@@ -15,6 +15,7 @@ import {
 } from '@/api/coach.queries';
 import { CoachScreen } from '@/features/coach/coach-screen';
 import { mockRouter } from '@/test/expo-router';
+import { countHostProp } from '@/test/host-props';
 import { mutationStub } from '@/test/query-hooks';
 
 /**
@@ -113,6 +114,21 @@ describe('mode switching', () => {
     await fireEvent.press(screen.getByText('Fix my barre chords'));
 
     expect(screen.getByPlaceholderText(PROMPT).props.value).toBe('Fix my barre chords');
+  });
+
+  // `fireEvent.press` reaches the chip either way, so this asserts the prop that decides
+  // whether a real tap does. Without it the scroll view eats the first tap to dismiss the
+  // keyboard and the chip never fires.
+  it('keeps the chips tappable while the keyboard is up', async () => {
+    await render(<CoachScreen />);
+
+    expect(countHostProp(screen.root, 'keyboardShouldPersistTaps', 'handled')).toBe(1);
+  });
+
+  it('bounds the prompt rather than sending unlimited text to the model', async () => {
+    await render(<CoachScreen />);
+
+    expect(screen.getByPlaceholderText(PROMPT).props.maxLength).toBe(1000);
   });
 
   it('clears a pending draft when the mode changes', async () => {

@@ -13,7 +13,7 @@ jest.mock('@/features/session/use-start-practice', () => ({
 jest.mock('@/api/sessions.queries', () => ({ useSessions: jest.fn() }));
 jest.mock('@/api/tasks.queries', () => ({ useTasks: jest.fn() }));
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { useRoutines } from '@/api/routines.queries';
@@ -24,6 +24,7 @@ import { LibraryList } from '@/features/library/library-list';
 import { RoutinesList } from '@/features/routines/routines-list';
 import { linkHrefs } from '@/test/expo-router';
 import { makePage, makeRoutine, makeSession, makeTask } from '@/test/fixtures';
+import { findHostWithProp } from '@/test/host-props';
 import { errorInfinite, infinitePages, pendingInfinite } from '@/test/query-hooks';
 
 /**
@@ -189,6 +190,47 @@ describe('RoutinesList', () => {
     await fireEvent.press(screen.getByText('Loading…'));
 
     expect(query.fetchNextPage).not.toHaveBeenCalled();
+  });
+
+  // No list in the app had a refresh control; the only way to see a new routine created on
+  // another device was to leave the tab and come back.
+  it('refetches when pulled down', async () => {
+    const query = infinitePages([makePage([makeRoutine({ title: 'Morning warm-up' })])]);
+    mock.mockReturnValue(query);
+    await render(<RoutinesList />);
+
+    // RN passes the control to the scroll view as an element rather than rendering it as a
+    // host child under the iOS preset, so the handler is reached through that prop.
+    const scroller = findHostWithProp(screen.root, 'refreshControl');
+    const control = scroller?.props.refreshControl as { props: { onRefresh: () => void } };
+    await act(async () => {
+      control.props.onRefresh();
+    });
+
+    expect(query.refetch).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The Library had guarded this inline and the other three lists had not: a failed *next*
+   * page is reported on the query as `isError` with the loaded pages still in `data`, so
+   * `QueryState` replaced a screen full of routines with a full-width panel.
+   */
+  it('keeps the loaded routines and offers a retry when the next page fails', async () => {
+    const query = infinitePages([makePage([makeRoutine({ title: 'Morning warm-up' })])], {
+      hasNextPage: true,
+      isError: true,
+      error: new ApiError('nope', 500),
+      isFetchNextPageError: true,
+    });
+    mock.mockReturnValue(query);
+    await render(<RoutinesList />);
+
+    expect(screen.getByText('Morning warm-up')).toBeTruthy();
+    expect(screen.queryByText('Something went wrong on our end')).toBeNull();
+    expect(screen.getByText("Couldn't load more routines.")).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(query.fetchNextPage).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -430,5 +472,23 @@ describe('HistoryList', () => {
     await render(<HistoryList />);
 
     expect(screen.getByText("Couldn't load your history")).toBeTruthy();
+  });
+
+  it('keeps the loaded sessions and offers a retry when the next page fails', async () => {
+    const query = infinitePages([makePage([makeSession({ title: 'Evening practice' })])], {
+      hasNextPage: true,
+      isError: true,
+      error: new ApiError('nope', 500),
+      isFetchNextPageError: true,
+    });
+    mock.mockReturnValue(query);
+    await render(<HistoryList />);
+
+    expect(screen.getByText('Evening practice')).toBeTruthy();
+    expect(screen.queryByText('Something went wrong on our end')).toBeNull();
+    expect(screen.getByText("Couldn't load older sessions.")).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(query.fetchNextPage).toHaveBeenCalledTimes(1);
   });
 });

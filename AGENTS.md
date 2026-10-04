@@ -214,6 +214,19 @@ src/types/      generated api.d.ts + per-resource re-exports
   `Object.entries`, never a `1..8` loop.
 - Links and small accent text use `accentRamp[700]` (`#7ec2fb`), never base `accent` — the
   base is for fills. Error states use `danger`/`dangerRamp`, never the accent ramp.
+- **The type scale is the canvas's × 390/318, and that is deliberate — do not "restore" the
+  canvas numbers.** The wireframe draws its phone inside a `max-width:318px` frame, so its px
+  values are sized for a 318-wide viewport; React Native points put a handset at 390–440. Ported
+  1:1, body copy shipped at 11.5pt and input text at 12.5pt. `src/theme/typography.ts` carries
+  the canvas value in a comment beside each role and exports `CANVAS_SCALE`. Colours, radii and
+  `Spacing` are **not** rescaled — they were never viewport-relative in the same way.
+  Sizes that do not live in `typography.ts` and were rescaled with it: the five `text-[…]`
+  variants in `components/ui/button/index.tsx`, `profile-screen`'s avatar initials, and
+  `this-week-card`'s `figureSize` callers.
+- **Icon size, stroke and white come from tokens** — `IconSize.sm|md|lg` (16/18/20),
+  `IconStroke`, `Colors.white`. Every `lucide-react-native` icon must set `color`: three used
+  to omit it and fell through to lucide's default on a dark ground. `TapSlop` is for controls
+  that are a bare line of text rather than a `Button`; everything tappable clears 44pt.
 
 ## Platform gotchas
 

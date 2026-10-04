@@ -47,6 +47,14 @@ jobs:
         env:
           BACKEND_OPENAPI_PATH: backend/openapi.json
 
+      # Biome's linter is deliberately off (see biome.jsonc), so this is the only thing
+      # checking the React Compiler hook rules that `app.config.ts`'s
+      # `experiments.reactCompiler: true` depends on, plus eslint-plugin-expo's
+      # `use-dom-exports` / `no-env-var-destructuring` / `no-dynamic-env-var`. The workflow
+      # ran biome, tsc and jest and left all of that ungated.
+      - name: Lint
+        run: npx expo lint
+
       # --coverage is what makes jest.config.js's coverageThreshold gate the PR; without
       # it the floor is inert. Costs roughly 15s over a plain run.
       - name: Run tests

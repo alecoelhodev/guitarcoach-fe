@@ -35,7 +35,6 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
-    'expo-secure-store',
     'expo-audio',
     'expo-asset',
     [

@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { Progress, ProgressFilledTrack } from '@/components/ui/progress';
 import { formatClock } from '@/lib/duration';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, IconSize, IconStroke, Spacing } from '@/theme/tokens';
 import type { Recording } from '@/types/recording';
 
 /** Canvas 09 labels the file by format: "M4A · 4.2 MB · today 8:44 PM". */
@@ -38,7 +38,7 @@ export function RecordingRow({ recording }: { recording: Recording }) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleted, setDeleted] = useState(false);
-  const [deleteError, setDeleteError] = useState(false);
+  const [deleteError, setDeleteError] = useState<ErrorDescription | null>(null);
   const requestId = useRef(0);
   const fetching = useRef(false);
   const removing = useRef(false);
@@ -97,13 +97,15 @@ export function RecordingRow({ recording }: { recording: Recording }) {
     setLoading(false);
     setConfirming(false);
     setDeleting(true);
-    setDeleteError(false);
+    setDeleteError(null);
     try {
       player.pause();
       await deletion.mutateAsync(recording.id);
       setDeleted(true);
-    } catch {
-      setDeleteError(true);
+    } catch (deleteFailure) {
+      // A boolean here meant every failure read "Couldn't delete recording / Try deleting it
+      // again" — including being offline, which is the one the user can act on.
+      setDeleteError(describeError(deleteFailure, "Couldn't delete recording"));
     } finally {
       removing.current = false;
       setDeleting(false);
@@ -132,9 +134,9 @@ export function RecordingRow({ recording }: { recording: Recording }) {
           onPress={togglePlay}
         >
           {status.playing ? (
-            <Pause size={18} strokeWidth={2.75} />
+            <Pause color={Colors.text} size={IconSize.md} strokeWidth={IconStroke} />
           ) : (
-            <Play size={18} strokeWidth={2.75} />
+            <Play color={Colors.text} size={IconSize.md} strokeWidth={IconStroke} />
           )}
         </Button>
       </View>
@@ -181,7 +183,13 @@ export function RecordingRow({ recording }: { recording: Recording }) {
         </View>
       )}
       {deleteError && (
-        <ErrorPanel title="Couldn't delete recording" message="Try deleting it again." />
+        <ErrorPanel
+          title={deleteError.title}
+          message={deleteError.message}
+          onRetry={() => {
+            void deleteFile();
+          }}
+        />
       )}
       <Button
         variant="tertiary"

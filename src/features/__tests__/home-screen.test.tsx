@@ -40,6 +40,7 @@ import {
   errorQuery,
   infinitePages,
   mutationStub,
+  pendingInfinite,
   pendingQuery,
   successQuery,
 } from '@/test/query-hooks';
@@ -648,6 +649,42 @@ describe('resume prompt', () => {
 
     expect(useActiveSessionStore.getState().tasks).toEqual([]);
     expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  // "Discard" is this dialog's *cancel* action, and a backdrop tap used to reach it — so
+  // brushing the prompt away threw out the minutes and notes it was offering to restore.
+  // Only the button discards.
+  it('keeps the session when the prompt is dismissed rather than discarded', async () => {
+    useActiveSessionStore.getState().start({
+      userId: OWNER.id,
+      title: 'Morning warm-up',
+      tasks: [{ taskId: 't1', title: 'A', durationMinutes: 5, completed: false }],
+    });
+    await render(withGluestack(<HomeScreen />));
+
+    await fireEvent.press(
+      screen.getByTestId('confirm-dialog-backdrop', { includeHiddenElements: true }),
+    );
+
+    expect(useActiveSessionStore.getState().tasks).toHaveLength(1);
+    expect(screen.queryByText('Resume practice session?')).toBeNull();
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+});
+
+describe('loading', () => {
+  // "Today's practice" and "This week" showed skeletons while the two sections below them
+  // rendered nothing at all, so Home settled in stages and the lower half shoved the page
+  // down once it arrived.
+  it('holds the lower sections open instead of popping them in', async () => {
+    mockSessions.mockReturnValue(asHookResult(pendingQuery()));
+    mockRoutines.mockReturnValue(asHookResult(pendingInfinite()));
+    await render(withGluestack(<HomeScreen />));
+
+    expect(screen.getByText('Active routines')).toBeTruthy();
+    expect(screen.getByText('Recent session')).toBeTruthy();
+    // Still placeholders, not content.
+    expect(screen.queryByText('All')).toBeNull();
   });
 });
 

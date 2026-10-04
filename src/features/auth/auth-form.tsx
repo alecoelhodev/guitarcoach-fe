@@ -6,7 +6,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { z } from 'zod';
 
 import { requestPasswordReset, signIn, signUp } from '@/api/auth';
-import { ApiError, OFFLINE_STATUS } from '@/api/client';
+import { ApiError, OFFLINE_STATUS, TIMEOUT_STATUS } from '@/api/client';
 import { describeError } from '@/api/errors';
 import { ThemedText } from '@/components/themed-text';
 import { Banner, type BannerProps } from '@/components/ui/banner';
@@ -16,10 +16,11 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Segmented } from '@/components/ui/segmented';
 import { ValidationMessage } from '@/components/ui/validation-message';
+import { useActiveSessionStore } from '@/features/session/session-store';
 import { safeNextPath } from '@/lib/next-path';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, Spacing, TapSlop } from '@/theme/tokens';
 
 type Mode = 'signin' | 'create';
 
@@ -35,6 +36,9 @@ function bannerForError(error: unknown, onRetry: () => void): BannerProps {
     // know from the status alone.
     if (error.status === OFFLINE_STATUS) {
       return { title: 'No connection', actionLabel: 'Retry', onAction: onRetry };
+    }
+    if (error.status === TIMEOUT_STATUS) {
+      return { ...describeError(error), actionLabel: 'Retry', onAction: onRetry };
     }
     if (error.status === 401) {
       return { title: 'Email or password is incorrect', message: 'Check both and try again.' };
@@ -53,6 +57,9 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
   const router = useRouter();
   const setUser = useSessionStore((state) => state.setUser);
   const showToast = useToastStore((state) => state.show);
+  // A 401 no longer discards the practice on disk, so say it survived. Signing out clears the
+  // store, which is what keeps this off the screen for anyone who left deliberately.
+  const unsavedPractice = useActiveSessionStore((state) => state.tasks.length > 0);
 
   const [mode, setMode] = useState<Mode>(initialMode);
   const [banner, setBanner] = useState<BannerProps | null>(null);
@@ -60,6 +67,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
 
   const scrollRef = useRef<ScrollView>(null);
   const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
   const fieldTop = useRef<Partial<Record<keyof FormValues, number>>>({});
 
   // Read through a ref so the resolver stays stable while still validating against the
@@ -195,6 +203,14 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
         onChange={switchMode}
       />
 
+      {mode === 'signin' && unsavedPractice && !banner && (
+        <Banner
+          tone="info"
+          title="Your practice is still here"
+          message="Sign back in to finish saving the session you had in progress."
+        />
+      )}
+
       {banner && <Banner {...banner} />}
 
       {mode === 'create' && (
@@ -215,6 +231,13 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
                 editable={!busy}
                 placeholder="Jordan"
                 invalid={!!errors.name}
+                autoCapitalize="words"
+                // `textContentType` is iOS-only; Android's autofill reads `autoComplete`.
+                autoComplete="name"
+                textContentType="name"
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+                submitBehavior="submit"
               />
             )}
           />
@@ -241,9 +264,14 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
+              // `textContentType` is iOS-only; Android's autofill reads `autoComplete`.
+              autoComplete="email"
               textContentType="emailAddress"
               placeholder="jordan@example.com"
               invalid={!!errors.email}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              submitBehavior="submit"
             />
           )}
         />
@@ -261,13 +289,17 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
           name="password"
           render={({ field }) => (
             <PasswordInput
+              ref={passwordRef}
               testID="password-input"
               value={field.value}
               onChangeText={field.onChange}
               onBlur={field.onBlur}
               editable={!busy}
+              autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
               textContentType={mode === 'create' ? 'newPassword' : 'password'}
               invalid={!!errors.password}
+              returnKeyType="go"
+              onSubmitEditing={() => void submit()}
             />
           )}
         />
@@ -284,6 +316,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
           accessibilityRole="button"
           onPress={() => void handleForgotPassword()}
           disabled={busy}
+          hitSlop={TapSlop}
           style={styles.forgot}
         >
           <ThemedText type="caption" style={styles.link}>
@@ -305,6 +338,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
       <Pressable
         accessibilityRole="button"
         onPress={() => switchMode(mode === 'create' ? 'signin' : 'create')}
+        hitSlop={TapSlop}
         style={styles.switch}
       >
         <ThemedText type="body" color="textMuted">

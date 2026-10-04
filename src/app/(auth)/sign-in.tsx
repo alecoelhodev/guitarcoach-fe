@@ -1,8 +1,9 @@
 import { useLocalSearchParams } from 'expo-router';
-import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
+import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { AuthForm } from '@/features/auth/auth-form';
 import { MaxContentWidth, Spacing } from '@/theme/tokens';
 
@@ -15,14 +16,11 @@ export default function AuthScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAwareScreen>
         <SafeAreaView style={styles.safeArea}>
           <AuthForm initialMode={mode === 'create' ? 'create' : 'signin'} next={next} />
         </SafeAreaView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScreen>
     </ThemedView>
   );
 }

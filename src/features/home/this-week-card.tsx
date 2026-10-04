@@ -20,7 +20,7 @@ export type ThisWeekCardProps = {
  * numbers the backend can honestly support — there is no analytics endpoint and
  * no total-duration field, so both are client-side sums.
  */
-export function ThisWeekCard({ sessions, isPending, figureSize = 34 }: ThisWeekCardProps) {
+export function ThisWeekCard({ sessions, isPending, figureSize = 42 }: ThisWeekCardProps) {
   if (isPending) {
     return (
       <Card>

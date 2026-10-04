@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Radius, Shadow, Spacing } from '@/theme/tokens';
@@ -8,6 +8,8 @@ export type ToastVariant = 'default' | 'success' | 'error';
 export type ToastProps = {
   message: string;
   variant?: ToastVariant;
+  /** Dismisses on tap. Required: without it the message owns the screen for four seconds. */
+  onDismiss: () => void;
 };
 
 /**
@@ -21,15 +23,20 @@ const tone = {
   error: { backgroundColor: Colors.dangerRamp[100], color: Colors.dangerRamp[700] },
 } as const;
 
-export function Toast({ message, variant = 'default' }: ToastProps) {
+export function Toast({ message, variant = 'default', onDismiss }: ToastProps) {
   const { color, ...surface } = tone[variant];
 
   return (
-    <View accessibilityRole="alert" style={[styles.base, surface]}>
+    <Pressable
+      accessibilityRole="alert"
+      accessibilityHint="Tap to dismiss"
+      onPress={onDismiss}
+      style={[styles.base, surface]}
+    >
       <ThemedText type="label" style={{ color }}>
         {message}
       </ThemedText>
-    </View>
+    </Pressable>
   );
 }
 

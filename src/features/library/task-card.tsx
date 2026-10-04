@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, IconSize, IconStroke, Spacing } from '@/theme/tokens';
 import type { Task } from '@/types/task';
 
 export function TaskCard({ task }: { task: Task }) {
@@ -16,7 +16,7 @@ export function TaskCard({ task }: { task: Task }) {
           <ThemedText type="label" style={styles.title}>
             {task.title}
           </ThemedText>
-          <ChevronRight color={Colors.neutral[700]} size={16} strokeWidth={2.75} />
+          <ChevronRight color={Colors.neutral[700]} size={IconSize.sm} strokeWidth={IconStroke} />
         </View>
 
         {task.description && (

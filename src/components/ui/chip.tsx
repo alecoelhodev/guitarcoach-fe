@@ -17,7 +17,7 @@ export function Chip({ label, selected = false, onPress }: ChipProps) {
       onPress={onPress}
       style={[styles.base, selected && styles.selected]}
     >
-      <ThemedText type="label" style={{ color: selected ? '#ffffff' : Colors.neutral[700] }}>
+      <ThemedText type="label" style={selected ? styles.labelSelected : styles.label}>
         {label}
       </ThemedText>
     </Pressable>
@@ -26,7 +26,9 @@ export function Chip({ label, selected = false, onPress }: ChipProps) {
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 32,
+    // 44 rather than the canvas's 32: the canvas is drawn at 318px wide, and these are the
+    // library's filter controls — the most-tapped thing on the screen.
+    minHeight: 44,
     paddingHorizontal: Spacing[3],
     borderRadius: Radius.pill,
     borderWidth: 1,
@@ -38,4 +40,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
   },
+  label: { color: Colors.neutral[700] },
+  labelSelected: { color: Colors.white },
 });

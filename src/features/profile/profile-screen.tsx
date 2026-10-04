@@ -8,8 +8,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useSessionStore } from '@/stores/session-store';
-import { TabBarInset } from '@/theme/platform';
+import { useToastStore } from '@/stores/toast-store';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/theme/tokens';
 import { FontFamily } from '@/theme/typography';
 
@@ -24,12 +25,15 @@ function initialsOf(name: string) {
 }
 
 export function ProfileScreen() {
+  // Clears the tab bar and the home indicator under it.
+  const bottomPad = useBottomInset() + Spacing[4];
   const user = useSessionStore((state) => state.user);
+  const showToast = useToastStore((state) => state.show);
   const signOutMutation = useSignOut();
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={[styles.safeArea, { paddingBottom: bottomPad }]} edges={['top']}>
         <ThemedText type="h3">Profile</ThemedText>
 
         {user && (
@@ -73,7 +77,15 @@ export function ProfileScreen() {
           variant="secondary"
           className="border-danger-300"
           disabled={signOutMutation.isPending}
-          onPress={() => signOutMutation.mutate()}
+          onPress={() =>
+            signOutMutation.mutate(undefined, {
+              // The teardown runs either way, so the user is on the sign-in screen by the
+              // time this fires — but the cookie is still live server-side, which is the one
+              // thing they cannot see and might act on.
+              onError: () =>
+                showToast("Signed out here, but we couldn't reach the server", 'error'),
+            })
+          }
         >
           <ButtonText className="text-danger-700">
             {signOutMutation.isPending ? 'Signing out…' : 'Sign out'}
@@ -105,7 +117,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     padding: Spacing[4],
-    paddingBottom: TabBarInset + Spacing[4],
     gap: Spacing[4],
   },
   identity: {
@@ -123,7 +134,9 @@ const styles = StyleSheet.create({
   },
   initials: {
     fontFamily: FontFamily.body,
-    fontSize: 22,
+    // Canvas 22 × 390/318, per theme/typography.ts. No role matches it — it is sized to the
+    // avatar circle rather than to the type ladder.
+    fontSize: 27,
     color: Colors.neutral[700],
   },
   divider: {

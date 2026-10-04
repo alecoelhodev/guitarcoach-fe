@@ -37,7 +37,7 @@ const buttonStyle = tva({
       secondary:
         'min-h-[44px] rounded-md border-[1.5px] border-neutral-400 px-[14px] data-[hover=true]:bg-neutral-200 data-[active=true]:bg-neutral-300',
       tertiary:
-        'min-h-[36px] rounded-sm border border-neutral-300 bg-neutral-200 px-[14px] data-[hover=true]:bg-neutral-300 data-[active=true]:bg-neutral-400',
+        'min-h-[44px] rounded-sm border border-neutral-300 bg-neutral-200 px-[14px] data-[hover=true]:bg-neutral-300 data-[active=true]:bg-neutral-400',
       ghost:
         'min-h-[44px] rounded-md border-[1.5px] border-accent-400 px-[14px] data-[hover=true]:bg-accent-100 data-[active=true]:bg-accent-200',
       icon: 'h-[44px] w-[44px] rounded-pill data-[hover=true]:bg-neutral-200 data-[active=true]:bg-neutral-300',
@@ -51,17 +51,20 @@ const buttonStyle = tva({
   },
 });
 
+// Canvas 14 / 13.5 / 12 / 15, each × 390/318 — the same rescale `theme/typography.ts`
+// documents. These stay as arbitrary values rather than reading `Typography.button`
+// because the variants differ from each other and tva needs them as classes.
 const buttonTextStyle = tva({
   base: 'web:select-none font-body-semibold',
   parentVariants: {
     variant: {
-      primary: 'text-[14px] text-white',
-      secondary: 'text-[13.5px] text-text',
-      tertiary: 'text-[12px] text-neutral-700',
-      ghost: 'text-[14px] text-accent-700',
-      icon: 'text-[14px] text-text',
+      primary: 'text-[17px] text-white',
+      secondary: 'text-[16.5px] text-text',
+      tertiary: 'text-[14.5px] text-neutral-700',
+      ghost: 'text-[17px] text-accent-700',
+      icon: 'text-[17px] text-text',
     },
-    prominent: { true: 'text-[15px]' },
+    prominent: { true: 'text-[18.5px]' },
     loading: { true: 'text-text' },
   },
 });

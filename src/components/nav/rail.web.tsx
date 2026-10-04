@@ -10,7 +10,7 @@ import {
   SECONDARY,
 } from '@/components/nav/destinations';
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Radius, Spacing } from '@/theme/tokens';
+import { Colors, IconSize, IconStroke, Radius, Spacing } from '@/theme/tokens';
 
 /**
  * Left rail, shown at 768px+ per the web wireframes (canvas 2a). Below that
@@ -30,7 +30,12 @@ export function Rail() {
 
       <Link href={PRACTICE_HREF} asChild>
         <View style={practiceItemStyle}>
-          <Play color="#ffffff" size={18} strokeWidth={2.75} fill="#ffffff" />
+          <Play
+            color={Colors.white}
+            size={IconSize.md}
+            strokeWidth={IconStroke}
+            fill={Colors.white}
+          />
           <ThemedText type="button" style={styles.practiceLabel}>
             Practice
           </ThemedText>
@@ -56,7 +61,11 @@ function RailLink({ href, label, active, Icon }: Destination & { active: boolean
   return (
     <Link href={href} asChild>
       <View style={active ? activeItemStyle : styles.item}>
-        <Icon color={active ? Colors.accent : Colors.neutral[700]} size={18} strokeWidth={2.75} />
+        <Icon
+          color={active ? Colors.accent : Colors.neutral[700]}
+          size={IconSize.md}
+          strokeWidth={IconStroke}
+        />
         <ThemedText type="label" style={{ color: active ? Colors.text : Colors.neutral[700] }}>
           {label}
         </ThemedText>
@@ -100,7 +109,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
   },
   practiceLabel: {
-    color: '#ffffff',
+    color: Colors.white,
   },
   gap: {
     height: Spacing[2],

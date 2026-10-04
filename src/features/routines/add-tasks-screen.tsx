@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ApiError } from '@/api/client';
@@ -15,8 +15,10 @@ import { Card } from '@/components/ui/card';
 import { ChecklistRow } from '@/components/ui/checklist-row';
 import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
+import { SkeletonList } from '@/components/ui/skeleton';
+import { usePaginatedList } from '@/hooks/use-paginated-list';
 import { useToastStore } from '@/stores/toast-store';
-import { MaxContentWidth, Spacing } from '@/theme/tokens';
+import { Colors, MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { Task } from '@/types/task';
 
 /**
@@ -30,6 +32,16 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
   const showToast = useToastStore((state) => state.show);
 
   const tasksQuery = useTasks();
+  const {
+    listState,
+    isRefreshing,
+    refresh,
+    hasNextPage,
+    isFetchingNextPage,
+    isNextPageError,
+    loadMore,
+    retryNextPage,
+  } = usePaginatedList(tasksQuery);
   const routineTasksQuery = useRoutineTasks(routineId);
   const addRoutineTask = useAddRoutineTask(routineId);
 
@@ -95,8 +107,22 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
           </Button>
         </View>
 
+        {/* Without the routine's own tasks the filter above is a no-op, so the list offers
+            tasks that are already in the routine and the first of them 409s mid-batch. The
+            screen still works — the 409 is handled — but the user deserves to know why. */}
+        {routineTasksQuery.isError && (
+          <Banner
+            tone="info"
+            title="This list may include tasks you already added"
+            message="We couldn't check what's already in this routine."
+            actionLabel="Try again"
+            onAction={() => routineTasksQuery.refetch()}
+          />
+        )}
+
         <QueryState
-          query={tasksQuery}
+          query={listState}
+          skeleton={<SkeletonList />}
           errorTitle="Couldn't load the library"
           isEmpty={available.length === 0}
           empty={
@@ -109,6 +135,14 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
           {() => (
             <FlatList
               data={available}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={refresh}
+                  tintColor={Colors.accentRamp[700]}
+                  colors={[Colors.accentRamp[700]]}
+                />
+              }
               keyExtractor={(task) => task.id}
               renderItem={({ item }) => (
                 <Card>
@@ -121,14 +155,19 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
               )}
               contentContainerStyle={styles.list}
               ListFooterComponent={
-                tasksQuery.hasNextPage ? (
+                isNextPageError ? (
                   <View style={styles.footer}>
-                    <Button
-                      variant="tertiary"
-                      disabled={tasksQuery.isFetchingNextPage}
-                      onPress={() => tasksQuery.fetchNextPage()}
-                    >
-                      {tasksQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}
+                    <ThemedText type="body" color="textMuted">
+                      {"Couldn't load more tasks."}
+                    </ThemedText>
+                    <Button variant="tertiary" onPress={retryNextPage}>
+                      Try again
+                    </Button>
+                  </View>
+                ) : hasNextPage ? (
+                  <View style={styles.footer}>
+                    <Button variant="tertiary" disabled={isFetchingNextPage} onPress={loadMore}>
+                      {isFetchingNextPage ? 'Loading…' : 'Load more'}
                     </Button>
                   </View>
                 ) : null

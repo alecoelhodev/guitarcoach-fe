@@ -36,6 +36,7 @@ import { useToastStore } from '@/stores/toast-store';
 import { linkHrefs, mockNavigation, mockRouter } from '@/test/expo-router';
 import { makeRoutine } from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
+import { countHostProp } from '@/test/host-props';
 import { errorQuery, mutationStub, pendingQuery, successQuery } from '@/test/query-hooks';
 import type { RoutineTaskWithTask } from '@/types/routine';
 
@@ -324,9 +325,29 @@ describe('editing', () => {
     await render(editing());
 
     await fireEvent.press(screen.getByText('Archive'));
+    // The footer action and the dialog's confirm share a label, as Delete already does.
+    await fireEvent.press(screen.getAllByText('Archive').at(-1) as never);
 
     await waitFor(() => expect(update.mutateAsync).toHaveBeenCalledWith({ status: 'archived' }));
     expect(deleteHook).toHaveBeenCalled();
+  });
+
+  // Archive used to fire on the first tap while Delete beside it asked. It is reversible, so
+  // the dialog explains rather than warns — but it still asks.
+  it('asks before archiving, and does nothing if the answer is no', async () => {
+    const update = mutationStub();
+    updateHook.mockReturnValue(update);
+    await render(editing());
+
+    await fireEvent.press(screen.getByText('Archive'));
+
+    expect(
+      screen.getByText('It moves to the Archived tab. You can restore it from there.'),
+    ).toBeTruthy();
+    expect(update.mutateAsync).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('Cancel'));
+    expect(update.mutateAsync).not.toHaveBeenCalled();
   });
 });
 
@@ -522,6 +543,65 @@ describe('task duration and removal', () => {
     expect(screen.queryByText('Remove')).toBeNull();
   });
 
+  // The panel is shared by six actions. It used to hold a bare string and always retry
+  // `submit()`, so "Couldn't remove this task" offered a Try again that saved the form and
+  // left the task exactly where it was.
+  it('retries the removal that failed, not the form save', async () => {
+    const remove = mutationStub();
+    remove.mutate.mockImplementation((_taskId: string, options: { onError: (e: Error) => void }) =>
+      options.onError(new ApiError('boom', 500)),
+    );
+    const update = mutationStub();
+    removeTaskHook.mockReturnValue(remove);
+    updateHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Barre chords');
+    await fireEvent.press(screen.getByText('Remove'));
+    await fireEvent.press(screen.getByText('Try again'));
+
+    expect(remove.mutate).toHaveBeenCalledTimes(2);
+    expect(remove.mutate).toHaveBeenLastCalledWith('b', expect.anything());
+    expect(update.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('retries the duration that failed, not the form save', async () => {
+    const updateTask = mutationStub();
+    updateTask.mutate.mockImplementation(
+      (_input: unknown, options: { onError: (e: Error) => void }) =>
+        options.onError(new ApiError('boom', 500)),
+    );
+    const update = mutationStub();
+    updateTaskHook.mockReturnValue(updateTask);
+    updateHook.mockReturnValue(update);
+    await render(editing());
+
+    await expand('Barre chords');
+    await fireEvent.press(screen.getByLabelText('Increase minutes'));
+    const firstCall = updateTask.mutate.mock.calls[0]?.[0];
+    await fireEvent.press(screen.getByText('Try again'));
+
+    expect(updateTask.mutate).toHaveBeenCalledTimes(2);
+    expect(updateTask.mutate.mock.calls[1]?.[0]).toEqual(firstCall);
+    expect(update.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('confirms a new routine, as the edit path already did', async () => {
+    const create = mutationStub(makeRoutine({ id: 'new-1' }));
+    createHook.mockReturnValue(create);
+    await render(creating());
+
+    await fireEvent.changeText(screen.getByTestId('routine-title'), 'Evening drills');
+    await fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(useToastStore.getState().toast).toMatchObject({
+        message: 'Routine created',
+        variant: 'success',
+      }),
+    );
+  });
+
   it('links to the picker for this routine', async () => {
     await render(editing());
 
@@ -591,6 +671,24 @@ describe('reordering', () => {
       screen.getByText('Another change was in progress. The list is back to the last saved order.'),
     ).toBeTruthy();
   });
+
+  // `reset()` only dismissed the panel, leaving the tasks in the order the rollback restored —
+  // a Try again that visibly changed nothing.
+  it('resends the order that lost the race rather than just dismissing', async () => {
+    const reorder = { ...mutationStub(), isError: true };
+    reorderHook.mockReturnValue(reorder);
+    await render(editing());
+
+    await expand('Alternate picking');
+    await fireEvent.press(screen.getByText('Move down'));
+    expect(reorder.mutate).toHaveBeenCalledWith(['b', 'a', 'c']);
+
+    await fireEvent.press(screen.getByText('Try again'));
+
+    expect(reorder.mutate).toHaveBeenCalledTimes(2);
+    expect(reorder.mutate).toHaveBeenLastCalledWith(['b', 'a', 'c']);
+    expect(reorder.reset).not.toHaveBeenCalled();
+  });
 });
 
 describe('starting practice', () => {
@@ -625,4 +723,12 @@ describe('starting practice', () => {
     expect(startPractice.mutate).not.toHaveBeenCalled();
     expect(screen.getByText('Add at least one task before practising this routine.')).toBeTruthy();
   });
+});
+
+// The screen puts its primary action directly under a text field, so the scroll view has to
+// keep taps rather than spend the first one dismissing the keyboard.
+it('keeps controls tappable while the keyboard is up', async () => {
+  await render(editing());
+
+  expect(countHostProp(screen.root, 'keyboardShouldPersistTaps', 'handled')).toBeGreaterThan(0);
 });

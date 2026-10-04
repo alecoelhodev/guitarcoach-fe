@@ -14,13 +14,15 @@ import { Card } from '@/components/ui/card';
 import { ChecklistRow } from '@/components/ui/checklist-row';
 import { FieldLabel } from '@/components/ui/field-label';
 import { Input } from '@/components/ui/input';
+import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { Stepper } from '@/components/ui/stepper';
 import { SessionExitDialog } from '@/features/session/session-exit-dialog';
 import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { formatClock } from '@/lib/duration';
+import { succeeded } from '@/lib/haptics';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
-import { Spacing } from '@/theme/tokens';
+import { Colors, IconSize, IconStroke, Spacing } from '@/theme/tokens';
 
 /**
  * Elapsed is *derived* from `startedAt`, never counted in ticks. Backgrounding the app suspends
@@ -30,7 +32,20 @@ import { Spacing } from '@/theme/tokens';
  *
  * A session persisted before `startedAt` existed rehydrates without one; it reads 0, not `NaN`.
  */
-function useStopwatch(startedAt: number | undefined) {
+function elapsedSecondsAt(startedAt: number | undefined, now: number) {
+  if (startedAt === undefined) return 0;
+  return Math.max(0, Math.floor((now - startedAt) / 1000));
+}
+
+/**
+ * Owns the tick.
+ *
+ * The interval used to live in the screen body, which re-rendered the whole session once a
+ * second — every task card, its checkbox, its minutes stepper, and the notes field the user
+ * was typing into — to advance one line of text. The exit dialog is the only other reader and
+ * it needs the elapsed time once, when it opens, not sixty times a minute.
+ */
+function SessionClock({ startedAt }: { startedAt: number | undefined }) {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -38,8 +53,7 @@ function useStopwatch(startedAt: number | undefined) {
     return () => clearInterval(id);
   }, []);
 
-  if (startedAt === undefined) return 0;
-  return Math.max(0, Math.floor((now - startedAt) / 1000));
+  return <ThemedText type="display">{formatClock(elapsedSecondsAt(startedAt, now))}</ThemedText>;
 }
 
 /**
@@ -63,23 +77,25 @@ export function ActiveSessionScreen() {
   return <ActiveSessionScreenBody />;
 }
 
+/** A `fullScreenModal` covers the status bar and the home indicator, so it owns both. */
+const MODAL_EDGES = ['top', 'bottom'] as const;
+
 function ActiveSessionScreenBody() {
   const router = useRouter();
-  const {
-    userId,
-    routineId,
-    routineTitle,
-    title,
-    notes,
-    startedAt,
-    tasks,
-    setTitle,
-    setNotes,
-    setTaskMinutes,
-    toggleTaskCompleted,
-    reset,
-  } = useActiveSessionStore();
-  const elapsedSeconds = useStopwatch(startedAt);
+  // Sliced, not `useActiveSessionStore()`. Subscribing to the whole store object meant any
+  // `set()` — a minute stepped, a box ticked — re-rendered everything below.
+  const userId = useActiveSessionStore((state) => state.userId);
+  const routineId = useActiveSessionStore((state) => state.routineId);
+  const routineTitle = useActiveSessionStore((state) => state.routineTitle);
+  const title = useActiveSessionStore((state) => state.title);
+  const notes = useActiveSessionStore((state) => state.notes);
+  const startedAt = useActiveSessionStore((state) => state.startedAt);
+  const tasks = useActiveSessionStore((state) => state.tasks);
+  const setTitle = useActiveSessionStore((state) => state.setTitle);
+  const setNotes = useActiveSessionStore((state) => state.setNotes);
+  const setTaskMinutes = useActiveSessionStore((state) => state.setTaskMinutes);
+  const toggleTaskCompleted = useActiveSessionStore((state) => state.toggleTaskCompleted);
+  const reset = useActiveSessionStore((state) => state.reset);
   // Canvas 07: the clock is a local pacing aid; what gets saved is the per-task
   // minutes. "Planned" is the sum of the routine's target durations.
   const plannedMinutes = tasks.reduce((sum, task) => sum + (task.targetDurationMinutes ?? 0), 0);
@@ -121,6 +137,7 @@ function ActiveSessionScreenBody() {
 
     reset();
     leave();
+    succeeded();
     showToast('Session saved', 'success');
   }
 
@@ -147,7 +164,7 @@ function ActiveSessionScreenBody() {
   if (tasks.length === 0 || userId !== signedInUserId) {
     return (
       <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={MODAL_EDGES}>
           <ThemedText type="h5">No active session</ThemedText>
           <Button variant="secondary" onPress={leave}>
             Go back
@@ -159,92 +176,98 @@ function ActiveSessionScreenBody() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Button
-            variant="icon"
-            accessibilityLabel="Exit practice"
-            onPress={() => setConfirmExit(true)}
-          >
-            <X size={20} strokeWidth={2.75} />
-          </Button>
-        </View>
+      <SafeAreaView style={styles.safeArea} edges={MODAL_EDGES}>
+        <KeyboardAwareScreen>
+          <View style={styles.header}>
+            <Button
+              variant="icon"
+              accessibilityLabel="Exit practice"
+              onPress={() => setConfirmExit(true)}
+            >
+              <X color={Colors.text} size={IconSize.lg} strokeWidth={IconStroke} />
+            </Button>
+          </View>
 
-        <View>
-          {routineTitle && (
-            <ThemedText type="body" color="textMuted">
-              Following · {routineTitle}
+          <View>
+            {routineTitle && (
+              <ThemedText type="body" color="textMuted">
+                Following · {routineTitle}
+              </ThemedText>
+            )}
+            <SessionTitle title={title} onChange={setTitle} />
+          </View>
+
+          <Card style={styles.clockCard}>
+            <ThemedText type="overline" color="textMuted">
+              Elapsed · on this device
             </ThemedText>
-          )}
-          <SessionTitle title={title} onChange={setTitle} />
-        </View>
+            <SessionClock startedAt={startedAt} />
+            {plannedMinutes > 0 && (
+              <ThemedText type="body" color="textMuted">
+                of {plannedMinutes} min planned
+              </ThemedText>
+            )}
+          </Card>
 
-        <Card style={styles.clockCard}>
           <ThemedText type="overline" color="textMuted">
-            Elapsed · on this device
+            Routine tasks
           </ThemedText>
-          <ThemedText type="display">{formatClock(elapsedSeconds)}</ThemedText>
-          {plannedMinutes > 0 && (
-            <ThemedText type="body" color="textMuted">
-              of {plannedMinutes} min planned
-            </ThemedText>
-          )}
-        </Card>
 
-        <ThemedText type="overline" color="textMuted">
-          Routine tasks
-        </ThemedText>
+          <ScrollView contentContainerStyle={styles.taskList} keyboardShouldPersistTaps="handled">
+            {tasks.map((task) => (
+              <Card key={task.taskId} style={styles.taskCard}>
+                <ChecklistRow
+                  label={task.title}
+                  checked={task.completed}
+                  onToggle={() => toggleTaskCompleted(task.taskId)}
+                />
+                <Stepper
+                  minutes={task.durationMinutes}
+                  onChange={(m) => setTaskMinutes(task.taskId, m)}
+                />
+              </Card>
+            ))}
+          </ScrollView>
 
-        <ScrollView contentContainerStyle={styles.taskList}>
-          {tasks.map((task) => (
-            <Card key={task.taskId} style={styles.taskCard}>
-              <ChecklistRow
-                label={task.title}
-                checked={task.completed}
-                onToggle={() => toggleTaskCompleted(task.taskId)}
-              />
-              <Stepper
-                minutes={task.durationMinutes}
-                onChange={(m) => setTaskMinutes(task.taskId, m)}
-              />
-            </Card>
-          ))}
-        </ScrollView>
-
-        {/* Canvas 2d splits what mobile draws as one "Session notes — optional" card into a
+          {/* Canvas 2d splits what mobile draws as one "Session notes — optional" card into a
             label and a helper line. Same content, and the label primitive already exists. */}
-        <View>
-          <FieldLabel>Session notes</FieldLabel>
-          <Input
-            testID="session-notes"
-            value={notes ?? ''}
-            onChangeText={setNotes}
-            multiline
-            // `Input` only sets minHeight: 44, which is one line — a notes box has to ask.
-            style={styles.notes}
-            placeholder="Optional — what went well, what to fix."
-          />
-        </View>
+          <View>
+            <FieldLabel>Session notes</FieldLabel>
+            <Input
+              testID="session-notes"
+              value={notes ?? ''}
+              onChangeText={setNotes}
+              multiline
+              // `Input` only sets minHeight: 44, which is one line — a notes box has to ask.
+              style={styles.notes}
+              placeholder="Optional — what went well, what to fix."
+              autoCapitalize="sentences"
+              maxLength={2000}
+            />
+          </View>
 
-        {failure && <Banner tone="error" title={failure.title} message={failure.message} />}
+          {failure && <Banner tone="error" title={failure.title} message={failure.message} />}
 
-        <Button
-          block
-          loading={createSessionMutation.isPending}
-          loadingLabel="Saving session…"
-          onPress={() => void handleFinish()}
-        >
-          Finish Session
-        </Button>
+          <Button
+            block
+            loading={createSessionMutation.isPending}
+            loadingLabel="Saving session…"
+            onPress={() => void handleFinish()}
+          >
+            Finish Session
+          </Button>
 
-        <ThemedText type="body" color="textMuted" style={styles.note}>
-          Saved when you finish.
-        </ThemedText>
+          <ThemedText type="body" color="textMuted" style={styles.note}>
+            Saved when you finish.
+          </ThemedText>
+        </KeyboardAwareScreen>
       </SafeAreaView>
 
       <SessionExitDialog
         visible={confirmExit}
-        message={describeUnsaved(elapsedSeconds, tasks)}
+        // Read once, at render, rather than from a value that ticks: the dialog only needs
+        // to say roughly how much practice is at stake.
+        message={describeUnsaved(elapsedSecondsAt(startedAt, Date.now()), tasks)}
         saving={createSessionMutation.isPending}
         onFinish={() => {
           setConfirmExit(false);
@@ -312,7 +335,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center' },
   clockCard: { alignItems: 'center' },
   note: { textAlign: 'center' },
-  notes: { minHeight: 88, paddingTop: Spacing[2], textAlignVertical: 'top' },
+  // Grew with the type scale: `Input` only guarantees one line, and a notes box asks for
+  // about four.
+  notes: { minHeight: 108, paddingTop: Spacing[2], textAlignVertical: 'top' },
   taskList: { gap: Spacing[3] },
   taskCard: { gap: Spacing[3] },
 });

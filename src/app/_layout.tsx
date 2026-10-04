@@ -3,13 +3,13 @@ import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import { Inter_800ExtraBold } from '@expo-google-fonts/inter/800ExtraBold';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
 import { Stack, type Theme, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { setUnauthorizedHandler } from '@/api/client';
 import { CACHE_BUSTER, CACHE_MAX_AGE_MS, queryPersister } from '@/api/persist';
@@ -63,10 +63,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     // Same teardown as the deliberate sign-out path, and shared with it: an expired cookie
-    // leaves the previous user's cached data — and their in-progress practice session —
-    // for whoever signs in next.
+    // leaves the previous user's cached data for whoever signs in next. The in-progress
+    // practice session is the exception — it is owner-stamped, so it stays and the user can
+    // finish it after signing back in rather than losing unsaved minutes to a dead cookie.
     setUnauthorizedHandler(() => {
-      void clearLocalSession(queryClient);
+      void clearLocalSession(queryClient, { keepActiveSession: true });
     });
   }, []);
 
@@ -78,30 +79,42 @@ export default function RootLayout() {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
 
-  if (!ready) return null;
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <GluestackUIProvider mode="dark">
-        <PersistQueryClientProvider
-          client={queryClient}
-          persistOptions={{
-            persister: queryPersister,
-            buster: CACHE_BUSTER,
-            maxAge: CACHE_MAX_AGE_MS,
-          }}
-        >
-          <BottomSheetModalProvider>
-            <ThemeProvider value={navigationTheme}>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(app)" />
-              </Stack>
-              <ToastHost />
-            </ThemeProvider>
-          </BottomSheetModalProvider>
-        </PersistQueryClientProvider>
-      </GluestackUIProvider>
+      {/*
+        Mounted explicitly rather than relying on the one react-navigation installs inside
+        `<Stack>`: `ToastHost` below is a *sibling* of the Stack, so it sat outside that
+        provider while reading the bottom inset. `initialWindowMetrics` is what keeps the
+        first frame from laying out at zero insets and then jumping.
+      */}
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <GluestackUIProvider mode="dark">
+          {/*
+            Above the `ready` gate, not below it. This provider reads a day-old snapshot out
+            of AsyncStorage on mount, and while it sat under the gate that read did not begin
+            until the fonts and the session round-trip had both finished — three waits in
+            series where two of them can overlap. The splash still covers all of it.
+          */}
+          <PersistQueryClientProvider
+            client={queryClient}
+            persistOptions={{
+              persister: queryPersister,
+              buster: CACHE_BUSTER,
+              maxAge: CACHE_MAX_AGE_MS,
+            }}
+          >
+            {ready && (
+              <ThemeProvider value={navigationTheme}>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(app)" />
+                </Stack>
+                <ToastHost />
+              </ThemeProvider>
+            )}
+          </PersistQueryClientProvider>
+        </GluestackUIProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

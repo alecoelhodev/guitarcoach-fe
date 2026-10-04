@@ -29,11 +29,18 @@ describe('validateRecordingFile', () => {
     });
   });
 
-  it('matches the allowlist exactly — case and parameters both matter', () => {
-    // A picker that reports `audio/mpeg; codecs=mp3` or an uppercased type is rejected.
-    // Recorded as current behaviour; both are plausible inputs from a real file picker.
-    expect(validateRecordingFile({ mimeType: 'AUDIO/MPEG' }).valid).toBe(false);
-    expect(validateRecordingFile({ mimeType: 'audio/mpeg; codecs=mp3' }).valid).toBe(false);
+  // A media type's case is not significant and its parameters are not part of the type
+  // (RFC 9110 §8.3), so matching the raw string turned two spellings of MP3 into
+  // "Unsupported file type" — QA saw the same class of bug with a valid WAV.
+  it('normalises case and parameters before matching the allowlist', () => {
+    expect(validateRecordingFile({ mimeType: 'AUDIO/MPEG' }).valid).toBe(true);
+    expect(validateRecordingFile({ mimeType: 'audio/mpeg; codecs=mp3' }).valid).toBe(true);
+    expect(validateRecordingFile({ mimeType: '  Audio/WAV ' }).valid).toBe(true);
+  });
+
+  it('still rejects a type that only looks like one on the list', () => {
+    expect(validateRecordingFile({ mimeType: 'audio/mpeg-nonsense' }).valid).toBe(false);
+    expect(validateRecordingFile({ mimeType: 'video/mp4' }).valid).toBe(false);
   });
 
   it('accepts a file exactly at the size cap', () => {

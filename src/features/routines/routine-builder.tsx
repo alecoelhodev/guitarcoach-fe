@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { ChevronLeft } from 'lucide-react-native';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,15 +29,16 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { FieldLabel } from '@/components/ui/field-label';
 import { Input } from '@/components/ui/input';
+import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { Segmented, type SegmentedOption } from '@/components/ui/segmented';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { ValidationMessage } from '@/components/ui/validation-message';
 import { RoutineTaskRow } from '@/features/routines/routine-task-row';
 import { UnsavedChangesDialog } from '@/features/routines/unsaved-changes-dialog';
 import { useStartPractice } from '@/features/session/use-start-practice';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useToastStore } from '@/stores/toast-store';
-import { TabBarInset } from '@/theme/platform';
-import { Colors, MaxContentWidth, Spacing } from '@/theme/tokens';
+import { Colors, IconSize, IconStroke, MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { Routine, RoutineStatus, RoutineTaskWithTask } from '@/types/routine';
 
 /** `CreateRoutineDto` bounds the title at 2–200; a 1-character title is a 400, not a nudge. */
@@ -73,6 +74,7 @@ export function RoutineBuilder({ routineId }: { routineId?: string }) {
 
 function CreateRoutine() {
   const router = useRouter();
+  const showToast = useToastStore((state) => state.show);
   const createRoutine = useCreateRoutine();
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -91,6 +93,9 @@ function CreateRoutine() {
       // `replace`, not `push`: back from the new routine should reach the list, not an
       // empty create form.
       router.replace({ pathname: '/routines/[id]', params: { id: routine.id } });
+      // The edit path has always toasted; creating one landed on a screen that looks the
+      // same as the one you were on, with nothing to say it worked.
+      showToast('Routine created', 'success');
     } catch (error) {
       setFailure(describeError(error, "Couldn't save this routine").title);
     }
@@ -144,14 +149,9 @@ function EditRoutine({ routineId }: { routineId: string }) {
   const routineQuery = useRoutine(routineId);
   const tasksQuery = useRoutineTasks(routineId);
 
-  if (routineQuery.isPending || tasksQuery.isPending) {
-    return (
-      <Card>
-        <Skeleton width="70%" />
-        <Skeleton width="45%" />
-      </Card>
-    );
-  }
+  // Two queries, so this stays hand-rolled rather than going through `QueryState`: its
+  // `query` prop takes one, and the retry below has to reach both.
+  if (routineQuery.isPending || tasksQuery.isPending) return <SkeletonCard />;
   if (routineQuery.isError || tasksQuery.isError) {
     const { title, message } = describeError(
       routineQuery.error ?? tasksQuery.error,
@@ -195,8 +195,16 @@ function EditRoutineBody({
 
   const [status, setStatus] = useState<RoutineStatus>(routine.status);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
+  /**
+   * Six different actions write this one panel, so the message has to carry its own retry.
+   * It used to be a bare string and the panel always called `submit()` — so "Couldn't remove
+   * this task" offered a Try again that saved the form instead, leaving the task in place.
+   */
+  const [failure, setFailure] = useState<{ title: string; retry: () => void } | null>(null);
+  /** The order the last reorder attempted, so its Try again resends that, not the current list. */
+  const lastReorder = useRef<string[] | null>(null);
 
   const form = useRoutineForm({ title: routine.title, notes: routine.notes ?? '' });
   const statusDirty = status !== routine.status;
@@ -215,7 +223,9 @@ function EditRoutineBody({
     [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
     // The backend 400s unless `taskIds` carries every assigned task exactly once — this is a
     // full reorder, never a partial move.
-    reorderMutation.mutate(reordered.map((t) => t.taskId));
+    const taskIds = reordered.map((t) => t.taskId);
+    lastReorder.current = taskIds;
+    reorderMutation.mutate(taskIds);
   }
 
   function setTaskMinutes(taskId: string, targetDurationMinutes: number | undefined) {
@@ -223,7 +233,11 @@ function EditRoutineBody({
     updateRoutineTask.mutate(
       { taskId, input: { targetDurationMinutes } },
       {
-        onError: (error) => setFailure(describeError(error, "Couldn't update this task").title),
+        onError: (error) =>
+          setFailure({
+            title: describeError(error, "Couldn't update this task").title,
+            retry: () => setTaskMinutes(taskId, targetDurationMinutes),
+          }),
       },
     );
   }
@@ -237,7 +251,11 @@ function EditRoutineBody({
     setFailure(null);
     setExpandedTaskId(null);
     removeRoutineTask.mutate(taskId, {
-      onError: (error) => setFailure(describeError(error, "Couldn't remove this task").title),
+      onError: (error) =>
+        setFailure({
+          title: describeError(error, "Couldn't remove this task").title,
+          retry: () => removeTask(taskId),
+        }),
     });
   }
 
@@ -256,7 +274,10 @@ function EditRoutineBody({
       showToast('Routine saved', 'success');
       return true;
     } catch (error) {
-      setFailure(describeError(error, "Couldn't save this routine").title);
+      setFailure({
+        title: describeError(error, "Couldn't save this routine").title,
+        retry: () => void submit(),
+      });
       return false;
     }
   }
@@ -275,7 +296,10 @@ function EditRoutineBody({
       setStatus('archived');
       showToast('Routine archived', 'success');
     } catch (error) {
-      setFailure(describeError(error, "Couldn't archive this routine").title);
+      setFailure({
+        title: describeError(error, "Couldn't archive this routine").title,
+        retry: () => void archive(),
+      });
     }
   }
 
@@ -287,7 +311,10 @@ function EditRoutineBody({
       showToast('Routine deleted', 'success');
       router.replace('/(app)/(main)/(tabs)/routines');
     } catch (error) {
-      setFailure(describeError(error, "Couldn't delete this routine").title);
+      setFailure({
+        title: describeError(error, "Couldn't delete this routine").title,
+        retry: () => void destroy(),
+      });
     }
   }
 
@@ -318,7 +345,7 @@ function EditRoutineBody({
         </View>
       </View>
 
-      {failure && <ErrorPanel title={failure} onRetry={() => void submit()} />}
+      {failure && <ErrorPanel title={failure.title} onRetry={failure.retry} />}
 
       <View style={styles.summary}>
         <ThemedText type="overline" color="textMuted">
@@ -337,7 +364,13 @@ function EditRoutineBody({
               ? 'Reordering is unavailable right now. The list is back to the last saved order.'
               : 'Another change was in progress. The list is back to the last saved order.'
           }
-          onRetry={() => reorderMutation.reset()}
+          // Resends the order that lost the race. The optimistic list has already rolled
+          // back, so retrying re-applies what the user asked for; `reset()` only hid the
+          // panel and left the tasks in the old order.
+          onRetry={() => {
+            if (lastReorder.current) reorderMutation.mutate(lastReorder.current);
+            else reorderMutation.reset();
+          }}
         />
       )}
 
@@ -396,7 +429,7 @@ function EditRoutineBody({
           variant="tertiary"
           style={styles.footerAction}
           disabled={busy}
-          onPress={() => void archive()}
+          onPress={() => setConfirmArchive(true)}
         >
           Archive
         </Button>
@@ -416,6 +449,20 @@ function EditRoutineBody({
           {"Remove this routine's tasks before deleting it."}
         </ThemedText>
       )}
+
+      {/* Archiving used to fire on the first tap, while delete beside it asked. It is
+          reversible from the Archived tab, so the copy says so rather than warning. */}
+      <ConfirmDialog
+        visible={confirmArchive}
+        title={`Archive "${routine.title}"?`}
+        message="It moves to the Archived tab. You can restore it from there."
+        confirmLabel="Archive"
+        onConfirm={() => {
+          setConfirmArchive(false);
+          void archive();
+        }}
+        onCancel={() => setConfirmArchive(false)}
+      />
 
       <ConfirmDialog
         visible={confirmDelete}
@@ -475,10 +522,19 @@ function useUnsavedGuard(dirty: boolean) {
 }
 
 function Screen({ children }: { children: React.ReactNode }) {
+  // Clears the tab bar and the home indicator under it.
+  const bottomPad = useBottomInset() + Spacing[4];
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.scroll}>{children}</ScrollView>
+        <KeyboardAwareScreen>
+          <ScrollView
+            contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
+        </KeyboardAwareScreen>
       </SafeAreaView>
     </ThemedView>
   );
@@ -498,7 +554,7 @@ function BuilderHeader({
   return (
     <View style={styles.header}>
       <Button variant="icon" accessibilityLabel="Go back" onPress={onBack}>
-        <ChevronLeft size={20} strokeWidth={2.75} />
+        <ChevronLeft color={Colors.text} size={IconSize.lg} strokeWidth={IconStroke} />
       </Button>
       <View style={styles.spacer} />
       {dirty && <Badge label="Unsaved" />}
@@ -534,6 +590,10 @@ function RoutineFields({
               editable={!disabled}
               invalid={!!formState.errors.title}
               placeholder="Warm-up routine"
+              autoCapitalize="sentences"
+              returnKeyType="next"
+              // `@Length(2, 200)` on the DTO; stopping at the ceiling beats a 400.
+              maxLength={200}
             />
           )}
         />
@@ -555,6 +615,8 @@ function RoutineFields({
               invalid={!!formState.errors.notes}
               multiline
               placeholder="Fifteen minutes before anything else."
+              autoCapitalize="sentences"
+              maxLength={2000}
             />
           )}
         />
@@ -567,7 +629,7 @@ function RoutineFields({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
-  scroll: { padding: Spacing[4], paddingBottom: TabBarInset + Spacing[4], gap: Spacing[4] },
+  scroll: { padding: Spacing[4], gap: Spacing[4] },
   header: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
   spacer: { flex: 1 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },

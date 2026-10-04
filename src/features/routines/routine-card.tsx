@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { useStartPractice } from '@/features/session/use-start-practice';
 import { formatRoutineMeta } from '@/lib/routine-meta';
 import { useToastStore } from '@/stores/toast-store';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, IconSize, IconStroke, Spacing } from '@/theme/tokens';
 import type { Routine } from '@/types/routine';
 
 export function RoutineCard({ routine }: { routine: Routine }) {
@@ -29,7 +29,7 @@ export function RoutineCard({ routine }: { routine: Routine }) {
             </ThemedText>
             {/* Canvas 05 leaves active routines unbadged and marks only archived ones. */}
             {archived && <Badge label="Archived" />}
-            <ChevronRight color={Colors.neutral[700]} size={16} strokeWidth={2.75} />
+            <ChevronRight color={Colors.neutral[700]} size={IconSize.sm} strokeWidth={IconStroke} />
           </View>
 
           <ThemedText type="body" color="textMuted">

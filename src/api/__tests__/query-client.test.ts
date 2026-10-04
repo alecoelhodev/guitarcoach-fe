@@ -2,8 +2,9 @@ import { focusManager, onlineManager } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 
 import { shouldRetry } from '@/api/errors';
+import { CACHE_MAX_AGE_MS } from '@/api/persist';
 import { storage } from '@/lib/storage';
-import { TabBarInset } from '@/theme/platform';
+import { TabBarChrome } from '@/theme/platform';
 
 /**
  * The app's real `QueryClient` plus the small modules that sit beside it.
@@ -38,11 +39,20 @@ describe('queryClient defaults', () => {
     expect(again).toBe(queryClient);
   });
 
-  it('holds queries stale-free for 30s and cached for 5 minutes', () => {
+  it('holds queries stale-free for 30s and cached for as long as the persister keeps them', () => {
     const { queries } = queryClient.getDefaultOptions();
 
     expect(queries?.staleTime).toBe(30_000);
-    expect(queries?.gcTime).toBe(5 * 60_000);
+    expect(queries?.gcTime).toBe(CACHE_MAX_AGE_MS);
+  });
+
+  // The offline cold start depends on this. TanStack drops a garbage-collected query from
+  // the dehydrated snapshot too, so a `gcTime` below `maxAge` silently shortens the
+  // persisted cache to `gcTime` — the 24h window would have been five minutes.
+  it('never garbage-collects sooner than the persisted snapshot it feeds', () => {
+    const { queries } = queryClient.getDefaultOptions();
+
+    expect(queries?.gcTime).toBeGreaterThanOrEqual(CACHE_MAX_AGE_MS);
   });
 
   it('delegates retry policy to shouldRetry rather than a bare number', () => {
@@ -89,6 +99,21 @@ describe('module-scope listeners', () => {
     expect(onlineManager.isOnline()).toBe(false);
   });
 
+  it('treats a captive portal as offline, and an unsettled probe as online', () => {
+    const netInfo = require('@react-native-community/netinfo').default;
+    const [handler] = netInfo.addEventListener.mock.calls[0];
+
+    // Linked to an access point that intercepts every request. `isConnected` is true and
+    // retrying into it is pointless, which is the whole reason for reading the probe.
+    handler({ isConnected: true, isInternetReachable: false });
+    expect(onlineManager.isOnline()).toBe(false);
+
+    // `null` means "not probed yet", not "unreachable" — the first seconds after launch
+    // must not be spent reporting no connection.
+    handler({ isConnected: true, isInternetReachable: null });
+    expect(onlineManager.isOnline()).toBe(true);
+  });
+
   it('treats only an active app as focused', () => {
     const handler = appStateHandlers.change;
     expect(handler).toBeDefined();
@@ -119,10 +144,10 @@ describe('storage', () => {
   });
 });
 
-describe('TabBarInset', () => {
+describe('TabBarChrome', () => {
   it('resolves to the iOS measurement under the iOS-only preset', () => {
     // jest-expo's default preset sets `haste.defaultPlatform: 'ios'`, so this is the ios arm
     // of the `Platform.select`. The `?? 0` fallback is only reachable on web.
-    expect(TabBarInset).toBe(50);
+    expect(TabBarChrome).toBe(50);
   });
 });

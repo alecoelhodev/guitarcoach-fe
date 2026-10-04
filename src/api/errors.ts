@@ -1,5 +1,5 @@
 import { describeApiTarget } from '@/api/base-url';
-import { ApiError, apiTarget, OFFLINE_STATUS } from '@/api/client';
+import { ApiError, apiTarget, OFFLINE_STATUS, TIMEOUT_STATUS } from '@/api/client';
 
 export type ErrorDescription = { title: string; message?: string };
 
@@ -26,6 +26,11 @@ export function describeError(error: unknown, fallbackTitle = GENERIC_TITLE): Er
         message: __DEV__
           ? `Couldn't reach ${describeApiTarget(apiTarget)}. Check your connection and try again.`
           : 'Check your connection and try again.',
+      };
+    case error.status === TIMEOUT_STATUS:
+      return {
+        title: 'This is taking too long',
+        message: 'The server is reachable but slow. Try again.',
       };
     case error.status === 404:
       return { title: 'Not found', message: "This isn't here anymore." };
@@ -54,5 +59,8 @@ export function shouldRetry(failureCount: number, error: unknown): boolean {
   if (failureCount >= MAX_RETRIES) return false;
   if (!(error instanceof ApiError)) return false;
   if (error.status === OFFLINE_STATUS) return true;
+  // Deliberately not `TIMEOUT_STATUS`. An offline retry fails immediately, so it costs
+  // nothing; a timeout retry costs the whole ceiling again, and two more of them would
+  // leave the user watching a spinner for a minute before being told anything.
   return error.status >= 500;
 }

@@ -17,6 +17,7 @@ import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { ErrorPanel } from '@/components/ui/error-panel';
 import { Input } from '@/components/ui/input';
+import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { Segmented } from '@/components/ui/segmented';
 import { PlanPreviewCard } from '@/features/coach/plan-preview-card';
 import { MaxContentWidth, Spacing } from '@/theme/tokens';
@@ -109,91 +110,98 @@ export function CoachScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <ThemedText type="h3">AI Coach</ThemedText>
+        <KeyboardAwareScreen>
+          {/* `handled` so a suggestion chip fills the field instead of the first tap being
+              spent dismissing the keyboard. */}
+          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+            <ThemedText type="h3">AI Coach</ThemedText>
 
-          <Segmented
-            options={[
-              { value: 'draft', label: 'Draft & Review' },
-              { value: 'instant', label: 'Instant Create' },
-            ]}
-            value={mode}
-            onChange={(value) => {
-              setMode(value);
-              setDraft(undefined);
-              setMessage(undefined);
-              setFailure(null);
-            }}
-          />
+            <Segmented
+              options={[
+                { value: 'draft', label: 'Draft & Review' },
+                { value: 'instant', label: 'Instant Create' },
+              ]}
+              value={mode}
+              onChange={(value) => {
+                setMode(value);
+                setDraft(undefined);
+                setMessage(undefined);
+                setFailure(null);
+              }}
+            />
 
-          {mode === 'draft' ? (
-            <Card quiet>
-              <ThemedText type="body" color="textMuted">
-                Create a practice plan and review it before anything is saved.
-              </ThemedText>
-            </Card>
-          ) : (
-            /* Canvas 10c puts this warning above the composer, so it is read before
+            {mode === 'draft' ? (
+              <Card quiet>
+                <ThemedText type="body" color="textMuted">
+                  Create a practice plan and review it before anything is saved.
+                </ThemedText>
+              </Card>
+            ) : (
+              /* Canvas 10c puts this warning above the composer, so it is read before
                sending — Instant Create writes a routine with no confirmation step. */
-            <Banner
-              tone="info"
-              title="Saves straight away"
-              message="The coach can review your recent practice and create a routine immediately. You'll be able to edit or delete it afterwards."
-            />
-          )}
+              <Banner
+                tone="info"
+                title="Saves straight away"
+                message="The coach can review your recent practice and create a routine immediately. You'll be able to edit or delete it afterwards."
+              />
+            )}
 
-          <View style={styles.suggestions}>
-            <ThemedText type="overline" color="textMuted">
-              Try
-            </ThemedText>
-            <View style={styles.chips}>
-              {SUGGESTIONS[mode].map((suggestion) => (
-                <Chip key={suggestion} label={suggestion} onPress={() => setInput(suggestion)} />
-              ))}
+            <View style={styles.suggestions}>
+              <ThemedText type="overline" color="textMuted">
+                Try
+              </ThemedText>
+              <View style={styles.chips}>
+                {SUGGESTIONS[mode].map((suggestion) => (
+                  <Chip key={suggestion} label={suggestion} onPress={() => setInput(suggestion)} />
+                ))}
+              </View>
             </View>
-          </View>
 
-          <View style={{ gap: Spacing[3] }}>
-            <Input
-              value={input}
-              onChangeText={setInput}
-              placeholder="e.g. 30 minutes of jazz comping basics"
-              multiline
-            />
-            <Button block loading={loading} onPress={handleSubmit}>
-              {mode === 'draft' ? 'Draft a plan' : 'Create routine'}
-            </Button>
-          </View>
-
-          {failure && (
-            <ErrorPanel
-              title={failure.title}
-              message={failure.message}
-              onRetry={() => void handleSubmit()}
-            />
-          )}
-
-          {draft && (
-            <PlanPreviewCard
-              plan={draft.plan}
-              loading={loading}
-              onConfirm={() => handleConfirm(true)}
-              onDecline={() => handleConfirm(false)}
-            />
-          )}
-
-          {message && (
-            <View style={{ gap: Spacing[2] }}>
-              <ThemedText type="body">{message}</ThemedText>
-              <Button
-                variant="secondary"
-                onPress={() => router.push('/(app)/(main)/(tabs)/routines')}
-              >
-                View routines
+            <View style={{ gap: Spacing[3] }}>
+              <Input
+                value={input}
+                onChangeText={setInput}
+                placeholder="e.g. 30 minutes of jazz comping basics"
+                multiline
+                // The prompt goes to an LLM endpoint; unbounded free text is the caller's
+                // problem to bound. Comfortably above any real request.
+                maxLength={1000}
+              />
+              <Button block loading={loading} onPress={handleSubmit}>
+                {mode === 'draft' ? 'Draft a plan' : 'Create routine'}
               </Button>
             </View>
-          )}
-        </ScrollView>
+
+            {failure && (
+              <ErrorPanel
+                title={failure.title}
+                message={failure.message}
+                onRetry={() => void handleSubmit()}
+              />
+            )}
+
+            {draft && (
+              <PlanPreviewCard
+                plan={draft.plan}
+                loading={loading}
+                onConfirm={() => handleConfirm(true)}
+                onDecline={() => handleConfirm(false)}
+              />
+            )}
+
+            {message && (
+              <View style={{ gap: Spacing[2] }}>
+                <ThemedText type="body">{message}</ThemedText>
+                <Button
+                  variant="secondary"
+                  onPress={() => router.push('/(app)/(main)/(tabs)/routines')}
+                >
+                  View routines
+                </Button>
+              </View>
+            )}
+          </ScrollView>
+        </KeyboardAwareScreen>
       </SafeAreaView>
     </ThemedView>
   );
