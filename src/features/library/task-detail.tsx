@@ -28,13 +28,13 @@ export function TaskDetail({ taskId }: { taskId: string }) {
 
                 <ThemedText type="h3">{task.title}</ThemedText>
 
-                {task.description && (
+                {task.description ? (
                   <Card>
                     <ThemedText type="body" color="textMuted">
                       {task.description}
                     </ThemedText>
                   </Card>
-                )}
+                ) : null}
 
                 {task.referenceLink && isWebUrl(task.referenceLink) && (
                   <ExternalLink href={task.referenceLink as `${string}:${string}`}>

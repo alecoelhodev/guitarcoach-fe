@@ -77,6 +77,20 @@ describe('a finished session', () => {
     expect(screen.getByText('Felt sloppy')).toBeTruthy();
   });
 
+  // `{'' && …}` renders a bare string outside <Text>, which crashes on native.
+  it('renders empty notes exactly as no notes', async () => {
+    sessionHook.mockReturnValue(successQuery(makeSession({ notes: '' })));
+    const empty = await render(<SessionDetail sessionId={SESSION_ID} />);
+    const emptyTree = screen.toJSON();
+    await empty.unmount();
+
+    sessionHook.mockReturnValue(successQuery(makeSession({ notes: null })));
+    await render(<SessionDetail sessionId={SESSION_ID} />);
+
+    // Serialised: the trees carry fresh handler closures, so deep equality never holds.
+    expect(JSON.stringify(emptyTree)).toBe(JSON.stringify(screen.toJSON()));
+  });
+
   it('copes with a session that recorded no tasks at all', async () => {
     sessionHook.mockReturnValue(successQuery(makeSession({ sessionTasks: undefined })));
     await render(<SessionDetail sessionId={SESSION_ID} />);

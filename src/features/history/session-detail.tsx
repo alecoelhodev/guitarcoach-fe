@@ -77,13 +77,13 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
             </ThemedText>
           </View>
 
-          {session.notes && (
+          {session.notes ? (
             <Card quiet>
               <ThemedText type="body" color="textMuted">
                 {session.notes}
               </ThemedText>
             </Card>
-          )}
+          ) : null}
 
           <View style={styles.sectionHeader}>
             <ThemedText type="overline" color="textMuted">

@@ -66,6 +66,20 @@ describe('TaskDetail', () => {
     expect(screen.getByText('Down-up at 80bpm')).toBeTruthy();
   });
 
+  // `{'' && …}` renders a bare string outside <Text>, which crashes on native.
+  it('renders an empty description exactly as none', async () => {
+    mock.mockReturnValue(successQuery(makeTask({ description: '' })));
+    const empty = await render(<TaskDetail taskId="t1" />);
+    const emptyTree = screen.toJSON();
+    await empty.unmount();
+
+    mock.mockReturnValue(successQuery(makeTask({ description: null })));
+    await render(<TaskDetail taskId="t1" />);
+
+    // Serialised: the trees carry fresh handler closures, so deep equality never holds.
+    expect(JSON.stringify(emptyTree)).toBe(JSON.stringify(screen.toJSON()));
+  });
+
   it('warns that a reference link leaves the app', async () => {
     mock.mockReturnValue(successQuery(makeTask({ referenceLink: 'https://example.com/lesson' })));
     await render(<TaskDetail taskId="t1" />);

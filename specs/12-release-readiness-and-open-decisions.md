@@ -1,0 +1,156 @@
+# 12 — Release readiness and open decisions
+
+**Status:** open · **Owner:** product owner (human-only steps) · **Written:** 2026-10-04
+
+These are the release tasks no code change can finish: they need account access, a decision, or
+artwork. Pre-release hardening (security, performance and store config) has already merged:
+frontend PRs #17–#20 plus the small-fixes PR, backend PRs #26–#27. Where Claude has follow-up work once a step is done,
+the step says so.
+
+Do section 1 first. Sections 2–4 can happen in any order. Section 5 must be complete before the
+first store submission.
+
+## 1. Security — do now
+
+### 1.1 Seeded accounts in the production database
+
+`prisma/seed.ts` in the backend creates `admin@`, `alice@`, `bob@`, `carol@` and
+`dave@guitarcoach.dev`. They all share one password, which has been readable in the repo's public
+git history. The seed now refuses to run against a non-local database unless
+`SEED_ALLOW_NON_LOCAL=true` is set. That stops it happening again, but it can't tell whether it
+already happened.
+
+1. Query the production `users` table for those five emails.
+2. If any exist, delete them, or rotate their passwords and revoke their sessions (`sessions` rows).
+
+**Done when:** none of the five can sign in to production.
+
+### 1.2 k6 test-user password
+
+An example password for `K6_TEST_USER_PASSWORD` used to sit in the backend's
+`docs/performance-testing.md`, and it's still in git history. The real value lives in Secret
+Manager as `guitarcoach-k6-perf-test-password`.
+
+1. Compare the two.
+2. If they match, rotate the secret and the k6 user's password together.
+
+**Done when:** the live k6 password doesn't appear anywhere in git history.
+
+## 2. Verify on a device (Expo Go)
+
+None of the following has run on a device yet; the automated suites can't prove it. Run
+`npm run dev:cloud` and scan the QR.
+
+- [ ] **Session notes draft.** Type in notes, switch to the title, background the app mid-draft,
+      come back, then Finish. The saved session contains the latest text.
+- [ ] **Minutes stepper.** Tap + rapidly 5 times, then reload. The final value persists. Clear a
+      duration and reload: it stays cleared.
+- [ ] **Offline sign-out.** In Airplane mode, sign out. The app returns to sign-in within about 2
+      seconds, and the next account sees none of the previous one's data.
+- [ ] **Session detail.** Task titles appear with no per-row spinner.
+- [ ] **Offline History and Home.** Lists render from cache, with no session notes.
+- [ ] **Links.** Every card or row that navigates actually navigates on native; see the
+      `Link asChild` rules in `AGENTS.md`.
+
+## 3. Turn on Sentry
+
+The integration is merged (`src/lib/monitoring.ts`), but it stays off without a DSN. Set
+everything below in the same sitting. **With the org and project set but no auth token, native
+builds fail** at the source-map upload step.
+
+1. Create the Sentry organization and a React Native project.
+2. Add the EAS environment variables:
+
+   ```bash
+   eas env:create --name SENTRY_ORG --value <org-slug> --environment preview
+   eas env:create --name SENTRY_PROJECT --value <project-slug> --environment preview
+   eas env:create --name SENTRY_AUTH_TOKEN --value <token> --visibility secret --environment preview
+   eas env:create --name EXPO_PUBLIC_SENTRY_DSN --value <dsn> --environment preview
+   # repeat all four with --environment production
+   ```
+
+3. In a preview build, throw a test error.
+
+**Done when:** the event shows up in Sentry with an opaque user id only, and no email, cookie or
+request body.
+
+## 4. Open decisions
+
+Each decision unblocks work that Claude can then do.
+
+| Decision                                                              | Recommendation                                                                 | Unblocks                                                          |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| **In-app account deletion**                                           | Yes. Apple guideline 5.1.1(v) and Google Play both require it for sign-up apps | Backend endpoint plus a profile-screen button; Claude builds both |
+| **OTA updates** (`expo-updates`)                                      | Yes, after the first store release                                             | `runtimeVersion` policy and an EAS Update channel per profile     |
+| **Optimistic boot** (skip the 5s session check when a user is cached) | Yes, if cold starts feel slow on device                                        | A change in `src/stores/session-store.ts`                         |
+| **Pin GitHub Actions to commit SHAs**                                 | Yes. It's cheap supply-chain hardening                                         | Workflow edits in both repos                                      |
+| **Keep routine notes off the device**                                 | Optional. Session notes already are                                            | A `persist.ts` serializer change                                  |
+
+## 5. Store prerequisites (before the first submission)
+
+### 5.1 Identity
+
+- Confirm the display name **Guitar Coach** and the bundle/package ID
+  `com.coelhoadevsteam.guitarcoach`. **The ID can't be changed after the first store upload.**
+  Claude then sets `name` in `app.config.ts` (it's still `guitar-coach-fe`).
+
+### 5.2 Production API URL
+
+Every build needs `EXPO_PUBLIC_API_BASE_URL` (https). Without it, the app throws on launch, and
+production builds refuse plain http.
+
+```bash
+eas env:create --name EXPO_PUBLIC_API_BASE_URL --value https://<api-host> --environment preview
+eas env:create --name EXPO_PUBLIC_API_BASE_URL --value https://<api-host> --environment production
+```
+
+### 5.3 Artwork
+
+Every image in `assets/` is still the Expo template. Provide:
+
+- an app icon, 1024×1024 PNG with no transparency
+- Android adaptive icon layers: foreground and monochrome (keep the artwork inside the central
+  ~66/108 dp safe zone), plus a background
+- a splash mark, which goes on the existing `#0a0b0d` background
+- a favicon
+- optionally, an iOS Icon Composer bundle to replace `assets/expo.icon`
+
+Claude then wires everything into `app.config.ts`.
+
+### 5.4 Privacy policy and support URLs
+
+Both stores require a privacy policy URL, and App Store Connect also needs a support URL. Host
+both. Claude then adds links to the profile screen via `ExternalLink`.
+
+### 5.5 Listing copy and questionnaires
+
+- Store description, keywords, category and age rating.
+- Screenshots. Claude can capture them from the simulator on request.
+- **App Privacy** (iOS) and **Data safety** (Play) answers, describing what the app actually
+  handles:
+  - account email and name
+  - routines, practice sessions and notes, stored on the backend
+  - audio recordings in Google Cloud Storage
+  - a local cache on the device
+  - crash reports, if Sentry is enabled
+- Approve or replace the placeholder web copy in `src/app/+html.tsx` ("Guitar Coach" / "Practice
+  with a plan.").
+
+### 5.6 Store accounts
+
+- Create the App Store Connect app record, and note the `ascAppId` and Apple Team ID.
+- Create the Play Console app and a service account. Keep the key in EAS or a secret manager,
+  **never in the repo**.
+
+Claude then fills in `eas.json` → `submit` with IDs only.
+
+### 5.7 Web hosting (only if web ships)
+
+Choose a host for the static `dist/` and configure security headers there: CSP, HSTS, and
+`frame-ancestors`/`X-Frame-Options`.
+
+## 6. Ship
+
+1. Run `eas build --profile preview` for iOS and Android, and install it on devices.
+2. Repeat the section 2 checklist on the preview build.
+3. Run `eas build --profile production`, then `eas submit`.

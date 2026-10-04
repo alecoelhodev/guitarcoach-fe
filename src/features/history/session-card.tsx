@@ -23,11 +23,11 @@ export function SessionCard({ session }: { session: PracticeSession }) {
           <ChevronRight color={Colors.neutral[700]} size={IconSize.sm} strokeWidth={IconStroke} />
         </View>
 
-        {session.notes && (
+        {session.notes ? (
           <ThemedText type="body" color="textMuted" numberOfLines={2}>
             {session.notes}
           </ThemedText>
-        )}
+        ) : null}
 
         <View style={styles.badges}>
           {/* Per-task minutes are optional, so a session can legitimately have none. */}

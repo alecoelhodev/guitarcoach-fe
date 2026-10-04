@@ -226,6 +226,15 @@ describe('routines', () => {
     });
   });
 
+  it('updateRoutineTask sends null to clear a duration', () => {
+    updateRoutineTask('r1', 't1', { targetDurationMinutes: null });
+
+    expect(requestMock).toHaveBeenCalledWith('/routines/r1/tasks/t1', {
+      method: 'PATCH',
+      body: { targetDurationMinutes: null },
+    });
+  });
+
   it('removeRoutineTask', () => {
     removeRoutineTask('r1', 't1');
 

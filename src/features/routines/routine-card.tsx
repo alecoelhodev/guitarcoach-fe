@@ -36,11 +36,11 @@ export function RoutineCard({ routine }: { routine: Routine }) {
             {formatRoutineMeta(routine)}
           </ThemedText>
 
-          {routine.notes && (
+          {routine.notes ? (
             <ThemedText type="body" color="textMuted" numberOfLines={2}>
               {routine.notes}
             </ThemedText>
-          )}
+          ) : null}
         </Pressable>
       </Link>
 

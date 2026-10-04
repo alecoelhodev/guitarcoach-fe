@@ -1,6 +1,12 @@
 import { apiPath, request } from '@/api/client';
 import type { Paginated } from '@/types/pagination';
-import type { Routine, RoutineStatus, RoutineTask, RoutineTaskWithTask } from '@/types/routine';
+import type {
+  Routine,
+  RoutineStatus,
+  RoutineTask,
+  RoutineTaskWithTask,
+  UpdateRoutineTaskInput,
+} from '@/types/routine';
 
 export function listRoutines(
   query: { page?: number; limit?: number; status?: RoutineStatus } = {},
@@ -51,7 +57,7 @@ export function reorderRoutineTasks(routineId: string, taskIds: string[]) {
 export function updateRoutineTask(
   routineId: string,
   taskId: string,
-  input: Partial<{ position: number; targetDurationMinutes: number }>,
+  input: UpdateRoutineTaskInput,
 ) {
   return request<RoutineTask>(apiPath`/routines/${routineId}/tasks/${taskId}`, {
     method: 'PATCH',
