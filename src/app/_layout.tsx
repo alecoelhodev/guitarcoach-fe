@@ -12,7 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { setUnauthorizedHandler } from '@/api/client';
-import { CACHE_BUSTER, CACHE_MAX_AGE_MS, queryPersister } from '@/api/persist';
+import { CACHE_BUSTER, CACHE_MAX_AGE_MS, dehydrateOptions, queryPersister } from '@/api/persist';
 import { queryClient } from '@/api/query-client';
 import { ErrorBoundaryFallback } from '@/components/error-boundary-fallback';
 import { ToastHost } from '@/components/toast-host';
@@ -108,6 +108,7 @@ export default function RootLayout() {
               persister: queryPersister,
               buster: CACHE_BUSTER,
               maxAge: CACHE_MAX_AGE_MS,
+              dehydrateOptions,
             }}
             onSuccess={dropRestoreAfterSignOut}
           >
