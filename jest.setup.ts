@@ -75,6 +75,17 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
+// Importing `@sentry/react-native` starts a never-`unref`ed `setInterval` at module scope
+// (`tracing/timeToDisplayFallback` builds an `AsyncExpiringMap` on load), so every suite that
+// reaches `src/lib/monitoring.ts` — the error boundary, the root layout — leaves an open handle
+// and Jest force-exits a worker. Only the four calls the app makes are stubbed.
+jest.mock('@sentry/react-native', () => ({
+  init: jest.fn(),
+  wrap: jest.fn((component: unknown) => component),
+  setUser: jest.fn(),
+  captureException: jest.fn(),
+}));
+
 // Zustand stores are module singletons and the AsyncStorage mock's `Map` is shared per file,
 // so leftover state leaks between tests as a pass-alone / fail-in-company split. Every screen
 // reads `useSessionStore`, which makes forgetting this the default mistake rather than an
