@@ -97,9 +97,7 @@ it('says which rule the file broke, not just that it broke one', async () => {
   pick.mockResolvedValue({ canceled: false, assets: [{ ...asset, mimeType: 'image/png' }] });
   await fireEvent.press(screen.getByText('Choose another'));
 
-  expect(
-    screen.getByText('Unsupported file type. Use MP3, WAV, M4A, OGG, or WebM.'),
-  ).toBeTruthy();
+  expect(screen.getByText('Unsupported file type. Use MP3, WAV, M4A, OGG, or WebM.')).toBeTruthy();
 });
 
 // A picker reporting `audio/mpeg; codecs=mp3` or an uppercased type is handing back the same
