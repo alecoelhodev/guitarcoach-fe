@@ -40,14 +40,47 @@ describe('describeError', () => {
     expect(describeError(new ApiError('boom', status), 'fallback').title).toBe(title);
   });
 
-  it("falls back to the caller's context and shows the server's own message", () => {
-    const { title, message } = describeError(
-      new ApiError('Routine name already taken', 409),
-      "Couldn't save",
-    );
+  /**
+   * S6. A Nest validation message is a DTO path, not copy, and a conflict message can carry an
+   * internal id — so for these statuses the server's text never reaches the screen.
+   */
+  it.each([
+    [400, 'tasks.0.durationMinutes must not be less than 1', 'Check what you entered'],
+    [422, 'title must be a string', 'Check what you entered'],
+    [409, 'Routine with id "r1" has tasks assigned and cannot be deleted', 'clashes'],
+  ])('replaces the server text of a %i with fixed copy', (status, serverText, copy) => {
+    const { title, message } = describeError(new ApiError(serverText, status), "Couldn't save");
 
     expect(title).toBe("Couldn't save");
-    expect(message).toBe('Routine name already taken');
+    expect(message).toContain(copy);
+    expect(message).not.toContain(serverText);
+  });
+
+  it('does not show the server text for an unlisted status either', () => {
+    expect(describeError(new ApiError('Payload Too Large', 413), "Couldn't save")).toEqual({
+      title: "Couldn't save",
+      message: 'Try again.',
+    });
+  });
+
+  it.each([
+    ['USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 422, 'That email already has an account'],
+    ['USER_ALREADY_EXISTS', 422, 'That email already has an account'],
+    ['INVALID_EMAIL', 400, "That email doesn't look right"],
+    ['PASSWORD_TOO_SHORT', 400, 'That password is too short'],
+    ['PASSWORD_TOO_LONG', 400, 'That password is too long'],
+    ['INVALID_EMAIL_OR_PASSWORD', 401, 'Email or password is incorrect'],
+  ])('names the better-auth code %s in its own words', (code, status, title) => {
+    expect(describeError(new ApiError('server text', status, code), 'fallback').title).toBe(title);
+  });
+
+  it('ignores a code that is not on the allowlist, including prototype keys', () => {
+    for (const code of ['FAILED_TO_CREATE_USER', 'toString', '__proto__']) {
+      expect(describeError(new ApiError('server text', 400, code), "Couldn't sign up")).toEqual({
+        title: "Couldn't sign up",
+        message: 'Check what you entered and try again.',
+      });
+    }
   });
 
   it('tells a slow server apart from a dead network', () => {

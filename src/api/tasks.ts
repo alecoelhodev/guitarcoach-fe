@@ -1,4 +1,4 @@
-import { request } from '@/api/client';
+import { apiPath, request } from '@/api/client';
 import type { Paginated } from '@/types/pagination';
 import type { Task, TaskCategory, TaskDifficulty } from '@/types/task';
 
@@ -14,5 +14,5 @@ export function listTasks(
 }
 
 export function getTask(id: string) {
-  return request<Task>(`/tasks/${id}`);
+  return request<Task>(apiPath`/tasks/${id}`);
 }

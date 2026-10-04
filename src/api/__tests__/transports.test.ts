@@ -1,7 +1,11 @@
-jest.mock('@/api/client', () => ({ request: jest.fn(), upload: jest.fn() }));
+jest.mock('@/api/client', () => ({
+  apiPath: jest.requireActual('@/api/client').apiPath,
+  request: jest.fn(),
+  upload: jest.fn(),
+}));
 
 import { getSession, requestPasswordReset, signIn, signOut, signUp } from '@/api/auth';
-import { request, upload } from '@/api/client';
+import { ApiError, request, upload } from '@/api/client';
 import { instantCreateRoutine, requestPracticePlan, resolvePracticePlan } from '@/api/coach';
 import {
   deleteRecording,
@@ -316,5 +320,40 @@ describe('recordings', () => {
     deleteRecording('rec-1');
 
     expect(requestMock).toHaveBeenCalledWith('/recordings/rec-1', { method: 'DELETE' });
+  });
+});
+
+/**
+ * S4. Route params reach these functions straight from the URL bar on web, and the backend does
+ * not validate ids as UUIDs — so an id that is itself a path must not be able to leave its
+ * resource.
+ */
+describe('path params are encoded as a single segment', () => {
+  it('keeps a traversal attempt inside the resource path', () => {
+    getRoutine('../users/x');
+
+    expect(requestMock).toHaveBeenCalledWith('/routines/..%2Fusers%2Fx');
+  });
+
+  it('encodes every param of a nested route', () => {
+    removeRoutineTask('r1/../..', 't?1#x');
+
+    expect(requestMock).toHaveBeenCalledWith('/routines/r1%2F..%2F../tasks/t%3F1%23x', {
+      method: 'DELETE',
+    });
+  });
+
+  it('encodes the upload path too', () => {
+    const file = { uri: 'file:///a.m4a', name: 'a.m4a', mimeType: 'audio/x-m4a' };
+    uploadRecording('../s', file);
+
+    expect(uploadMock).toHaveBeenCalledWith('/practice-sessions/..%2Fs/recordings', file);
+  });
+
+  // `encodeURIComponent` leaves dots alone, and URL resolution would turn `/tasks/..` into `/`.
+  it.each(['..', '.', ''])('refuses %p as an id rather than resolving it as a path', (id) => {
+    expect(() => getTask(id)).toThrow(ApiError);
+    expect(() => getPracticeSession(id)).toThrow(expect.objectContaining({ status: 404 }));
+    expect(requestMock).not.toHaveBeenCalled();
   });
 });
