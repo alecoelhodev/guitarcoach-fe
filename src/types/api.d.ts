@@ -466,8 +466,8 @@ export interface components {
       taskIds: string[];
     };
     UpdateRoutineTaskDto: {
+      targetDurationMinutes?: number | null;
       position?: number;
-      targetDurationMinutes?: number;
     };
     CreatePracticeSessionTaskDto: {
       /** Format: uuid */

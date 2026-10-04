@@ -660,7 +660,7 @@ describe('task duration writes', () => {
     await settle();
 
     expect(update.mutate).toHaveBeenCalledWith(
-      { taskId: 'a', input: { targetDurationMinutes: undefined } },
+      { taskId: 'a', input: { targetDurationMinutes: null } },
       expect.anything(),
     );
   });

@@ -231,7 +231,8 @@ function EditRoutineBody({
   function setTaskMinutes(taskId: string, targetDurationMinutes: number | undefined) {
     setFailure(null);
     updateRoutineTask.mutate(
-      { taskId, input: { targetDurationMinutes } },
+      // `null`, not undefined: an omitted field leaves the saved duration in place.
+      { taskId, input: { targetDurationMinutes: targetDurationMinutes ?? null } },
       {
         onError: (error) =>
           setFailure({
