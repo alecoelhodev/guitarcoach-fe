@@ -34,13 +34,22 @@ export function LibraryList() {
   ]
     .filter(Boolean)
     .join(' · ');
-  const { fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError } = query;
+  const {
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    isPlaceholderData,
+  } = query;
   const tasks = query.data?.pages.flatMap((page) => page.data) ?? [];
 
   // FlatList fires onEndReached repeatedly during momentum, and a page that just failed must
   // not retry itself on every scroll event — the footer offers that explicitly instead.
   const loadMore = () => {
-    if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) fetchNextPage();
+    // Placeholder pages belong to the previous filters; paging them would mix the two lists.
+    if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError && !isPlaceholderData) {
+      fetchNextPage();
+    }
   };
 
   // A failed next page keeps the pages already on screen, but TanStack still reports it as a
@@ -106,7 +115,7 @@ export function LibraryList() {
               </Pressable>
             )}
           </View>
-          {!query.isPending && !listState.isError && query.data && (
+          {!query.isPending && !listState.isError && !isPlaceholderData && query.data && (
             <ThemedText type="body" color="textMuted">
               {count}
             </ThemedText>
