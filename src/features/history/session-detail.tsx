@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { describeError } from '@/api/errors';
 import { useRecordings } from '@/api/recordings.queries';
 import { useSession } from '@/api/sessions.queries';
-import { useTask } from '@/api/tasks.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Card } from '@/components/ui/card';
@@ -27,8 +26,6 @@ function Tick({ completed }: { completed: boolean }) {
 }
 
 function SessionTaskRow({ task }: { task: PracticeSessionTask }) {
-  const { data } = useTask(task.taskId);
-
   return (
     <View style={styles.taskRow}>
       <Tick completed={task.completed} />
@@ -38,7 +35,7 @@ function SessionTaskRow({ task }: { task: PracticeSessionTask }) {
           style={task.completed ? undefined : styles.incompleteTitle}
           numberOfLines={2}
         >
-          {data?.title ?? task.taskId}
+          {task.task.title}
         </ThemedText>
         {!task.completed && (
           <ThemedText type="body" color="textMuted">
