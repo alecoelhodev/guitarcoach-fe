@@ -163,6 +163,22 @@ npm run dev:cloud   # ✓ the only correct form
 `npx` is for running **packages** (`npx expo`, `npx tsc`). `npm run` is for running **this project's
 scripts**. The backend switches are scripts.
 
+## Crash reporting (Sentry)
+
+`src/lib/monitoring.ts` reports crashes and boundary errors to Sentry. It is **off in development
+and whenever no DSN is set**, so an unconfigured build behaves exactly as before.
+
+| Variable                         | Where                                  | What it does                                                                                                       |
+| -------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `EXPO_PUBLIC_SENTRY_DSN`         | `eas env:create`, preview + production | Turns reporting on. Public-safe, but keep it out of the repo.                                                      |
+| `EXPO_PUBLIC_SENTRY_ENVIRONMENT` | optional                               | Tags events; defaults to `production`.                                                                             |
+| `SENTRY_ORG`, `SENTRY_PROJECT`   | EAS env (plain)                        | The org and project slugs. Only when both are set does `app.config.ts` add the `@sentry/react-native/expo` plugin. |
+| `SENTRY_AUTH_TOKEN`              | EAS **secret** only                    | Uploads source maps during the native build. Never commit it or put it in an env file.                             |
+
+Once `SENTRY_ORG` and `SENTRY_PROJECT` are set, the native build runs a source-map upload that
+**fails without `SENTRY_AUTH_TOKEN`** — set the token at the same time, or set
+`SENTRY_DISABLE_AUTO_UPLOAD=true` for that build.
+
 ## Get a fresh project
 
 When you're ready, run:

@@ -111,7 +111,7 @@ rehydration, write the key and then call `useActiveSessionStore.persist.rehydrat
 `rehydrate()` flips `hasHydrated` to false synchronously and settles later, which is what
 makes it a faithful stand-in for a cold start.
 
-**`jest.setup.ts`'s five mocks each unblock an import that otherwise throws.** None are
+**`jest.setup.ts`'s six mocks each unblock an import that otherwise throws or leaks.** None are
 conveniences; removing one breaks whole suites with an error that names the wrong culprit:
 
 | Mock                                        | Why                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -121,6 +121,7 @@ conveniences; removing one breaks whole suites with an error that names the wron
 | `@react-native-community/netinfo`           | `api/query-client.ts` registers a listener at module scope. Unmocked it does not fail a test — it **kills the worker process** from inside NetInfo's async reachability polling.                                                                                                                                                                                                                    |
 | `@react-native-async-storage/async-storage` | Its native module is absent under Node, and `src/lib/storage.ts` is reached by every store. Hand-rolled over one `Map` rather than the package's `jest/async-storage-mock`, so `resetStores()` can clear it. The methods must return **resolved promises** — a mock that returns undefined leaves `persist` rehydration permanently unsettled.                                                      |
 | `react-native-safe-area-context`            | Thirteen files render `SafeAreaView`. It works unmocked; the package's own `jest/mock` just pins deterministic metrics.                                                                                                                                                                                                                                                                             |
+| `@sentry/react-native`                      | Starts a never-`unref`ed `setInterval` at **import** (`timeToDisplayFallback`'s `AsyncExpiringMap`), so every suite reaching `src/lib/monitoring.ts` leaves an open handle and Jest force-exits a worker. Stubs only `init`/`wrap`/`setUser`/`captureException`; `monitoring.test.ts` asserts against them.                                                                                         |
 
 **Gluestack overlays render nothing without a provider above them.** `ConfirmDialog` portals
 through `OverlayProvider`, so a bare `render(<ConfirmDialog visible … />)` produces _empty_
@@ -250,6 +251,11 @@ src/types/      generated api.d.ts + per-resource re-exports
   (`useActiveSessionStore.persist.hasHydrated()` + `onFinishHydration`, body in a child
   component); `home-screen.tsx` shows the cheaper alternative of deriving the value each
   render. Both have a regression test that fails if the gate is removed.
+- **Crash reporting is Sentry, in `src/lib/monitoring.ts` only.** It is inert in development and
+  without `EXPO_PUBLIC_SENTRY_DSN`. Nothing beyond the opaque user id may reach it: the user is
+  `{ id }` via `setMonitoringUser`, `sendDefaultPii` stays `false`, and the `beforeSend` /
+  `beforeBreadcrumb` scrubber drops cookies, auth headers, bodies, query strings and email. Add
+  new fields to the scrubber, not around it. Env vars and source maps: README.
 - `.npmrc` sets `legacy-peer-deps=true` — `openapi-typescript` still declares a
   `typescript@^5.x` peer while this repo is on 6.0. Removing it breaks `npm ci`.
 - `tsconfig.json` excludes `backend/`, which CI checks the backend repo out into. Keep it.
