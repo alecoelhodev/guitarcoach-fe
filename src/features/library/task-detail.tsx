@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { QueryState } from '@/components/ui/query-state';
+import { isWebUrl } from '@/lib/url';
 import { Colors, MaxContentWidth, Spacing } from '@/theme/tokens';
 
 export function TaskDetail({ taskId }: { taskId: string }) {
@@ -36,6 +37,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                   </Card>
                 ) : null}
 
+                {/* `ExternalLink` renders anything but an absolute http(s) URL as plain text. */}
                 {task.referenceLink && isWebUrl(task.referenceLink) && (
                   <ExternalLink href={task.referenceLink as `${string}:${string}`}>
                     <Card>
@@ -62,16 +64,6 @@ export function TaskDetail({ taskId }: { taskId: string }) {
       </SafeAreaView>
     </ThemedView>
   );
-}
-
-/** `ExternalLink` renders anything but an absolute http(s) URL as plain text, not a link. */
-function isWebUrl(value: string) {
-  try {
-    const { protocol } = new URL(value);
-    return protocol === 'https:' || protocol === 'http:';
-  } catch {
-    return false;
-  }
 }
 
 const styles = StyleSheet.create({

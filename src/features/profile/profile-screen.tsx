@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useSignOut } from '@/api/auth.queries';
+import { useDeleteAccount, useSignOut } from '@/api/auth.queries';
 import { describeApiTarget } from '@/api/base-url';
 import { apiTarget } from '@/api/client';
+import { describeError } from '@/api/errors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
@@ -30,6 +33,19 @@ export function ProfileScreen() {
   const user = useSessionStore((state) => state.user);
   const showToast = useToastStore((state) => state.show);
   const signOutMutation = useSignOut();
+  const deleteAccountMutation = useDeleteAccount();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const busy = signOutMutation.isPending || deleteAccountMutation.isPending;
+
+  function deleteAccount() {
+    setConfirmingDelete(false);
+    deleteAccountMutation.mutate(undefined, {
+      // On success the teardown has already routed to sign-in. A failure leaves the account
+      // and this session intact, so say so rather than signing out.
+      onError: (error) =>
+        showToast(describeError(error, "Couldn't delete your account").title, 'error'),
+    });
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -76,7 +92,7 @@ export function ProfileScreen() {
         <Button
           variant="secondary"
           className="border-danger-300"
-          disabled={signOutMutation.isPending}
+          disabled={busy}
           onPress={() =>
             signOutMutation.mutate(undefined, {
               // The teardown runs either way, so the user is on the sign-in screen by the
@@ -91,6 +107,23 @@ export function ProfileScreen() {
             {signOutMutation.isPending ? 'Signing out…' : 'Sign out'}
           </ButtonText>
         </Button>
+
+        {/* Apple 5.1.1(v) and Google Play both require deletion to be reachable in-app. */}
+        <Button variant="tertiary" disabled={busy} onPress={() => setConfirmingDelete(true)}>
+          <ButtonText className="text-danger-700">
+            {deleteAccountMutation.isPending ? 'Deleting account…' : 'Delete account'}
+          </ButtonText>
+        </Button>
+
+        <ConfirmDialog
+          visible={confirmingDelete}
+          title="Delete your account?"
+          message="Your routines, practice history and recordings are permanently deleted. This can't be undone."
+          confirmLabel="Delete account"
+          destructive
+          onConfirm={deleteAccount}
+          onCancel={() => setConfirmingDelete(false)}
+        />
       </SafeAreaView>
     </ThemedView>
   );

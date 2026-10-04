@@ -22,9 +22,11 @@ import { useTasks } from '@/api/tasks.queries';
 import { HistoryList } from '@/features/history/history-list';
 import { LibraryList } from '@/features/library/library-list';
 import { RoutinesList } from '@/features/routines/routines-list';
+import { useSessionStore } from '@/stores/session-store';
 import { linkHrefs } from '@/test/expo-router';
-import { makePage, makeRoutine, makeSession, makeTask } from '@/test/fixtures';
+import { makePage, makeRoutine, makeSession, makeTask, makeUser } from '@/test/fixtures';
 import { findHostWithProp } from '@/test/host-props';
+import { pressLinkTarget } from '@/test/press';
 import { errorInfinite, infinitePages, pendingInfinite } from '@/test/query-hooks';
 
 /**
@@ -260,6 +262,29 @@ describe('LibraryList', () => {
     await render(<LibraryList />);
 
     expect(screen.getByText('No tasks yet')).toBeTruthy();
+  });
+
+  it('offers admins a pressable New task link', async () => {
+    useSessionStore.setState({ status: 'authenticated', user: makeUser({ role: 'admin' }) });
+    mock.mockReturnValue(infinitePages([makePage([makeTask()])]));
+    await render(<LibraryList />);
+
+    expect(linkHrefs).toContain('/library/new');
+    await pressLinkTarget(screen.getByText('New task'));
+  });
+
+  // The backend 403s a non-admin POST; a button that can only fail stays hidden.
+  it.each([
+    ['an ordinary user', makeUser({ role: 'user' })],
+    ['a user with no role', makeUser()],
+    ['no cached user', null],
+  ])('hides New task from %s', async (_label, user) => {
+    useSessionStore.setState({ status: user ? 'authenticated' : 'loading', user });
+    mock.mockReturnValue(infinitePages([makePage([makeTask()])]));
+    await render(<LibraryList />);
+
+    expect(screen.queryByText('New task')).toBeNull();
+    expect(linkHrefs).not.toContain('/library/new');
   });
 
   it('uses the catalog total, singular and plural', async () => {

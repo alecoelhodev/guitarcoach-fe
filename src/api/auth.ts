@@ -30,6 +30,15 @@ export function signOut() {
 }
 
 /**
+ * A Nest route, not better-auth's, so it keeps the `/api/v1` prefix. better-auth's own
+ * `/auth/delete-user` is disabled: it would skip the backend's child-first purge and the
+ * recordings bucket.
+ */
+export function deleteAccount() {
+  return request<void>('/users/me', { method: 'DELETE' });
+}
+
+/**
  * The boot splash waits on this, so it has to be bounded: on a captive portal or a
  * black-holed connection fetch hangs until the platform timeout (~60s on iOS) and the
  * app would show nothing but the splash for that whole window. An abort surfaces as the

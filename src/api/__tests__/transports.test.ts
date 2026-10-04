@@ -4,7 +4,14 @@ jest.mock('@/api/client', () => ({
   upload: jest.fn(),
 }));
 
-import { getSession, requestPasswordReset, signIn, signOut, signUp } from '@/api/auth';
+import {
+  deleteAccount,
+  getSession,
+  requestPasswordReset,
+  signIn,
+  signOut,
+  signUp,
+} from '@/api/auth';
 import { ApiError, request, upload } from '@/api/client';
 import { instantCreateRoutine, requestPracticePlan, resolvePracticePlan } from '@/api/coach';
 import {
@@ -31,7 +38,7 @@ import {
   getSession as getPracticeSession,
   listSessions,
 } from '@/api/sessions';
-import { getTask, listTasks } from '@/api/tasks';
+import { createTask, getTask, listTasks } from '@/api/tasks';
 
 /**
  * Every transport function forwards to `request()`, so what is asserted is the URL, the verb
@@ -76,6 +83,13 @@ describe('auth — every route is unprefixed, because better-auth mounts outside
       method: 'POST',
       unprefixed: true,
     });
+  });
+
+  // A Nest route: it must keep the /api/v1 prefix, unlike every better-auth call above.
+  it('deleteAccount is a prefixed DELETE on /users/me', () => {
+    deleteAccount();
+
+    expect(requestMock).toHaveBeenCalledWith('/users/me', { method: 'DELETE' });
   });
 
   it('getSession is bounded by a timeout, so the splash cannot hang on it', () => {
@@ -282,7 +296,7 @@ describe('practice sessions — write-once, so there is no update route to test'
   });
 });
 
-describe('tasks — read-only for ordinary users, so only two routes exist', () => {
+describe('tasks — admins create; everyone else only reads', () => {
   it('listTasks defaults its query', () => {
     listTasks();
 
@@ -301,6 +315,15 @@ describe('tasks — read-only for ordinary users, so only two routes exist', () 
     getTask('t1');
 
     expect(requestMock).toHaveBeenCalledWith('/tasks/t1');
+  });
+
+  it('createTask posts the DTO', () => {
+    createTask({ title: 'Modes', category: 'theory' });
+
+    expect(requestMock).toHaveBeenCalledWith('/tasks', {
+      method: 'POST',
+      body: { title: 'Modes', category: 'theory' },
+    });
   });
 });
 

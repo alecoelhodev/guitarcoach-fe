@@ -1,8 +1,8 @@
 import { onlineManager, QueryClient } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react-native';
 
-import { signOut } from '@/api/auth';
-import { useSignOut } from '@/api/auth.queries';
+import { deleteAccount, signOut } from '@/api/auth';
+import { useDeleteAccount, useSignOut } from '@/api/auth.queries';
 import { purgePersistedCache } from '@/api/persist';
 import { queryClient as appQueryClient } from '@/api/query-client';
 import { queryKeys } from '@/api/query-keys';
@@ -12,13 +12,14 @@ import { makeUser } from '@/test/fixtures';
 import { withQueryClient } from '@/test/query-client';
 import { resetStores } from '@/test/reset-stores';
 
-jest.mock('@/api/auth', () => ({ signOut: jest.fn() }));
+jest.mock('@/api/auth', () => ({ signOut: jest.fn(), deleteAccount: jest.fn() }));
 jest.mock('@/api/persist', () => ({ purgePersistedCache: jest.fn() }));
 
 /** Long enough for the hook's two retries (500ms then 1000ms) plus slack. */
 const RETRY_WINDOW_MS = 5000;
 
 const signOutMock = signOut as jest.MockedFunction<typeof signOut>;
+const deleteAccountMock = deleteAccount as jest.MockedFunction<typeof deleteAccount>;
 const purgeMock = purgePersistedCache as jest.MockedFunction<typeof purgePersistedCache>;
 
 async function setup(client?: QueryClient) {
@@ -136,5 +137,40 @@ describe('useSignOut', () => {
       expect(client.getQueryData(queryKeys.me)).toBeUndefined();
       expect(purgeMock).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe('useDeleteAccount', () => {
+  async function setupDelete() {
+    const { queryClient, wrapper } = withQueryClient();
+    queryClient.setQueryData(queryKeys.me, makeUser());
+    const { result } = await renderHook(() => useDeleteAccount(), { wrapper });
+    return { result, queryClient };
+  }
+
+  it('runs the full local teardown once the server confirms', async () => {
+    deleteAccountMock.mockResolvedValue(undefined as never);
+
+    const { result, queryClient } = await setupDelete();
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(useSessionStore.getState()).toMatchObject({ status: 'unauthenticated', user: null });
+    expect(queryClient.getQueryData(queryKeys.me)).toBeUndefined();
+    expect(purgeMock).toHaveBeenCalledTimes(1);
+  });
+
+  // Unlike sign-out: the account still exists, so clearing locally would only hide that.
+  it('keeps the session and caches when the delete fails', async () => {
+    deleteAccountMock.mockRejectedValue(new Error('offline'));
+
+    const { result, queryClient } = await setupDelete();
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(useSessionStore.getState().user).not.toBeNull();
+    expect(queryClient.getQueryData(queryKeys.me)).toBeDefined();
+    expect(purgeMock).not.toHaveBeenCalled();
+    expect(deleteAccountMock).toHaveBeenCalledTimes(1);
   });
 });

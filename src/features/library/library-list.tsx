@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,13 +19,12 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { TaskCard } from '@/features/library/task-card';
+import { categoryLabels, difficultyLabels } from '@/features/library/task-labels';
 import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { usePaginatedList } from '@/hooks/use-paginated-list';
+import { useSessionStore } from '@/stores/session-store';
 import { Colors, MaxContentWidth, Radius, Spacing, TapSlop } from '@/theme/tokens';
 import type { TaskCategory, TaskDifficulty } from '@/types/task';
-
-const categories = { technique: 'Technique', theory: 'Theory', repertoire: 'Repertoire' };
-const difficulties = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
 
 export function LibraryList() {
   // Clears the tab bar and the home indicator under it.
@@ -32,6 +32,8 @@ export function LibraryList() {
   const [category, setCategory] = useState<TaskCategory>();
   const [difficulty, setDifficulty] = useState<TaskDifficulty>();
   const query = useTasks({ category, difficulty });
+  // Hides a control that would only 403. The backend's admin gate is the enforcement.
+  const isAdmin = useSessionStore((state) => state.user?.role === 'admin');
   const filtered = Boolean(category || difficulty);
   const clearFilters = () => {
     setCategory(undefined);
@@ -40,8 +42,8 @@ export function LibraryList() {
   const total = query.data?.pages[0]?.meta.total ?? 0;
   const count = [
     `${total} ${total === 1 ? 'task' : 'tasks'}`,
-    category && categories[category],
-    difficulty && difficulties[difficulty],
+    category && categoryLabels[category],
+    difficulty && difficultyLabels[difficulty],
   ]
     .filter(Boolean)
     .join(' · ');
@@ -78,17 +80,22 @@ export function LibraryList() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ThemedText type="h3" style={styles.title}>
-          Task library
-        </ThemedText>
+        <View style={styles.title}>
+          <ThemedText type="h3">Task library</ThemedText>
+          {isAdmin && (
+            <Link href="/library/new" asChild>
+              <Button variant="tertiary">New task</Button>
+            </Link>
+          )}
+        </View>
 
         <View style={styles.filters}>
           <ThemedText type="label">Category</ThemedText>
           <View style={styles.chips}>
-            {(Object.keys(categories) as TaskCategory[]).map((value) => (
+            {(Object.keys(categoryLabels) as TaskCategory[]).map((value) => (
               <Chip
                 key={value}
-                label={categories[value]}
+                label={categoryLabels[value]}
                 selected={category === value}
                 onPress={() => setCategory(category === value ? undefined : value)}
               />
@@ -96,10 +103,10 @@ export function LibraryList() {
           </View>
           <ThemedText type="label">Difficulty</ThemedText>
           <View style={styles.chips}>
-            {(Object.keys(difficulties) as TaskDifficulty[]).map((value) => (
+            {(Object.keys(difficultyLabels) as TaskDifficulty[]).map((value) => (
               <Chip
                 key={value}
-                label={difficulties[value]}
+                label={difficultyLabels[value]}
                 selected={difficulty === value}
                 onPress={() => setDifficulty(difficulty === value ? undefined : value)}
               />
@@ -170,7 +177,13 @@ export function LibraryList() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: MaxContentWidth },
-  title: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[2] },
+  title: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing[4],
+    paddingBottom: Spacing[2],
+  },
   list: { padding: Spacing[4], gap: Spacing[3] },
   filters: { paddingHorizontal: Spacing[4], gap: Spacing[2], paddingBottom: Spacing[2] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },

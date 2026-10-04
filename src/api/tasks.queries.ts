@@ -1,8 +1,14 @@
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { queryKeys } from '@/api/query-keys';
-import { getTask, listTasks } from '@/api/tasks';
-import type { TaskCategory, TaskDifficulty } from '@/types/task';
+import { createTask, getTask, listTasks } from '@/api/tasks';
+import type { CreateTaskInput, TaskCategory, TaskDifficulty } from '@/types/task';
 
 type TaskFilters = { category?: TaskCategory; difficulty?: TaskDifficulty; limit?: number };
 
@@ -28,5 +34,14 @@ export function useTask(taskId: string) {
     queryKey: queryKeys.task(taskId),
     queryFn: () => getTask(taskId),
     staleTime: 10 * 60_000,
+  });
+}
+
+/** Invalidates every task list: the new task can land on any page of any filter. */
+export function useCreateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateTaskInput) => createTask(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.tasksRoot }),
   });
 }

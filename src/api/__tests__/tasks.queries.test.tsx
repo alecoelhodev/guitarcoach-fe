@@ -1,14 +1,20 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 
-import { getTask, listTasks } from '@/api/tasks';
-import { useTask, useTasks } from '@/api/tasks.queries';
+import { queryKeys } from '@/api/query-keys';
+import { createTask, getTask, listTasks } from '@/api/tasks';
+import { useCreateTask, useTask, useTasks } from '@/api/tasks.queries';
 import { makePage, makeTask } from '@/test/fixtures';
 import { withQueryClient } from '@/test/query-client';
 
-jest.mock('@/api/tasks', () => ({ listTasks: jest.fn(), getTask: jest.fn() }));
+jest.mock('@/api/tasks', () => ({
+  listTasks: jest.fn(),
+  getTask: jest.fn(),
+  createTask: jest.fn(),
+}));
 
 const listMock = listTasks as jest.MockedFunction<typeof listTasks>;
 const getMock = getTask as jest.MockedFunction<typeof getTask>;
+const createMock = createTask as jest.MockedFunction<typeof createTask>;
 
 afterEach(() => jest.resetAllMocks());
 
@@ -99,5 +105,30 @@ describe('useTask', () => {
     await renderHook(() => useTask('task-9'), { wrapper });
 
     expect(getMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useCreateTask', () => {
+  it('invalidates every task list once the task is created', async () => {
+    createMock.mockResolvedValue(makeTask({ id: 'new' }));
+    const { queryClient, wrapper } = withQueryClient();
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = await renderHook(() => useCreateTask(), { wrapper });
+    await result.current.mutateAsync({ title: 'Modes' });
+
+    expect(createMock).toHaveBeenCalledWith({ title: 'Modes' });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.tasksRoot });
+  });
+
+  it('invalidates nothing when the create fails', async () => {
+    createMock.mockRejectedValue(new Error('403'));
+    const { queryClient, wrapper } = withQueryClient();
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = await renderHook(() => useCreateTask(), { wrapper });
+    await expect(result.current.mutateAsync({ title: 'Modes' })).rejects.toThrow('403');
+
+    expect(invalidate).not.toHaveBeenCalled();
   });
 });
