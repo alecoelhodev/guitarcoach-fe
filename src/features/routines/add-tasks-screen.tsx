@@ -1,7 +1,9 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useStore } from 'zustand';
+import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { ApiError } from '@/api/client';
 import { describeError } from '@/api/errors';
@@ -34,7 +36,8 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
   const addRoutineTask = useAddRoutineTask(routineId);
   const invalidateRoutines = useInvalidateRoutines();
 
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selection] = useState(createSelection);
+  const selectedCount = useStore(selection, (state) => state.ids.size);
   const [failure, setFailure] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -42,12 +45,6 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
   const available = (tasksQuery.data?.pages.flatMap((page) => page.data) ?? []).filter(
     (task: Task) => !alreadyIn.has(task.id),
   );
-
-  function toggle(taskId: string) {
-    setSelected((current) =>
-      current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId],
-    );
-  }
 
   /**
    * Sequential, never `Promise.all`. `@@unique([routineId, position])` plus a server-side
@@ -61,7 +58,8 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
     let added = 0;
 
     try {
-      for (const taskId of selected) {
+      // A Set iterates in insertion order, so tasks are still added in the order picked.
+      for (const taskId of selection.getState().ids) {
         await addRoutineTask.mutateAsync({ taskId });
         added += 1;
       }
@@ -75,7 +73,7 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
       setAdding(false);
       // Keep what landed: the tasks already added are real, and re-running the whole
       // selection would 409 on every one of them.
-      setSelected((current) => current.slice(added));
+      selection.setState(({ ids }) => ({ ids: new Set([...ids].slice(added)) }));
       return;
     } finally {
       // Once for the batch, success or not: a 409 means this screen's view was stale too.
@@ -114,15 +112,7 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
             <FlatList
               data={available}
               keyExtractor={(task) => task.id}
-              renderItem={({ item }) => (
-                <Card>
-                  <ChecklistRow
-                    label={item.title}
-                    checked={selected.includes(item.id)}
-                    onToggle={() => toggle(item.id)}
-                  />
-                </Card>
-              )}
+              renderItem={({ item }) => <SelectableTask task={item} selection={selection} />}
               contentContainerStyle={styles.list}
               ListFooterComponent={
                 tasksQuery.hasNextPage ? (
@@ -145,17 +135,51 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
 
         <Button
           block
-          disabled={selected.length === 0}
+          disabled={selectedCount === 0}
           loading={adding}
           loadingLabel="Adding…"
           onPress={() => void addSelected()}
         >
-          {selected.length === 1 ? 'Add 1 task' : `Add ${selected.length} tasks`}
+          {selectedCount === 1 ? 'Add 1 task' : `Add ${selectedCount} tasks`}
         </Button>
       </SafeAreaView>
     </ThemedView>
   );
 }
+
+type Selection = StoreApi<{ ids: ReadonlySet<string> }>;
+
+const createSelection = (): Selection => createStore(() => ({ ids: new Set<string>() }));
+
+/**
+ * Each row subscribes to its own membership, so a toggle re-renders the row that changed
+ * rather than every row: `renderItem` closes over the stable store, never the selection.
+ */
+const SelectableTask = memo(function SelectableTask({
+  task,
+  selection,
+}: {
+  task: Task;
+  selection: Selection;
+}) {
+  const checked = useStore(selection, (state) => state.ids.has(task.id));
+
+  return (
+    <Card>
+      <ChecklistRow
+        label={task.title}
+        checked={checked}
+        onToggle={() =>
+          selection.setState(({ ids }) => {
+            const next = new Set(ids);
+            if (!next.delete(task.id)) next.add(task.id);
+            return { ids: next };
+          })
+        }
+      />
+    </Card>
+  );
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

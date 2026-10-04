@@ -5,12 +5,18 @@ jest.mock('@/api/routines.queries', () => ({
   useInvalidateRoutines: jest.fn(),
   useRoutineTasks: jest.fn(),
 }));
+// Wrapped, not replaced, so the suite can count how often each row renders.
+jest.mock('@/components/ui/checklist-row', () => {
+  const actual = jest.requireActual('@/components/ui/checklist-row');
+  return { ChecklistRow: jest.fn(actual.ChecklistRow) };
+});
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { useAddRoutineTask, useInvalidateRoutines, useRoutineTasks } from '@/api/routines.queries';
 import { useTasks } from '@/api/tasks.queries';
+import { ChecklistRow } from '@/components/ui/checklist-row';
 import { AddTasksScreen } from '@/features/routines/add-tasks-screen';
 import { useToastStore } from '@/stores/toast-store';
 import { mockRouter } from '@/test/expo-router';
@@ -88,6 +94,17 @@ it('cannot submit with nothing picked, and counts what is picked', async () => {
 
   await fireEvent.press(screen.getByLabelText('Modes'));
   expect(screen.getByText('Add 2 tasks')).toBeTruthy();
+});
+
+it('re-renders only the row that was toggled', async () => {
+  const rowMock = ChecklistRow as jest.MockedFunction<typeof ChecklistRow>;
+  await render(screen_());
+  rowMock.mockClear();
+
+  await fireEvent.press(screen.getByLabelText('Modes'));
+
+  const rendered = new Set(rowMock.mock.calls.map(([props]) => props.label));
+  expect([...rendered]).toEqual(['Modes']);
 });
 
 /**
