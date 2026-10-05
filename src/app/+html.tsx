@@ -4,7 +4,7 @@ import type { PropsWithChildren } from 'react';
 import { Colors } from '@/theme/tokens';
 
 // Placeholder copy pending approval of the store/web listing text.
-const TITLE = 'Guitar Coach';
+const TITLE = 'Progress Pick';
 const DESCRIPTION = 'Practice with a plan.';
 
 /** Web-only root HTML for static rendering; runs in Node at build time, never on native. */

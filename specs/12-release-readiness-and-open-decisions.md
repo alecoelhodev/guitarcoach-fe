@@ -87,9 +87,9 @@ Each decision unblocks work that Claude can then do.
 | --------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------- |
 | **OTA updates** (`expo-updates`)                                      | Yes, after the first store release      | `runtimeVersion` policy and an EAS Update channel per profile |
 | **Optimistic boot** (skip the 5s session check when a user is cached) | Yes, if cold starts feel slow on device | A change in `src/stores/session-store.ts`                     |
-| **Pin GitHub Actions to commit SHAs**                                 | Yes. It's cheap supply-chain hardening  | Workflow edits in both repos                                  |
+| **Pin GitHub Actions to commit SHAs**                                 | **In review**: FE #26, BE #29           | —                                                             |
 | **Keep routine notes off the device**                                 | Optional. Session notes already are     | A `persist.ts` serializer change                              |
-| **Edit and delete tasks in the app** (admin)                          | Yes, if you curate the library in-app   | Frontend only: `PATCH`/`DELETE /tasks/{id}` already exist     |
+| **Edit and delete tasks in the app** (admin)                          | **In review**: FE #27, BE #29 (409 fix) | —                                                             |
 | **User-created private tasks**                                        | Later, if users ask for it              | A backend `Task.ownerId` migration plus visibility filtering  |
 
 ### 4.1 Admin accounts
@@ -101,19 +101,19 @@ admin, run this against the production database, then have them sign out and bac
 UPDATE users SET role = 'admin' WHERE email = '<email>';
 ```
 
-Note for the edit/delete decision above: `DELETE /tasks/{id}` refuses a task that a routine or
-session uses, and maps Prisma's `P2003` to a 409. That is the same mapping that broke routine
-deletes on Postgres 18, which reports the violation as `23001` and turned the 409 into a 500
-(fixed for routines in backend #27 with an explicit count). Apply the same count-first fix to
-tasks before building the UI.
+`DELETE /tasks/{id}` refuses a task that a routine or logged session uses. It used to rely on
+Prisma's `P2003`, which Postgres 18 reports as `23001`, so the 409 came back as a 500. Backend #29
+applies the same count-first fix that #27 gave routines.
 
 ## 5. Store prerequisites (before the first submission)
 
 ### 5.1 Identity
 
-- Confirm the display name **Guitar Coach** and the bundle/package ID
-  `com.coelhoadevsteam.guitarcoach`. **The ID can't be changed after the first store upload.**
-  Claude then sets `name` in `app.config.ts` (it's still `guitar-coach-fe`).
+- **Decided** (2026-10-05): the display name is **Progress Pick** and the bundle/package ID is
+  `com.coelhoadevsteam.progresspick` (FE PR "rename to Progress Pick"). The `slug`
+  (`guitar-coach`), the deep-link scheme and the `guitar-coach.*` storage keys are deliberately
+  unchanged, so the EAS project link and cached data survive. Use the new ID for the store
+  records in 5.6.
 
 ### 5.2 Production API URL
 
@@ -160,7 +160,7 @@ both. Claude then adds links to the profile screen via `ExternalLink`.
   - audio recordings in Google Cloud Storage
   - a local cache on the device
   - crash reports, if Sentry is enabled
-- Approve or replace the placeholder web copy in `src/app/+html.tsx` ("Guitar Coach" / "Practice
+- Approve or replace the placeholder web copy in `src/app/+html.tsx` ("Progress Pick" / "Practice
   with a plan.").
 
 ### 5.6 Store accounts
@@ -190,6 +190,9 @@ None of these blocks the first release.
   `practice-sessions.service.ts` removes the recording rows but not their GCS objects. Only the
   k6 load tests call it, so the leak is limited to test data. The fix is to reuse the
   delete-objects-after-commit pattern from `UsersService.purge`.
+- **Let an admin clear a task's link, category or difficulty.** `UpdateTaskDto` accepts no
+  `null`, so the edit form refuses to clear a saved value. Making those fields nullable is a
+  backend-first change, followed by an `api:types` regeneration.
 - **Unsaved-changes guard on New task.** Backing out of a half-filled form discards it silently,
   where the routine builder asks first. Low impact for an admin-only screen.
 - **Stale branches.** Neither repo has branches left over from Claude's work. Both repos still

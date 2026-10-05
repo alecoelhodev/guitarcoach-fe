@@ -1,6 +1,6 @@
-# Guitar Coach
+# Progress Pick
 
-The mobile and web client for Guitar Coach: build practice routines, run timed sessions and keep
+The mobile and web client for Progress Pick: build practice routines, run timed sessions and keep
 a history of what you practised. Expo SDK 57 (React Native, Expo Router) over the
 API of the `guitar-coach` backend repo. Contributor rules live in [`AGENTS.md`](AGENTS.md).
 

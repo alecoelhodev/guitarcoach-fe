@@ -12,7 +12,7 @@ const sentryPlugin: NonNullable<ExpoConfig['plugins']> =
     : [];
 
 const config: ExpoConfig = {
-  name: 'guitar-coach-fe',
+  name: 'Progress Pick',
   slug: 'guitar-coach',
   version: '1.0.0',
   orientation: 'portrait',
@@ -25,7 +25,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'dark',
   ios: {
     icon: './assets/expo.icon',
-    bundleIdentifier: 'com.coelhoadevsteam.guitarcoach',
+    bundleIdentifier: 'com.coelhoadevsteam.progresspick',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
     },
@@ -61,12 +61,12 @@ const config: ExpoConfig = {
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    package: 'com.coelhoadevsteam.guitarcoach',
+    package: 'com.coelhoadevsteam.progresspick',
   },
   web: {
     output: 'static',
-    name: 'Guitar Coach',
-    shortName: 'Guitar Coach',
+    name: 'Progress Pick',
+    shortName: 'Progress Pick',
     themeColor: '#0a0b0d',
     favicon: './assets/images/favicon.png',
     backgroundColor: '#0a0b0d',
