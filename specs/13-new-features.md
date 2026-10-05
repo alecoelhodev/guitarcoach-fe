@@ -1,0 +1,188 @@
+# 13 — New features (post-MVP)
+
+**Status:** not started · **Owner:** unassigned · **Written:** 2026-10-04
+
+Four features requested after the first release work. None of them is started, and none blocks
+the first store submission (spec 12). Suggested order: **13.4 → 13.2 → 13.1 → 13.3**. Start with
+13.4, which is a quick win. 13.3 waits on a Spotify policy check and a product decision.
+
+Every backend change here goes in first, because frontend CI reads the backend's `main`; see
+`docs/api-contract-workflow.md`.
+
+---
+
+## 13.1 Profile image
+
+**Size:** M · **Depends on:** nothing · **Backend first:** yes
+
+Users can set a profile photo. It replaces the initials avatar on Profile; canvas 11 draws initials
+because there was no upload flow.
+
+### Backend
+
+- `User.image` already exists (`String?`, a better-auth field), so **no migration**. Store the
+  GCS object name there, not a public URL.
+- `PUT /api/v1/users/me/avatar` (multipart, any signed-in user):
+  - JPEG, PNG or WebP only, max 2 MB. Validate the MIME type and size server-side.
+  - Store it at `users/{userId}/avatar/{uuid}.{ext}` with the existing `GcpStorageService`.
+  - Delete the previous avatar object after the new one is saved.
+- `DELETE /api/v1/users/me/avatar` removes the object and clears `image`.
+- `GET /users/me` exposes a short-lived signed URL, the same pattern as recordings' download URL,
+  never the raw object name.
+- `UsersService.purge` (account deletion) must also delete the avatar object.
+
+### Frontend
+
+- Tapping the Profile avatar opens a sheet with **Choose photo** and, if a photo is set, **Remove**.
+- `expo-image-picker` with a square crop. It's in Expo Go's bundled set (`~57.0.12`); install with
+  `npx expo install`.
+- `expo-image-manipulator` (bundled, `~57.0.12`) resizes to 512 px and re-encodes as JPEG before
+  upload.
+- Display the photo with `expo-image` (bundled). Fall back to the existing initials while it loads,
+  on error and when no photo is set.
+- Upload through the existing `upload()` transport in `src/api/client.ts`, as recordings do.
+- Only the photo-library permission. Configure its usage string in `app.config.ts` and add no
+  camera or mic permission.
+
+### Store and privacy
+
+Add **photos** to App Privacy (iOS) and Data safety (Play), and to the privacy policy.
+
+### Acceptance
+
+- Choose, upload, reload: the photo persists. Remove brings the initials back.
+- A file over 2 MB or a non-image file is rejected with a clear message.
+- Deleting the account deletes the avatar object (backend e2e test with the fake GCS).
+
+---
+
+## 13.2 Library title search
+
+**Size:** S–M · **Depends on:** nothing · **Backend first:** yes
+
+The Library already filters by **category** and **difficulty** (spec 06). This adds a text search
+on the task title.
+
+### Backend
+
+- Add an optional `q` to the `GET /tasks` query DTO: trimmed, 1–100 characters.
+- Filter with Prisma `title: { contains: q, mode: 'insensitive' }`. Prisma parameterises it, so
+  never build SQL by hand.
+- Include `q` in the tasks list cache key, or searches would return cached unfiltered pages.
+- Consider a trigram index (`pg_trgm`) only if the catalogue grows large enough for search to be
+  measurably slow.
+
+### Frontend
+
+- A search `Input` above the chips, with a clear (×) button.
+- Debounce 300 ms, then pass `q` into `useTasks` filters, so it lands in `queryKeys.tasks(...)` and
+  each search is its own cache entry. Keep `placeholderData: keepPreviousData`.
+- The count line includes the query, e.g. "3 tasks · 'pentatonic' · Technique".
+- With no results: "No tasks match 'pentatonic'" and a **Clear** action that resets the search and
+  chips together.
+
+### Acceptance
+
+- Typing quickly sends one request per pause, not per keystroke.
+- Search combines with category and difficulty.
+- Pagination still works on filtered results, and changing the search restarts at page 1.
+
+---
+
+## 13.3 Spotify-based task suggestions (in-app)
+
+**Size:** L · **Depends on:** a product decision (below) · **Backend first:** yes
+
+Every user can connect their Spotify account and get practice-task suggestions based on what they
+listen to, e.g. "Learn the main riff of _Song_ by _Artist_".
+
+Naming: this was raised as an "MCP". In the app it is a **Spotify integration**. An MCP server
+would only be needed if Claude itself had to call it, and that's a separate, optional piece.
+
+### Blocker: verify Spotify's API access first
+
+**Unverified, so check it before any build.** Spotify's Web API starts every app in development
+mode, which only allows a small allowlist of test users. Extended quota (public use) has reportedly
+been limited to established organisations since 2025, and some endpoints (audio features,
+recommendations) are closed to new apps. Confirm the current policy on developer.spotify.com. If
+extended quota can't be obtained, the feature can only serve allowlisted testers, and is not worth
+building for a public release.
+
+### Product decision needed
+
+Tasks are global and admin-only today. Where does an accepted suggestion go?
+
+- **(a) Private user tasks (recommended).** Add `Task.ownerId`, so each user sees the shared
+  library plus their own tasks. This is the deferred decision in spec 12 §4. It needs a migration,
+  and the same visibility filter on every path that accepts a `taskId`.
+- **(b) No new tasks.** Suggestions become a routine draft built from existing library tasks, with
+  the song in the routine notes. Simpler, but loses the song-specific task.
+
+### Backend
+
+- New `SpotifyConnection` table (a migration): `userId`, an **encrypted** refresh token, scopes,
+  timestamps. Never return the token to the client.
+- `POST /api/v1/spotify/connect` exchanges the auth code **server-side**, so the client secret never
+  ships in the app. `DELETE /api/v1/spotify/connect` deletes the row.
+- `POST /api/v1/ai/spotify-suggestions`:
+  - Reads the user's top or recently played tracks. Scopes: `user-top-read` and
+    `user-read-recently-played`.
+  - Sends **only** artist and track names to the existing AI planner, with no user identifiers.
+  - Returns draft tasks the user reviews, the same Draft & Review shape as the AI Coach. Nothing is
+    persisted until the user confirms.
+- Rate-limit it like the other AI endpoints.
+- `UsersService.purge` deletes the connection.
+
+### Frontend
+
+- Profile: **Connect Spotify** / **Disconnect**.
+- OAuth Authorization Code with PKCE via `expo-auth-session` (bundled, `~57.0.8`) and
+  `expo-web-browser` (bundled). The redirect URI must be registered in the Spotify dashboard for
+  each environment.
+- A "Suggestions from your listening" entry, on Coach or Library. It shows draft tasks the user
+  accepts or dismisses.
+
+### Store and privacy
+
+New data category: **music listening history**. Update the privacy policy, App Privacy and Data
+safety, and list Spotify as a third party.
+
+### Acceptance
+
+- Connect, then suggestions appear. Disconnect removes the stored token, and suggestions stop.
+- No Spotify token appears in any response, log or Sentry event.
+- Deleting the account removes the connection.
+
+---
+
+## 13.4 Sign-in / sign-up input polish
+
+**Size:** S · **Depends on:** nothing
+
+Two visual issues reported on the auth screens: **the email field's border looks odd**, and the
+**password Show/Hide label** looks out of place.
+
+Files: `src/features/auth/auth-form.tsx`, `src/components/ui/input.tsx`,
+`src/components/ui/password-input.tsx`.
+
+### Approach
+
+1. **Reproduce first**, in iOS Expo Go and on web. Take screenshots at rest, focused, invalid and
+   autofilled, and compare them with wireframe canvas 01.
+2. Suspects, to confirm rather than assume:
+   - **Email border.** `Input`'s focused style sets a 1.5 px border **and** an `outline*` focus
+     ring, which can draw a double edge. On web, the browser's autofill background and border can
+     override the tokens.
+   - **Show/Hide.** The label is a `ThemedText` absolutely positioned over a full-height
+     `Pressable`. Check its vertical centring against the input's 44 pt `minHeight`, its type size
+     relative to the input text, and its contrast. Consider a lucide eye / eye-off icon with the
+     existing accessibility labels instead of text.
+3. Fix it in the shared primitives, so every form gets the fix, not only auth.
+
+### Acceptance
+
+- One border weight per state (rest, focus, invalid), with no double edge.
+- The Show/Hide control is vertically centred, aligned with the input text, and still a 44 pt tap
+  target.
+- No autofill colour bleed on web.
+- Existing auth-form and input tests pass. Add a test for the focused and invalid styles.
