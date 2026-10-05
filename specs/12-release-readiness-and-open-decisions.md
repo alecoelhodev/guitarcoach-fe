@@ -4,8 +4,9 @@
 
 These are the release tasks no code change can finish: they need account access, a decision, or
 artwork. Pre-release hardening (security, performance and store config) has already merged:
-frontend PRs #17–#20 plus the small-fixes PR, backend PRs #26–#27. Where Claude has follow-up work once a step is done,
-the step says so.
+frontend PRs #17–#23, backend PRs #26–#28. That includes in-app account deletion and the
+admin-only **New task** form, both verified on a device on 2026-10-04. Where Claude has follow-up
+work once a step is done, the step says so.
 
 Do section 1 first. Sections 2–4 can happen in any order. Section 5 must be complete before the
 first store submission.
@@ -38,7 +39,7 @@ Manager as `guitarcoach-k6-perf-test-password`.
 
 ## 2. Verify on a device (Expo Go)
 
-None of the following has run on a device yet; the automated suites can't prove it. Run
+The unchecked items haven't run on a device yet; the automated suites can't prove them. Run
 `npm run dev:cloud` and scan the QR.
 
 - [ ] **Session notes draft.** Type in notes, switch to the title, background the app mid-draft,
@@ -51,12 +52,10 @@ None of the following has run on a device yet; the automated suites can't prove 
 - [ ] **Offline History and Home.** Lists render from cache, with no session notes.
 - [ ] **Links.** Every card or row that navigates actually navigates on native; see the
       `Link asChild` rules in `AGENTS.md`.
-- [ ] **Delete account.** With a throwaway account that has a routine, a finished session and a
-      recording: Profile → Delete account → confirm. The app lands on sign-in, and signing in
-      with that account fails. Cancel in the dialog deletes nothing.
-- [ ] **New task (admin).** After making your account an admin (§4.1), the Library shows **New
-      task**. Create one; it opens on its detail screen and appears in the Library. A non-admin
-      account doesn't see the button.
+- [x] **Delete account.** Profile → Delete account → confirm lands on sign-in, and the account
+      is gone. Verified 2026-10-04.
+- [x] **New task (admin).** An admin sees **New task** in the Library, and the created task opens
+      and lists. Verified 2026-10-04.
 
 ## 3. Turn on Sentry
 
@@ -90,17 +89,23 @@ Each decision unblocks work that Claude can then do.
 | **Optimistic boot** (skip the 5s session check when a user is cached) | Yes, if cold starts feel slow on device | A change in `src/stores/session-store.ts`                     |
 | **Pin GitHub Actions to commit SHAs**                                 | Yes. It's cheap supply-chain hardening  | Workflow edits in both repos                                  |
 | **Keep routine notes off the device**                                 | Optional. Session notes already are     | A `persist.ts` serializer change                              |
+| **Edit and delete tasks in the app** (admin)                          | Yes, if you curate the library in-app   | Frontend only: `PATCH`/`DELETE /tasks/{id}` already exist     |
+| **User-created private tasks**                                        | Later, if users ask for it              | A backend `Task.ownerId` migration plus visibility filtering  |
 
-### 4.1 Make your account an admin
+### 4.1 Admin accounts
 
-Only admins can create tasks, and there's no self-service way to become one. Run this once
-against the production database for your own email:
+Only admins can create tasks, and there's no self-service way to become one. To make another
+admin, run this against the production database, then have them sign out and back in:
 
 ```sql
-UPDATE users SET role = 'admin' WHERE email = '<your-email>';
+UPDATE users SET role = 'admin' WHERE email = '<email>';
 ```
 
-Then sign out and back in, so the app caches the new role.
+Note for the edit/delete decision above: `DELETE /tasks/{id}` refuses a task that a routine or
+session uses, and maps Prisma's `P2003` to a 409. That is the same mapping that broke routine
+deletes on Postgres 18, which reports the violation as `23001` and turned the 409 into a 500
+(fixed for routines in backend #27 with an explicit count). Apply the same count-first fix to
+tasks before building the UI.
 
 ## 5. Store prerequisites (before the first submission)
 
@@ -116,8 +121,8 @@ Every build needs `EXPO_PUBLIC_API_BASE_URL` (https). Without it, the app throws
 production builds refuse plain http.
 
 ```bash
-eas env:create --name EXPO_PUBLIC_API_BASE_URL --value https://<api-host> --environment preview
-eas env:create --name EXPO_PUBLIC_API_BASE_URL --value https://<api-host> --environment production
+eas env:set --name EXPO_PUBLIC_API_BASE_URL --value https://<api-host> \
+  --environment preview --environment production
 ```
 
 ### 5.3 Artwork
@@ -137,6 +142,12 @@ Claude then wires everything into `app.config.ts`.
 
 Both stores require a privacy policy URL, and App Store Connect also needs a support URL. Host
 both. Claude then adds links to the profile screen via `ExternalLink`.
+
+- The privacy policy should say that **deleting the account in the app permanently removes** the
+  account, routines, practice sessions, notes and recordings.
+- **Google Play also requires an account-deletion URL outside the app**, for people who have
+  already uninstalled it. A page explaining how to request deletion is enough, e.g. "email
+  support from your account address". Enter it in the Play Console's Data safety form.
 
 ### 5.5 Listing copy and questionnaires
 
@@ -170,3 +181,18 @@ Choose a host for the static `dist/` and configure security headers there: CSP, 
 1. Run `eas build --profile preview` for iOS and Android, and install it on devices.
 2. Repeat the section 2 checklist on the preview build.
 3. Run `eas build --profile production`, then `eas submit`.
+
+## 7. Backlog — Claude can do these on request
+
+None of these blocks the first release.
+
+- **Bulk session delete orphans recordings in storage.** `deleteByTitle` in the backend's
+  `practice-sessions.service.ts` removes the recording rows but not their GCS objects. Only the
+  k6 load tests call it, so the leak is limited to test data. The fix is to reuse the
+  delete-objects-after-commit pattern from `UsersService.purge`.
+- **Unsaved-changes guard on New task.** Backing out of a half-filled form discards it silently,
+  where the routine builder asks first. Low impact for an admin-only screen.
+- **Stale branches.** Neither repo has branches left over from Claude's work. Both repos still
+  have older branches of yours that look merged, e.g. `polish/ux-perf-hardening`; delete them
+  when you're ready. Your unmerged `spec-05-add-to-routine` and `spec-07-practice-sheet` branches
+  and the `guitar-coach-fe-session` worktree are untouched.
