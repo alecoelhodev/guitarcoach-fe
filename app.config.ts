@@ -24,7 +24,6 @@ const config: ExpoConfig = {
   // The UI is dark-only. Android applies this through expo-system-ui.
   userInterfaceStyle: 'dark',
   ios: {
-    icon: './assets/expo.icon',
     bundleIdentifier: 'com.coelhoadevsteam.progresspick',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
@@ -57,7 +56,6 @@ const config: ExpoConfig = {
     adaptiveIcon: {
       backgroundColor: '#0a0b0d',
       foregroundImage: './assets/images/android-icon-foreground.png',
-      backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
@@ -89,7 +87,7 @@ const config: ExpoConfig = {
       {
         backgroundColor: '#0a0b0d',
         image: './assets/images/splash-icon.png',
-        imageWidth: 76,
+        imageWidth: 120,
       },
     ],
     ...sentryPlugin,
