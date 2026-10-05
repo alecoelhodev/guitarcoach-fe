@@ -7,8 +7,8 @@ import {
 } from '@tanstack/react-query';
 
 import { queryKeys } from '@/api/query-keys';
-import { createTask, getTask, listTasks } from '@/api/tasks';
-import type { CreateTaskInput, TaskCategory, TaskDifficulty } from '@/types/task';
+import { createTask, deleteTask, getTask, listTasks, updateTask } from '@/api/tasks';
+import type { CreateTaskInput, TaskCategory, TaskDifficulty, UpdateTaskInput } from '@/types/task';
 
 type TaskFilters = { category?: TaskCategory; difficulty?: TaskDifficulty; limit?: number };
 
@@ -43,5 +43,31 @@ export function useCreateTask() {
   return useMutation({
     mutationFn: (input: CreateTaskInput) => createTask(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.tasksRoot }),
+  });
+}
+
+/** Routines and sessions embed the task's title, so their cached copies go stale too. */
+export function useUpdateTask(taskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateTaskInput) => updateTask(taskId, input),
+    onSuccess: (task) => {
+      queryClient.setQueryData(queryKeys.task(taskId), task);
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasksRoot });
+      queryClient.invalidateQueries({ queryKey: queryKeys.routinesRoot });
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessionsRoot });
+    },
+  });
+}
+
+/** Drops the detail outright: invalidating it would refetch an id the server just deleted. */
+export function useDeleteTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => deleteTask(taskId),
+    onSuccess: (_data, taskId) => {
+      queryClient.removeQueries({ queryKey: queryKeys.task(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasksRoot });
+    },
   });
 }

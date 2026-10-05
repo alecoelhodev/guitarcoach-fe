@@ -26,7 +26,8 @@ export default function MainLayout() {
           }}
         />
         <Stack.Screen name="library/new" />
-        <Stack.Screen name="library/[id]" />
+        <Stack.Screen name="library/[id]/index" />
+        <Stack.Screen name="library/[id]/edit" />
         <Stack.Screen name="history/index" />
         <Stack.Screen name="history/[id]" />
         <Stack.Screen name="coach" />
