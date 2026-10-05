@@ -69,6 +69,11 @@ That is the loop. Everything in phases 1–3 below serves it; nothing outside it
   human-only steps left before the first store submission: security checks, device verification,
   Sentry, open decisions and store prerequisites
 
+### Post-MVP
+
+- [13 — New features](13-new-features.md) — profile image, Library title search, Spotify-based
+  task suggestions and auth input polish. Not started; none blocks the first release
+
 ## Parallelisation
 
 After spec 01 lands, these run independently: **06**, **07**, **08** (no dependency on 01 at all),
