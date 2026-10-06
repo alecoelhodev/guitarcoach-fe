@@ -30,7 +30,7 @@ command-by-command flow: [`docs/api-contract-workflow.md`](docs/api-contract-wor
 npx tsc --noEmit      # no `typecheck` script exists; run the compiler directly
 npx expo lint
 npx biome ci .        # formatting + import order; `npm run format` fixes both
-npm test              # 46 suites; `npm run test:coverage` adds the coverage floor
+npm test              # 58 suites; `npm run test:coverage` adds the coverage floor
 ```
 
 All four should be **clean**. `expo lint` used to carry one known error in
@@ -308,8 +308,12 @@ Verified against the committed OpenAPI schema:
   endpoint; per-task minutes are optional, so every total is a client-side sum that must
   render correctly when minutes are absent.
 - **Tasks are read-only for ordinary users** — write routes are admin-gated. Admins get a
-  "New task" entry in the Library (`/library/new`); it is hidden unless the cached user's
-  `role` is `admin`, but that check is cosmetic — the backend's `@Roles(['admin'])` enforces it.
+  "New task" entry in the Library (`/library/new`), plus Edit (`/library/[id]/edit`) and Delete
+  on a task's detail. These are hidden unless the cached user's `role` is `admin`, but that
+  check is cosmetic — the backend's `@Roles(['admin'])` enforces it. `UpdateTaskDto` takes no
+  `null`, so an edit can clear the description (`""`) but not a saved link, category or
+  difficulty; the form refuses rather than sending a 400. A delete is a 409 while any routine
+  or logged session uses the task, and nothing on the DTO predicts it.
 - **Account deletion is `DELETE /api/v1/users/me`, not better-auth's `/auth/delete-user`.** The
   backend purges routines, sessions and recordings (including the bucket objects) before the
   user. `useDeleteAccount` runs `clearLocalSession` **only on success** — unlike sign-out, a

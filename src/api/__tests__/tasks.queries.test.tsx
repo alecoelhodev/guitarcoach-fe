@@ -1,8 +1,15 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 
+import { ApiError } from '@/api/client';
 import { queryKeys } from '@/api/query-keys';
-import { createTask, getTask, listTasks } from '@/api/tasks';
-import { useCreateTask, useTask, useTasks } from '@/api/tasks.queries';
+import { createTask, deleteTask, getTask, listTasks, updateTask } from '@/api/tasks';
+import {
+  useCreateTask,
+  useDeleteTask,
+  useTask,
+  useTasks,
+  useUpdateTask,
+} from '@/api/tasks.queries';
 import { makePage, makeTask } from '@/test/fixtures';
 import { withQueryClient } from '@/test/query-client';
 
@@ -10,11 +17,15 @@ jest.mock('@/api/tasks', () => ({
   listTasks: jest.fn(),
   getTask: jest.fn(),
   createTask: jest.fn(),
+  updateTask: jest.fn(),
+  deleteTask: jest.fn(),
 }));
 
 const listMock = listTasks as jest.MockedFunction<typeof listTasks>;
 const getMock = getTask as jest.MockedFunction<typeof getTask>;
 const createMock = createTask as jest.MockedFunction<typeof createTask>;
+const updateMock = updateTask as jest.MockedFunction<typeof updateTask>;
+const deleteMock = deleteTask as jest.MockedFunction<typeof deleteTask>;
 
 afterEach(() => jest.resetAllMocks());
 
@@ -130,5 +141,51 @@ describe('useCreateTask', () => {
     await expect(result.current.mutateAsync({ title: 'Modes' })).rejects.toThrow('403');
 
     expect(invalidate).not.toHaveBeenCalled();
+  });
+});
+
+describe('useUpdateTask', () => {
+  it('caches the updated task and refreshes everything that embeds its title', async () => {
+    const updated = makeTask({ id: 'task-9', title: 'Modes, revisited' });
+    updateMock.mockResolvedValue(updated);
+    const { queryClient, wrapper } = withQueryClient();
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = await renderHook(() => useUpdateTask('task-9'), { wrapper });
+    await result.current.mutateAsync({ title: 'Modes, revisited' });
+
+    expect(updateMock).toHaveBeenCalledWith('task-9', { title: 'Modes, revisited' });
+    expect(queryClient.getQueryData(queryKeys.task('task-9'))).toEqual(updated);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.tasksRoot });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.routinesRoot });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.sessionsRoot });
+  });
+});
+
+describe('useDeleteTask', () => {
+  it('drops the detail and invalidates every task list', async () => {
+    deleteMock.mockResolvedValue(undefined);
+    const { queryClient, wrapper } = withQueryClient();
+    queryClient.setQueryData(queryKeys.task('task-9'), makeTask({ id: 'task-9' }));
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = await renderHook(() => useDeleteTask(), { wrapper });
+    await result.current.mutateAsync('task-9');
+
+    expect(deleteMock).toHaveBeenCalledWith('task-9');
+    expect(queryClient.getQueryData(queryKeys.task('task-9'))).toBeUndefined();
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.tasksRoot });
+  });
+
+  it('surfaces a 409 and keeps the cached task when it is still in use', async () => {
+    deleteMock.mockRejectedValue(new ApiError('in use', 409));
+    const { queryClient, wrapper } = withQueryClient();
+    const task = makeTask({ id: 'task-9' });
+    queryClient.setQueryData(queryKeys.task('task-9'), task);
+
+    const { result } = await renderHook(() => useDeleteTask(), { wrapper });
+    await expect(result.current.mutateAsync('task-9')).rejects.toMatchObject({ status: 409 });
+
+    expect(queryClient.getQueryData(queryKeys.task('task-9'))).toEqual(task);
   });
 });
