@@ -328,6 +328,7 @@ Verified against the committed OpenAPI schema:
 | Doc                                          | What it is                                                                                 |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `wireframes/Guitar Coach Wireframes.dc.html` | **The design authority.** Every colour, radius and type size comes from its `:root` block. |
+| `wireframes/1e-progress-pick/`               | App logo source (three variants). `assets/images/` are rendered from the **dark** SVGs.    |
 | `specs/`                                     | **The MVP completion plan.** Start at `specs/README.md`; `specs/00-…` is the API contract. |
 | `docs/ARCHITECTURE.md`                       | Stack, state boundaries, storage, UI system                                                |
 | `docs/MIGRATION-PLAN.md`                     | Record of the Organic → canvas UI migration                                                |

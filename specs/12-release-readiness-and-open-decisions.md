@@ -152,7 +152,11 @@ eas env:set --name EXPO_PUBLIC_API_BASE_URL --value https://<api-host> \
 
 ### 5.3 Artwork
 
-Every image in `assets/` is still the Expo template. Provide:
+**In review** (2026-10-05): the Progress Pick logo (`wireframes/1e-progress-pick/`, dark
+variant) is rendered into `assets/images/`: an opaque 1024 icon, Android foreground and monochrome
+layers inside the safe zone over a `#0a0b0d` background colour, a splash mark and a 48px favicon.
+`ios.icon` now falls back to the PNG; the template `assets/expo.icon` bundle is removed. Still
+optional: an Icon Composer bundle for iOS 26's layered icon. The original request was:
 
 - an app icon, 1024×1024 PNG with no transparency
 - Android adaptive icon layers: foreground and monochrome (keep the artwork inside the central
