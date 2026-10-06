@@ -188,7 +188,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-        <ThemedText type="h3">Guitar Coach</ThemedText>
+        <ThemedText type="h3">Progress Pick</ThemedText>
         <ThemedText type="body" color="textMuted">
           Practice with a plan.
         </ThemedText>

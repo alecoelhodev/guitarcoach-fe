@@ -25,7 +25,7 @@ export function Rail() {
   return (
     <View style={styles.rail}>
       <ThemedText type="h5" style={styles.brand}>
-        Guitar Coach
+        Progress Pick
       </ThemedText>
 
       <Link href={PRACTICE_HREF} asChild>

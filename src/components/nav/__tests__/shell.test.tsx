@@ -63,7 +63,7 @@ describe('AppShell (web)', () => {
     expect(screen.getByText('screen')).toBeTruthy();
     // The rail is the only chrome carrying the wordmark, and the only one with
     // History and AI Coach entries.
-    expect(screen.queryByText('Guitar Coach')).toBeNull();
+    expect(screen.queryByText('Progress Pick')).toBeNull();
     expect(screen.queryByText('History')).toBeNull();
     // The bar still carries the four tabs and the centre action.
     expect(screen.getByText('Home')).toBeTruthy();
@@ -77,7 +77,7 @@ describe('AppShell (web)', () => {
       </WebAppShell>,
     );
 
-    expect(screen.getByText('Guitar Coach')).toBeTruthy();
+    expect(screen.getByText('Progress Pick')).toBeTruthy();
     expect(screen.getByText('History')).toBeTruthy();
     // One Practice action, not one per shell.
     expect(screen.getAllByText('Practice')).toHaveLength(1);
@@ -118,7 +118,7 @@ describe('AppShell (web) across the breakpoint', () => {
       </WebAppShell>,
     );
 
-    expect(screen.getByText('Guitar Coach')).toBeTruthy();
+    expect(screen.getByText('Progress Pick')).toBeTruthy();
     expect(screen.getByTestId('draft').props.value).toBe('half-typed prompt');
   });
 });

@@ -1,4 +1,4 @@
-# Guitar Coach FE — agent guide
+# Progress Pick FE — agent guide
 
 Expo SDK 57 / React Native 0.86 / React 19.2 / Expo Router 57 / TypeScript 6.
 

@@ -99,7 +99,7 @@ function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       {/* Above the `ready` gate so static web rendering, which never loads fonts, still emits it. */}
       <Head>
-        <title>Guitar Coach</title>
+        <title>Progress Pick</title>
       </Head>
       {/*
         Mounted explicitly rather than relying on the one react-navigation installs inside
