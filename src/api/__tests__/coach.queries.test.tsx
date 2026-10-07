@@ -1,7 +1,13 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 
-import { instantCreateRoutine, requestPracticePlan, resolvePracticePlan } from '@/api/coach';
 import {
+  generateTaskDrafts,
+  instantCreateRoutine,
+  requestPracticePlan,
+  resolvePracticePlan,
+} from '@/api/coach';
+import {
+  useGenerateTaskDrafts,
   useInstantCreateRoutine,
   useRequestPracticePlan,
   useResolvePracticePlan,
@@ -14,6 +20,7 @@ jest.mock('@/api/coach', () => ({
   requestPracticePlan: jest.fn(),
   resolvePracticePlan: jest.fn(),
   instantCreateRoutine: jest.fn(),
+  generateTaskDrafts: jest.fn(),
 }));
 
 const resolveMock = resolvePracticePlan as jest.MockedFunction<typeof resolvePracticePlan>;
@@ -126,6 +133,21 @@ describe('useRequestPracticePlan', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(awaiting);
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+});
+
+describe('useGenerateTaskDrafts', () => {
+  it('forwards the prompt and count, and caches nothing', async () => {
+    const generateMock = generateTaskDrafts as jest.MockedFunction<typeof generateTaskDrafts>;
+    generateMock.mockResolvedValue({ drafts: [] });
+    const { queryClient, wrapper } = withQueryClient();
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = await renderHook(() => useGenerateTaskDrafts(), { wrapper });
+    await result.current.mutateAsync({ prompt: '7-string riffs', count: 5 });
+
+    expect(generateMock).toHaveBeenCalledWith({ prompt: '7-string riffs', count: 5 });
     expect(invalidate).not.toHaveBeenCalled();
   });
 });

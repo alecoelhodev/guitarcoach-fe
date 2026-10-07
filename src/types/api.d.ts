@@ -132,6 +132,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/tasks/bulk': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['TasksController_createMany'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/tasks/{id}': {
     parameters: {
       query?: never;
@@ -324,6 +340,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/ai/task-generator': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AiTaskGeneratorController_generate'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/ai/routine-coach': {
     parameters: {
       query?: never;
@@ -403,6 +435,9 @@ export interface components {
       createdAt: string;
       /** Format: date-time */
       updatedAt: string;
+    };
+    BulkCreateTasksDto: {
+      tasks: components['schemas']['CreateTaskDto'][];
     };
     PaginationMetaDto: {
       total: number;
@@ -585,6 +620,22 @@ export interface components {
       prompt?: string;
       confirmation?: boolean;
       previousResponseId?: string;
+    };
+    TaskGeneratorRequestDto: {
+      prompt: string;
+      count: number;
+    };
+    TaskDraftDto: {
+      /** @enum {string} */
+      category: 'technique' | 'theory' | 'repertoire';
+      /** @enum {string} */
+      difficulty: 'easy' | 'medium' | 'hard';
+      referenceLink: string | null;
+      title: string;
+      description: string;
+    };
+    TaskGeneratorResponseDto: {
+      drafts: components['schemas']['TaskDraftDto'][];
     };
     RoutineCoachRequestDto: {
       message: string;
@@ -1082,6 +1133,29 @@ export interface operations {
       };
     };
   };
+  TasksController_createMany: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BulkCreateTasksDto'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TaskResponseDto'][];
+        };
+      };
+    };
+  };
   TasksController_findOne: {
     parameters: {
       query?: never;
@@ -1566,6 +1640,29 @@ export interface operations {
             | components['schemas']['AwaitingConfirmationResponseDto']
             | components['schemas']['PlanCreatedResponseDto']
             | components['schemas']['PlanCancelledResponseDto'];
+        };
+      };
+    };
+  };
+  AiTaskGeneratorController_generate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TaskGeneratorRequestDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TaskGeneratorResponseDto'];
         };
       };
     };

@@ -103,9 +103,14 @@ export function LibraryList() {
         <View style={styles.title}>
           <ThemedText type="h3">Task library</ThemedText>
           {isAdmin && (
-            <Link href="/library/new" asChild>
-              <Button variant="tertiary">New task</Button>
-            </Link>
+            <View style={styles.adminActions}>
+              <Link href="/library/generate" asChild>
+                <Button variant="tertiary">Generate</Button>
+              </Link>
+              <Link href="/library/new" asChild>
+                <Button variant="tertiary">New task</Button>
+              </Link>
+            </View>
           )}
         </View>
 
@@ -235,6 +240,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing[4],
     paddingBottom: Spacing[2],
   },
+  adminActions: { flexDirection: 'row', gap: Spacing[1] },
   list: { padding: Spacing[4], gap: Spacing[3] },
   filters: { paddingHorizontal: Spacing[4], gap: Spacing[2], paddingBottom: Spacing[2] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },
