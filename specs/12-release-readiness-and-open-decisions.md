@@ -11,9 +11,9 @@ work once a step is done, the step says so.
 Do section 1 first. Sections 2–4 can happen in any order. Section 5 must be complete before the
 first store submission.
 
-## Progress — 2026-10-05 (resume here)
+## Progress — 2026-10-06 (resume here)
 
-**Done, in review, CI green** — nothing below is merged yet:
+**Done, merged and verified on a device on 2026-10-06:**
 
 | PR                                                               | What                                                                                     |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
@@ -21,20 +21,20 @@ first store submission.
 | [FE #26](https://github.com/alecoelhodev/guitarcoach-fe/pull/26) | `contract.yml` actions pinned to SHAs                                                    |
 | [FE #27](https://github.com/alecoelhodev/guitarcoach-fe/pull/27) | Admin Edit (`/library/[id]/edit`) and Delete on task detail                              |
 | [FE #28](https://github.com/alecoelhodev/guitarcoach-fe/pull/28) | Renamed to **Progress Pick**, ID `com.coelhoadevsteam.progresspick` (see 5.1)            |
+| [FE #30](https://github.com/alecoelhodev/guitarcoach-fe/pull/30) | App icon, Android adaptive layers, splash and favicon (see 5.3)                          |
 
-**Next, in order:**
+The section 2 device checklist is complete.
 
-1. Merge BE #29 **before** FE #27 — without it, deleting an in-use task shows a generic 500 panel.
-   #26 and #28 merge in any order.
-2. Device check FE #27 in Expo Go as an admin: edit a title and see it in a routine; delete an
-   unused task; deleting an in-use task shows "Can't delete this task"; a non-admin sees neither
-   button.
-3. Once merged, flip "In review" to "Done" in the section 4 table.
-4. Create the store records with the new ID (5.6) — it can't change after the first upload.
+**Next, all human-only, in order:**
 
-**Still open, all human-only:** section 1 (seeded accounts, k6 password), the section 2 device
-checklist, the section 3 Sentry token, and 5.2–5.7. Remaining Claude-doable items are the
-undecided rows in section 4 and the section 7 backlog.
+1. Section 1: seeded production accounts and the k6 password.
+2. Section 3: the Sentry auth token as an EAS secret — **every EAS build fails without it**.
+3. 5.2: `EXPO_PUBLIC_API_BASE_URL` for `preview` and `production`.
+4. 5.4–5.6: privacy, support and deletion URLs; listing copy; store records with the new ID.
+5. Section 6: the preview build — the first place the real home-screen icon appears.
+
+**Claude-doable when you want:** the undecided rows in section 4, and the section 7 backlog
+(including nullable `UpdateTaskDto` fields).
 
 ## 1. Security — do now
 
@@ -64,19 +64,20 @@ Manager as `guitarcoach-k6-perf-test-password`.
 
 ## 2. Verify on a device (Expo Go)
 
-The unchecked items haven't run on a device yet; the automated suites can't prove them. Run
-`npm run dev:cloud` and scan the QR.
+All items have run on a device; the automated suites can't prove them, so repeat them on the
+preview build (section 6). Run `npm run dev:cloud` and scan the QR.
 
-- [ ] **Session notes draft.** Type in notes, switch to the title, background the app mid-draft,
-      come back, then Finish. The saved session contains the latest text.
-- [ ] **Minutes stepper.** Tap + rapidly 5 times, then reload. The final value persists. Clear a
-      duration and reload: it stays cleared.
-- [ ] **Offline sign-out.** In Airplane mode, sign out. The app returns to sign-in within about 2
-      seconds, and the next account sees none of the previous one's data.
-- [ ] **Session detail.** Task titles appear with no per-row spinner.
-- [ ] **Offline History and Home.** Lists render from cache, with no session notes.
-- [ ] **Links.** Every card or row that navigates actually navigates on native; see the
-      `Link asChild` rules in `AGENTS.md`.
+- [x] **Session notes draft.** Type in notes, switch to the title, background the app mid-draft,
+      come back, then Finish. The saved session contains the latest text. Verified 2026-10-06.
+- [x] **Minutes stepper.** Tap + rapidly 5 times, then reload. The final value persists. Clear a
+      duration and reload: it stays cleared. Verified 2026-10-06.
+- [x] **Offline sign-out.** In Airplane mode, sign out. The app returns to sign-in within about 2
+      seconds, and the next account sees none of the previous one's data. Verified 2026-10-06.
+- [x] **Session detail.** Task titles appear with no per-row spinner. Verified 2026-10-06.
+- [x] **Offline History and Home.** Lists render from cache, with no session notes. Verified
+      2026-10-06.
+- [x] **Links.** Every card or row that navigates actually navigates on native; see the
+      `Link asChild` rules in `AGENTS.md`. Verified 2026-10-06.
 - [x] **Delete account.** Profile → Delete account → confirm lands on sign-in, and the account
       is gone. Verified 2026-10-04.
 - [x] **New task (admin).** An admin sees **New task** in the Library, and the created task opens
@@ -112,9 +113,9 @@ Each decision unblocks work that Claude can then do.
 | --------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------- |
 | **OTA updates** (`expo-updates`)                                      | Yes, after the first store release      | `runtimeVersion` policy and an EAS Update channel per profile |
 | **Optimistic boot** (skip the 5s session check when a user is cached) | Yes, if cold starts feel slow on device | A change in `src/stores/session-store.ts`                     |
-| **Pin GitHub Actions to commit SHAs**                                 | **In review**: FE #26, BE #29           | —                                                             |
+| **Pin GitHub Actions to commit SHAs**                                 | **Done**: FE #26, BE #29                | —                                                             |
 | **Keep routine notes off the device**                                 | Optional. Session notes already are     | A `persist.ts` serializer change                              |
-| **Edit and delete tasks in the app** (admin)                          | **In review**: FE #27, BE #29 (409 fix) | —                                                             |
+| **Edit and delete tasks in the app** (admin)                          | **Done**: FE #27, BE #29 (409 fix)      | —                                                             |
 | **User-created private tasks**                                        | Later, if users ask for it              | A backend `Task.ownerId` migration plus visibility filtering  |
 
 ### 4.1 Admin accounts
@@ -128,14 +129,14 @@ UPDATE users SET role = 'admin' WHERE email = '<email>';
 
 `DELETE /tasks/{id}` refuses a task that a routine or logged session uses. It used to rely on
 Prisma's `P2003`, which Postgres 18 reports as `23001`, so the 409 came back as a 500. Backend #29
-applies the same count-first fix that #27 gave routines.
+(merged) applies the same count-first fix that #27 gave routines.
 
 ## 5. Store prerequisites (before the first submission)
 
 ### 5.1 Identity
 
-- **Decided** (2026-10-05): the display name is **Progress Pick** and the bundle/package ID is
-  `com.coelhoadevsteam.progresspick` (FE PR "rename to Progress Pick"). The `slug`
+- **Done** (FE #28, verified 2026-10-06): the display name is **Progress Pick** and the
+  bundle/package ID is `com.coelhoadevsteam.progresspick`. The `slug`
   (`guitar-coach`), the deep-link scheme and the `guitar-coach.*` storage keys are deliberately
   unchanged, so the EAS project link and cached data survive. Use the new ID for the store
   records in 5.6.
@@ -152,11 +153,13 @@ eas env:set --name EXPO_PUBLIC_API_BASE_URL --value https://<api-host> \
 
 ### 5.3 Artwork
 
-**In review** (2026-10-05): the Progress Pick logo (`wireframes/1e-progress-pick/`, dark
-variant) is rendered into `assets/images/`: an opaque 1024 icon, Android foreground and monochrome
-layers inside the safe zone over a `#0a0b0d` background colour, a splash mark and a 48px favicon.
+**Done** (FE #30; splash and favicon verified 2026-10-06): the Progress Pick logo
+(`wireframes/1e-progress-pick/`, dark variant) is rendered into `assets/images/`: an opaque 1024
+icon, Android foreground and monochrome layers inside the safe zone over a `#0a0b0d` background
+colour, a splash mark and a 48px favicon.
 `ios.icon` now falls back to the PNG; the template `assets/expo.icon` bundle is removed. Still
-optional: an Icon Composer bundle for iOS 26's layered icon. The original request was:
+optional: an Icon Composer bundle for iOS 26's layered icon. The home-screen icon itself first
+appears in the section 6 preview build, since Expo Go shows its own. The original request was:
 
 - an app icon, 1024×1024 PNG with no transparency
 - Android adaptive icon layers: foreground and monochrome (keep the artwork inside the central
