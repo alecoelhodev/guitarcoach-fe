@@ -36,17 +36,20 @@ export function ProfileScreen() {
   const removeAvatar = useRemoveAvatar();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingRemovePhoto, setConfirmingRemovePhoto] = useState(false);
+  const [preparingPhoto, setPreparingPhoto] = useState(false);
   const busy = signOutMutation.isPending || deleteAccountMutation.isPending;
-  const photoBusy = uploadAvatar.isPending || removeAvatar.isPending;
+  const photoBusy = preparingPhoto || uploadAvatar.isPending || removeAvatar.isPending;
 
   async function choosePhoto() {
     if (photoBusy) return;
     let file: Awaited<ReturnType<typeof pickAvatar>>;
     try {
-      file = await pickAvatar();
+      file = await pickAvatar(() => setPreparingPhoto(true));
     } catch {
       showToast("Couldn't open that photo", 'error');
       return;
+    } finally {
+      setPreparingPhoto(false);
     }
     if (!file) return;
     uploadAvatar.mutate(file, {
@@ -94,9 +97,9 @@ export function ProfileScreen() {
               <ThemedText type="body" color="textMuted">
                 {user.email}
               </ThemedText>
-              {uploadAvatar.isPending ? (
+              {preparingPhoto || uploadAvatar.isPending ? (
                 <ThemedText type="body" color="textMuted">
-                  Uploading photo…
+                  {preparingPhoto ? 'Preparing photo…' : 'Uploading photo…'}
                 </ThemedText>
               ) : (
                 user.image && (
