@@ -57,7 +57,7 @@ export function PlanPreviewCard({
       ))}
 
       <View style={styles.actions}>
-        <Button style={styles.action} loading={loading} onPress={onConfirm}>
+        <Button style={styles.action} loading={loading} loadingLabel="Saving…" onPress={onConfirm}>
           Save Routine
         </Button>
         <Button variant="tertiary" style={styles.action} disabled={loading} onPress={onDecline}>

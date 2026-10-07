@@ -363,7 +363,7 @@ describe('PlanPreviewCard', () => {
       <PlanPreviewCard plan={makePlan()} loading onConfirm={onConfirm} onDecline={onDecline} />,
     );
 
-    await fireEvent.press(screen.getByText('Save Routine'));
+    await fireEvent.press(screen.getByText('Saving…'));
     await fireEvent.press(screen.getByText('Discard'));
 
     expect(onConfirm).not.toHaveBeenCalled();
