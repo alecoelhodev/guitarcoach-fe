@@ -1,30 +1,28 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useDeleteAccount, useSignOut } from '@/api/auth.queries';
+import { useRemoveAvatar, useUploadAvatar } from '@/api/avatar.queries';
 import { describeApiTarget } from '@/api/base-url';
-import { apiTarget } from '@/api/client';
+import { ApiError, apiTarget } from '@/api/client';
 import { describeError } from '@/api/errors';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Avatar } from '@/features/profile/avatar';
+import { pickAvatar } from '@/features/profile/pick-avatar';
 import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
-import { Colors, MaxContentWidth, Radius, Spacing } from '@/theme/tokens';
-import { FontFamily } from '@/theme/typography';
+import { Colors, MaxContentWidth, Spacing } from '@/theme/tokens';
 
-/** Canvas 11 shows the avatar as initials — there is no upload flow. */
-function initialsOf(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
+function photoErrorTitle(error: unknown) {
+  if (error instanceof ApiError && error.status === 413) return 'That photo is too large';
+  if (error instanceof ApiError && error.status === 400) return 'Use a JPEG, PNG or WebP photo';
+  return describeError(error, "Couldn't update your photo").title;
 }
 
 export function ProfileScreen() {
@@ -34,8 +32,37 @@ export function ProfileScreen() {
   const showToast = useToastStore((state) => state.show);
   const signOutMutation = useSignOut();
   const deleteAccountMutation = useDeleteAccount();
+  const uploadAvatar = useUploadAvatar();
+  const removeAvatar = useRemoveAvatar();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingRemovePhoto, setConfirmingRemovePhoto] = useState(false);
   const busy = signOutMutation.isPending || deleteAccountMutation.isPending;
+  const photoBusy = uploadAvatar.isPending || removeAvatar.isPending;
+
+  async function choosePhoto() {
+    if (photoBusy) return;
+    let file: Awaited<ReturnType<typeof pickAvatar>>;
+    try {
+      file = await pickAvatar();
+    } catch {
+      showToast("Couldn't open that photo", 'error');
+      return;
+    }
+    if (!file) return;
+    uploadAvatar.mutate(file, {
+      onSuccess: () => showToast('Photo updated', 'success'),
+      onError: (error) => showToast(photoErrorTitle(error), 'error'),
+    });
+  }
+
+  function removePhoto() {
+    setConfirmingRemovePhoto(false);
+    removeAvatar.mutate(undefined, {
+      onSuccess: () => showToast('Photo removed', 'success'),
+      onError: (error) =>
+        showToast(describeError(error, "Couldn't remove your photo").title, 'error'),
+    });
+  }
 
   function deleteAccount() {
     setConfirmingDelete(false);
@@ -55,13 +82,33 @@ export function ProfileScreen() {
         {user && (
           <>
             <Card style={styles.identity}>
-              <View style={styles.avatar}>
-                <ThemedText style={styles.initials}>{initialsOf(user.name)}</ThemedText>
-              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={user.image ? 'Change profile photo' : 'Add profile photo'}
+                accessibilityState={{ busy: photoBusy }}
+                onPress={() => void choosePhoto()}
+              >
+                <Avatar user={user} size="lg" />
+              </Pressable>
               <ThemedText type="h5">{user.name}</ThemedText>
               <ThemedText type="body" color="textMuted">
                 {user.email}
               </ThemedText>
+              {uploadAvatar.isPending ? (
+                <ThemedText type="body" color="textMuted">
+                  Uploading photo…
+                </ThemedText>
+              ) : (
+                user.image && (
+                  <Button
+                    variant="tertiary"
+                    disabled={photoBusy}
+                    onPress={() => setConfirmingRemovePhoto(true)}
+                  >
+                    Remove photo
+                  </Button>
+                )
+              )}
             </Card>
 
             <Card>
@@ -116,6 +163,16 @@ export function ProfileScreen() {
         </Button>
 
         <ConfirmDialog
+          visible={confirmingRemovePhoto}
+          title="Remove your photo?"
+          message="Your initials show instead."
+          confirmLabel="Remove photo"
+          destructive
+          onConfirm={removePhoto}
+          onCancel={() => setConfirmingRemovePhoto(false)}
+        />
+
+        <ConfirmDialog
           visible={confirmingDelete}
           title="Delete your account?"
           message="Your routines, practice history and recordings are permanently deleted. This can't be undone."
@@ -154,23 +211,6 @@ const styles = StyleSheet.create({
   },
   identity: {
     alignItems: 'center',
-  },
-  avatar: {
-    width: 66,
-    height: 66,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.neutral[300],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  initials: {
-    fontFamily: FontFamily.body,
-    // Canvas 22 × 390/318, per theme/typography.ts. No role matches it — it is sized to the
-    // avatar circle rather than to the type ladder.
-    fontSize: 27,
-    color: Colors.neutral[700],
   },
   divider: {
     height: 1,

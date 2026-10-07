@@ -31,6 +31,7 @@ const config: ExpoConfig = {
     // Apple does not reliably read the PrivacyInfo.xcprivacy that static CocoaPods ship, so the
     // Expo docs say to copy them here. This is the union of those in node_modules (react-native,
     // async-storage, expo-constants, expo-file-system, expo-system-ui); re-check after upgrades.
+    // expo-image-picker and expo-image-manipulator ship none (checked at 57.0.20 / 57.0.21).
     privacyManifests: {
       NSPrivacyAccessedAPITypes: [
         {
@@ -82,6 +83,15 @@ const config: ExpoConfig = {
       },
     ],
     'expo-asset',
+    [
+      'expo-image-picker',
+      {
+        // Profile photo from the library only. The defaults also add camera and mic prompts.
+        photosPermission: 'Progress Pick uses your photos to set your profile picture.',
+        cameraPermission: false,
+        microphonePermission: false,
+      },
+    ],
     [
       'expo-splash-screen',
       {

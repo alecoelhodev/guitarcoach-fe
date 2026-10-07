@@ -82,6 +82,11 @@ function withoutSessionNotes(query: DehydratedQuery): DehydratedQuery {
   };
 }
 
+function isAvatarUrl({ queryKey }: Query) {
+  const [root, kind] = queryKeys.avatarUrl('');
+  return queryKey[0] === root && queryKey[1] === kind;
+}
+
 function isSessionDetail({ queryKey }: Query) {
   const [root, kind] = queryKeys.session('');
   return queryKey.length === 3 && queryKey[0] === root && queryKey[1] === kind;
@@ -89,11 +94,13 @@ function isSessionDetail({ queryKey }: Query) {
 
 /**
  * Passed to `PersistQueryClientProvider`. A session detail carries free-text practice notes,
- * which stay off the disk (lists drop theirs in `withoutSessionNotes`). Mutations never
+ * which stay off the disk (lists drop theirs in `withoutSessionNotes`). A signed avatar URL
+ * would be expired by the next launch, so it is fetched fresh instead. Mutations never
  * persist: a paused write replayed on the next launch could land under a different account.
  */
 export const dehydrateOptions: DehydrateOptions = {
-  shouldDehydrateQuery: (query) => defaultShouldDehydrateQuery(query) && !isSessionDetail(query),
+  shouldDehydrateQuery: (query) =>
+    defaultShouldDehydrateQuery(query) && !isSessionDetail(query) && !isAvatarUrl(query),
   shouldDehydrateMutation: () => false,
 };
 

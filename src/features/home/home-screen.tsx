@@ -20,13 +20,14 @@ import {
   TodaysPracticeSkeleton,
 } from '@/features/home/todays-practice-card';
 import { useTodaysPractice } from '@/features/home/use-todays-practice';
+import { Avatar } from '@/features/profile/avatar';
 import { useActiveSessionStore } from '@/features/session/session-store';
 import { useStartPractice } from '@/features/session/use-start-practice';
 import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useIsWide } from '@/hooks/use-is-wide';
 import { filterThisWeek } from '@/lib/date-grouping';
 import { useSessionStore } from '@/stores/session-store';
-import { Colors, MaxContentWidth, Radius, Spacing } from '@/theme/tokens';
+import { MaxContentWidth, Spacing, TapSlop } from '@/theme/tokens';
 
 /** Canvas 02 greets by time of day ("Evening, Jordan"). */
 function partOfDay(hour = new Date().getHours()) {
@@ -109,13 +110,11 @@ export function HomeScreen() {
               <Link href="/(app)/(main)/(tabs)/profile" asChild>
                 {/* Pressable, not View: `asChild` forwards `onPress`, which a View drops. */}
                 <Pressable
-                  style={styles.avatar}
+                  hitSlop={TapSlop}
                   accessibilityRole="button"
                   accessibilityLabel="Profile"
                 >
-                  <ThemedText type="label" color="textMuted">
-                    {user.name.slice(0, 1).toUpperCase()}
-                  </ThemedText>
+                  <Avatar user={user} size="sm" />
                 </Pressable>
               </Link>
             )}
@@ -221,16 +220,6 @@ const styles = StyleSheet.create({
     gap: Spacing[3],
   },
   greeting: { flex: 1, gap: Spacing[1] },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.neutral[300],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   // Canvas 2a: grid-template-columns 1.5fr 1fr.
   columns: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing[3] },
   primaryColumn: { flex: 1.5 },

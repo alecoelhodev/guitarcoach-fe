@@ -165,6 +165,16 @@ describe('dehydrateOptions', () => {
     ]);
   });
 
+  it('keeps signed avatar URLs off the disk, since they expire', () => {
+    const queryClient = makeTestQueryClient();
+    queryClient.setQueryData(queryKeys.avatarUrl('users/u1/avatar/a.jpg'), { url: 'https://x' });
+    queryClient.setQueryData(queryKeys.routine('r1'), { id: 'r1' });
+
+    const { queries } = dehydrate(queryClient, dehydrateOptions);
+
+    expect(queries.map((query) => query.queryKey)).toEqual([queryKeys.routine('r1')]);
+  });
+
   it('still drops queries that never succeeded, as the default does', async () => {
     const queryClient = makeTestQueryClient();
     await queryClient

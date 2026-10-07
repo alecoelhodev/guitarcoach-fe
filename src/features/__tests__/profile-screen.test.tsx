@@ -1,9 +1,18 @@
 jest.mock('@/api/auth.queries', () => ({ useSignOut: jest.fn(), useDeleteAccount: jest.fn() }));
+jest.mock('@/api/avatar.queries', () => ({
+  useAvatarUrl: jest.fn(() => ({ data: undefined })),
+  useUploadAvatar: jest.fn(),
+  useRemoveAvatar: jest.fn(),
+}));
+// The picker and manipulator are native; the screen only needs what the picker resolves.
+jest.mock('@/features/profile/pick-avatar', () => ({ pickAvatar: jest.fn() }));
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { useDeleteAccount, useSignOut } from '@/api/auth.queries';
+import { useRemoveAvatar, useUploadAvatar } from '@/api/avatar.queries';
 import { ApiError } from '@/api/client';
+import { pickAvatar } from '@/features/profile/pick-avatar';
 import { ProfileScreen } from '@/features/profile/profile-screen';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
@@ -17,6 +26,14 @@ const useDeleteAccountMock = useDeleteAccount as unknown as jest.MockedFunction<
   (...args: never[]) => unknown
 >;
 
+const useUploadAvatarMock = useUploadAvatar as unknown as jest.MockedFunction<
+  (...args: never[]) => unknown
+>;
+const useRemoveAvatarMock = useRemoveAvatar as unknown as jest.MockedFunction<
+  (...args: never[]) => unknown
+>;
+const pickAvatarMock = pickAvatar as jest.MockedFunction<typeof pickAvatar>;
+
 function signedIn(user = makeUser()) {
   useSessionStore.setState({ status: 'authenticated', user });
 }
@@ -25,6 +42,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   useSignOutMock.mockReturnValue(mutationStub());
   useDeleteAccountMock.mockReturnValue(mutationStub());
+  useUploadAvatarMock.mockReturnValue(mutationStub());
+  useRemoveAvatarMock.mockReturnValue(mutationStub());
 });
 
 describe('ProfileScreen', () => {
@@ -202,6 +221,108 @@ describe('ProfileScreen', () => {
 
       expect(signOut.mutate).not.toHaveBeenCalled();
       expect(screen.queryByText('Delete your account?')).toBeNull();
+    });
+  });
+
+  describe('profile photo', () => {
+    const FILE = { uri: 'file:///avatar.jpg', name: 'avatar.jpg', mimeType: 'image/jpeg' };
+
+    function failWith(mutation: ReturnType<typeof mutationStub>, error: unknown) {
+      mutation.mutate.mockImplementation((_vars, options?: { onError?: (e: unknown) => void }) =>
+        options?.onError?.(error),
+      );
+    }
+
+    it('uploads the picked photo from the avatar, and says so', async () => {
+      const upload = mutationStub();
+      upload.mutate.mockImplementation((_vars, options?: { onSuccess?: () => void }) =>
+        options?.onSuccess?.(),
+      );
+      useUploadAvatarMock.mockReturnValue(upload);
+      pickAvatarMock.mockResolvedValue(FILE);
+      signedIn();
+      await render(<ProfileScreen />);
+
+      await fireEvent.press(screen.getByLabelText('Add profile photo'));
+
+      expect(upload.mutate).toHaveBeenCalledWith(FILE, expect.anything());
+      expect(useToastStore.getState().toast).toMatchObject({
+        message: 'Photo updated',
+        variant: 'success',
+      });
+    });
+
+    it('does nothing when the picker is cancelled', async () => {
+      const upload = mutationStub();
+      useUploadAvatarMock.mockReturnValue(upload);
+      pickAvatarMock.mockResolvedValue(null);
+      signedIn();
+      await render(<ProfileScreen />);
+
+      await fireEvent.press(screen.getByLabelText('Add profile photo'));
+
+      expect(upload.mutate).not.toHaveBeenCalled();
+    });
+
+    it('says so when the photo cannot be read', async () => {
+      pickAvatarMock.mockRejectedValue(new Error('decode failed'));
+      signedIn();
+      await render(<ProfileScreen />);
+
+      await fireEvent.press(screen.getByLabelText('Add profile photo'));
+
+      expect(useToastStore.getState().toast).toMatchObject({
+        message: "Couldn't open that photo",
+        variant: 'error',
+      });
+    });
+
+    it.each([
+      [413, 'That photo is too large'],
+      [400, 'Use a JPEG, PNG or WebP photo'],
+    ])('names a %i rejection', async (status, message) => {
+      const upload = mutationStub();
+      failWith(upload, new ApiError('rejected', status));
+      useUploadAvatarMock.mockReturnValue(upload);
+      pickAvatarMock.mockResolvedValue(FILE);
+      signedIn();
+      await render(<ProfileScreen />);
+
+      await fireEvent.press(screen.getByLabelText('Add profile photo'));
+
+      expect(useToastStore.getState().toast).toMatchObject({ message, variant: 'error' });
+    });
+
+    it('offers Remove only when a photo is set, and asks first', async () => {
+      const remove = mutationStub();
+      useRemoveAvatarMock.mockReturnValue(remove);
+      signedIn(makeUser({ image: 'users/u1/avatar/a.jpg' }));
+      await render(withGluestack(<ProfileScreen />));
+
+      expect(screen.getByLabelText('Change profile photo')).toBeTruthy();
+      await fireEvent.press(screen.getByText('Remove photo'));
+      expect(screen.getByText('Remove your photo?')).toBeTruthy();
+      await fireEvent.press(screen.getAllByText('Remove photo')[1]);
+
+      expect(remove.mutate).toHaveBeenCalledTimes(1);
+    });
+
+    it('has no Remove without a photo', async () => {
+      signedIn(makeUser({ image: null }));
+      await render(<ProfileScreen />);
+
+      expect(screen.queryByText('Remove photo')).toBeNull();
+    });
+
+    it('shows the upload in progress and ignores another pick meanwhile', async () => {
+      useUploadAvatarMock.mockReturnValue({ ...mutationStub(), isPending: true });
+      signedIn(makeUser({ image: 'users/u1/avatar/a.jpg' }));
+      await render(<ProfileScreen />);
+
+      expect(screen.getByText('Uploading photo…')).toBeTruthy();
+      expect(screen.queryByText('Remove photo')).toBeNull();
+      await fireEvent.press(screen.getByLabelText('Change profile photo'));
+      expect(pickAvatarMock).not.toHaveBeenCalled();
     });
   });
 });
