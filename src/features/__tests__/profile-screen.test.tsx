@@ -7,7 +7,7 @@ jest.mock('@/api/avatar.queries', () => ({
 // The picker and manipulator are native; the screen only needs what the picker resolves.
 jest.mock('@/features/profile/pick-avatar', () => ({ pickAvatar: jest.fn() }));
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { useDeleteAccount, useSignOut } from '@/api/auth.queries';
 import { useRemoveAvatar, useUploadAvatar } from '@/api/avatar.queries';
@@ -250,6 +250,27 @@ describe('ProfileScreen', () => {
         message: 'Photo updated',
         variant: 'success',
       });
+    });
+
+    it('shows that the chosen photo is being prepared', async () => {
+      let finish: (file: typeof FILE) => void = () => {};
+      pickAvatarMock.mockImplementation((onPicked) => {
+        onPicked?.();
+        return new Promise((resolve) => {
+          finish = resolve;
+        });
+      });
+      const upload = mutationStub();
+      useUploadAvatarMock.mockReturnValue(upload);
+      signedIn();
+      await render(<ProfileScreen />);
+
+      await fireEvent.press(screen.getByLabelText('Add profile photo'));
+      expect(screen.getByText('Preparing photo…')).toBeTruthy();
+
+      await act(async () => finish(FILE));
+      expect(screen.queryByText('Preparing photo…')).toBeNull();
+      expect(upload.mutate).toHaveBeenCalledWith(FILE, expect.anything());
     });
 
     it('does nothing when the picker is cancelled', async () => {
