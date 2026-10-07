@@ -67,7 +67,7 @@ That is the loop. Everything in phases 1–3 below serves it; nothing outside it
 
 - [12 — Release readiness and open decisions](12-release-readiness-and-open-decisions.md) — the
   human-only steps left before the first store submission: security checks, device verification,
-  Sentry, open decisions and store prerequisites. **In progress** — its "Progress — 2026-10-05"
+  Sentry, open decisions and store prerequisites. **In progress** — its "Progress — 2026-10-06"
   section says where to resume
 
 ### Post-MVP
