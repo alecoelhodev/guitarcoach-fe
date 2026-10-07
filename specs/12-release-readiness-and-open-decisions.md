@@ -192,6 +192,8 @@ both. Claude then adds links to the profile screen via `ExternalLink`.
   - audio recordings in Google Cloud Storage
   - an optional profile photo in Google Cloud Storage (**photos**: App Privacy "Photos or
     Videos", Data safety "Photos"), picked from the library only
+  - a SHA-256 hash of the account email sent to **Gravatar** (a third party) to show its photo
+    when none was uploaded
   - a local cache on the device
   - crash reports, if Sentry is enabled
 - Approve or replace the placeholder web copy in `src/app/+html.tsx` ("Progress Pick" / "Practice

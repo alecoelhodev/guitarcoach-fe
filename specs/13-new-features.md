@@ -33,6 +33,12 @@ not started ·
 picker directly, with **Remove photo** under it, rather than a sheet: the repo has no sheet
 primitive. Ask AI's loading state was reported on device and is not one of the four features.
 
+**13.1 follow-ups, 2026-10-07:** on a device the photo pick did nothing and no upload reached
+Cloud Run. [FE #38](https://github.com/alecoelhodev/guitarcoach-fe/pull/38) makes every outcome
+visible ("Preparing photo…", a 20 s resize bound, and a dev-only Metro trace prefixed
+`[avatar]`); retry once with Metro open and report the last `[avatar]` line. The email's
+Gravatar is now the default photo when none is uploaded.
+
 **Not started:** 13.5 (email reminders), written 2026-10-06. It waits on the decisions listed in
 its own section.
 

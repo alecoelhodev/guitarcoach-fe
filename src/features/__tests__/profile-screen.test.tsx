@@ -1,4 +1,7 @@
 jest.mock('@/api/auth.queries', () => ({ useSignOut: jest.fn(), useDeleteAccount: jest.fn() }));
+jest.mock('@/features/profile/use-gravatar-url', () => ({
+  useGravatarUrl: jest.fn(() => ({ data: undefined })),
+}));
 jest.mock('@/api/avatar.queries', () => ({
   useAvatarUrl: jest.fn(() => ({ data: undefined })),
   useUploadAvatar: jest.fn(),
