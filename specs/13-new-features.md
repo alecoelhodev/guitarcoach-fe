@@ -1,7 +1,7 @@
 # 13 — New features (post-MVP)
 
 **Status:** 13.1, 13.2 and 13.4 merged, awaiting device verification · 13.3 blocked · 13.5
-not started ·
+not started · 13.6 in progress ·
 **Written:** 2026-10-04
 
 ## Progress — 2026-10-06 (resume here)
@@ -53,8 +53,8 @@ see the checklist.
 **Not started:** 13.5 (email reminders), written 2026-10-06. It waits on the decisions listed in
 its own section.
 
-Five features requested after the first release work; none blocks the first store submission
-(spec 12). Suggested order: **13.4 → 13.2 → 13.1 → 13.3 → 13.5**. 13.3 waits on a Spotify policy
+Six features requested after the first release work; none blocks the first store submission
+(spec 12). Suggested order: **13.4 → 13.2 → 13.1 → 13.6 → 13.3 → 13.5**. 13.3 waits on a Spotify policy
 check and a product decision. 13.5 is backend-heavy and waits on an email provider and its own
 product decisions.
 
@@ -309,3 +309,88 @@ Data safety if the provider counts as a third party that receives data.
 - Unsubscribe works while signed out.
 - Deleting the account removes the preferences and the log.
 - e2e coverage with a fake `EmailSender`, as `FakeGcpStorageService` stands in for storage.
+
+---
+
+## 13.6 AI task generator
+
+**Size:** M–L · **Depends on:** nothing · **Backend first:** yes · **Status:** in progress
+(written 2026-10-07)
+
+An admin describes what to practise and how many tasks they want, the AI drafts them, and the
+admin picks which ones to add to the library. For example:
+
+> I want to improve my 7-string riffs. Create 5 tasks that each learn a section of a famous
+> 7-string riff by Dream Theater, Trivium or Periphery.
+
+### Why it doesn't exist yet (verified 2026-10-07)
+
+- **Instant Create** (`ai-routine-coach`) only reuses existing library tasks.
+- **Draft & Review** (`ai-practice-planner`) creates task rows on confirm, but only inside a
+  routine, with a title and description and no category, difficulty or link. It also does it
+  **for any signed-in user**. `CreateRoutineTool` calls `TasksService.create` directly, which
+  bypasses `@Roles(['admin'])` on `POST /tasks`, so any user's confirmed plan adds title-only
+  tasks to the **shared** library. That's fixed as part of this feature, below.
+- **No AI endpoint has a rate limit.** Every call is an uncapped OpenAI cost.
+
+### Backend
+
+1. **Planner tasks become private.** Add `Task.ownerId` (nullable; `null` means a shared
+   library task), a migration that is additive with no backfill.
+   - Draft & Review creates its tasks with the user as owner.
+   - The library list and the Instant Create catalog show shared tasks only.
+   - Task detail shows a shared task, or the caller's own.
+   - Every path that takes a `taskId` from a user rejects someone else's private task with 404.
+   - Account deletion removes the user's private tasks.
+   - Tasks created by earlier confirmations can't be told apart from admin-created ones; review
+     them by hand.
+2. **Per-user AI rate limit.** A Redis fixed window, `AI_RATE_LIMIT_PER_HOUR` (default 30), 429
+   with `Retry-After`, failing open when Redis is down. It covers all three AI endpoints.
+3. **Generator.** `POST /api/v1/ai/task-generator`, admin-only and rate-limited.
+   - Input: `{ prompt (1–2000 chars), count (1–10) }`.
+   - Returns `count` drafts, each `{ title, description, category, difficulty, referenceLink? }`,
+     and persists nothing.
+   - The existing OpenAI provider runs it with web search and structured output, and is told the
+     library's existing titles so it avoids duplicates. A link that isn't http(s) is dropped.
+4. **Bulk create.** `POST /api/v1/tasks/bulk`, admin-only: 1–10 tasks in one transaction, all or
+   nothing.
+
+### Frontend
+
+- **Generate tasks** next to **New task** in the Library, admin-only.
+- `/library/generate`:
+  - Enter the prompt and pick a count (3 / 5 / 8 / 10).
+  - **Generate** shows the generating card while the AI works.
+  - Each draft shows its title, category, difficulty, description and link, with a checkbox.
+  - **Create N tasks** adds the ticked ones.
+- Edits happen after creation, on the existing Edit screen. A 429 says "Too many AI requests, try
+  again later".
+
+### Acceptance
+
+- An admin generates 5 drafts, unticks one and creates 4. All 4 appear in the library with a
+  category, difficulty and link.
+- A non-admin sees no Generate button, and the endpoint returns 403.
+- A non-admin's confirmed Draft & Review plan adds nothing to the shared library, and their
+  routine still shows its tasks.
+- The 31st AI request in an hour returns 429.
+
+### Future: a specialised MCP server (not started)
+
+You may later want to drive this from Claude (Desktop or Code) conversationally, instead of
+through the app. That would be a small MCP server exposing the same methods as thin wrappers over
+the admin endpoints above:
+
+| MCP tool               | Wraps                            |
+| ---------------------- | -------------------------------- |
+| `generate_task_drafts` | `POST /api/v1/ai/task-generator` |
+| `create_tasks`         | `POST /api/v1/tasks/bulk`        |
+| `list_tasks`           | `GET /api/v1/tasks` (with `q`)   |
+
+Claude could then also skip the app's generator and draft the tasks itself, calling only
+`create_tasks`. Open questions before building it:
+
+- **Auth.** The MCP server needs an admin credential of its own: Better Auth's API-key plugin, or
+  a scoped service account. Never a copied session cookie.
+- **Where it runs.** Locally over stdio, for one admin, or hosted remotely for several.
+- **Limits.** It goes through the same AI rate limit and admin checks; it gets no bypass.

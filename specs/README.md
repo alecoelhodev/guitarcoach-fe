@@ -73,8 +73,9 @@ That is the loop. Everything in phases 1–3 below serves it; nothing outside it
 ### Post-MVP
 
 - [13 — New features](13-new-features.md) — profile image, Library title search, Spotify-based
-  task suggestions, auth input polish and email reminders. 13.1, 13.2 and 13.4 merged and
-  awaiting device verification; 13.3 blocked; 13.5 not started. Its "Progress — 2026-10-06" section says where to resume
+  task suggestions, auth input polish, email reminders and an AI task generator. 13.1, 13.2 and
+  13.4 merged and awaiting device verification; 13.3 blocked; 13.5 not started; 13.6 in
+  progress. Its "Progress — 2026-10-06" section says where to resume
 
 ## Parallelisation
 

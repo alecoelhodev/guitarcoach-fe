@@ -116,7 +116,7 @@ Each decision unblocks work that Claude can then do.
 | **Pin GitHub Actions to commit SHAs**                                 | **Done**: FE #26, BE #29                | —                                                             |
 | **Keep routine notes off the device**                                 | Optional. Session notes already are     | A `persist.ts` serializer change                              |
 | **Edit and delete tasks in the app** (admin)                          | **Done**: FE #27, BE #29 (409 fix)      | —                                                             |
-| **User-created private tasks**                                        | Later, if users ask for it              | A backend `Task.ownerId` migration plus visibility filtering  |
+| **User-created private tasks**                                        | Partly done: AI-created tasks (13.6)    | Extending `Task.ownerId` to a user-facing "New task"          |
 
 ### 4.1 Admin accounts
 
