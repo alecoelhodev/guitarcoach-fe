@@ -25,8 +25,12 @@ not started ·
       button reads "Drafting…", and the prompt, chips and mode switch are locked.
 - [ ] **Library search.** Type quickly: one request per pause. Combine with a chip, scroll to
       page 2, then change the search: the list restarts. A no-match search shows its message.
-- [ ] **Profile photo.** Choose a photo, then reload the app: it persists on Profile and Home.
-      Remove brings the initials back. Delete an account that has a photo.
+- [ ] **Profile photo.** Choosing a photo is verified on iPhone, 2026-10-07 (Cloud Run
+      `PUT /users/me/avatar 200` from Expo Go). Still to check: reload the app and the photo
+      persists on Profile and Home; Remove brings back the Gravatar or initials; delete an
+      account that has a photo.
+- [ ] **Recording on iPhone.** Add a recording to a session. FE #40 moved recordings to the same
+      native upload, and no recording upload from a phone has reached Cloud Run yet.
 
 **Deviations from the text below:** the photo uses React Native's `Image`, not `expo-image`
 (SDWebImage's pods and privacy manifest for one avatar), and tapping the avatar opens the
@@ -42,8 +46,9 @@ Gravatar is now the default photo when none is uploaded.
 The retry then failed with "No connection", and still no upload reached Cloud Run. In 30 days of
 logs the only recording upload came from desktop Chrome, so React Native's `FormData` `{ uri }`
 upload had never worked from iOS. Native uploads, both avatar and recordings, now use
-`expo-file-system`'s `File.upload` (FE #40). Verify on the iPhone: set a photo, and add a
-recording.
+`expo-file-system`'s `File.upload` (FE #40). The photo upload then worked on the iPhone, the
+first native upload to reach the API. A recording upload from the iPhone is still unverified;
+see the checklist.
 
 **Not started:** 13.5 (email reminders), written 2026-10-06. It waits on the decisions listed in
 its own section.
