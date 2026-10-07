@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { File, UploadType } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { type ApiTarget, describeApiTarget, resolveApiTarget } from '@/api/base-url';
@@ -145,27 +146,32 @@ async function toApiError(response: Response) {
   }
 }
 
-async function send(url: string, init: RequestInit, prefixed: boolean, timeoutMs: number) {
+/**
+ * Runs one network call under a deadline and names its failure. A call only rejects when the
+ * request never completed — no route, DNS, TLS, or our own abort below. Anything the server
+ * actually answered arrives as a Response. The signal is what separates our abort from a dead
+ * network; the two used to collapse into one error and a timeout read as "no connection".
+ */
+async function withDeadline(
+  timeoutMs: number,
+  run: (signal: AbortSignal) => Promise<Response>,
+): Promise<Response> {
   // `AbortSignal.timeout` does not exist here: React Native polyfills AbortSignal from
   // abort-controller@3, which predates that static. whatwg-fetch does honour `signal`.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  let response: Response;
   try {
-    response = await fetch(url, { ...init, signal: controller.signal });
+    return await run(controller.signal);
   } catch {
-    // fetch only rejects when the request never completed — no route, DNS, TLS, or our
-    // own abort above. Anything the server actually answered arrives as a non-ok
-    // Response below. The signal is what separates our abort from a dead network; the
-    // two used to collapse into one error and a timeout read as "no connection".
     throw controller.signal.aborted
       ? new ApiError('Timed out', TIMEOUT_STATUS)
       : new ApiError('No connection', OFFLINE_STATUS);
   } finally {
     clearTimeout(timer);
   }
+}
 
+async function checked(response: Response, prefixed: boolean) {
   if (!response.ok) {
     // Only /api/v1 calls mean the session died. better-auth answers a wrong password
     // with 401 as well, and treating that as an expired session would sign the user
@@ -173,8 +179,12 @@ async function send(url: string, init: RequestInit, prefixed: boolean, timeoutMs
     if (response.status === 401 && prefixed) onUnauthorized?.();
     throw await toApiError(response);
   }
-
   return response;
+}
+
+async function send(url: string, init: RequestInit, prefixed: boolean, timeoutMs: number) {
+  const response = await withDeadline(timeoutMs, (signal) => fetch(url, { ...init, signal }));
+  return checked(response, prefixed);
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -205,40 +215,46 @@ export type UploadFile = {
    * The browser's own `File`, when there is one. `expo-document-picker` sets it on web only
    * (SDK 57 `DocumentPickerAsset.file`), and on web it is the *only* usable form: a browser
    * `FormData.append` stringifies a plain object to "[object Object]", so the server received
-   * a text field instead of a file and answered 400. React Native's `FormData` is the one that
-   * understands `{ uri, name, type }`.
+   * a text field instead of a file and answered 400. Native ignores it and uploads `uri`.
    */
   file?: Blob;
 };
 
+/**
+ * Native uploads go through expo-file-system, not React Native's `FormData` `{ uri }` part:
+ * from an iPhone in Expo Go that path never reached the API (no recording or avatar upload
+ * from iOS ever appeared in the Cloud Run logs) and failed as "No connection". `File.upload`
+ * runs on a default URLSession, so it sends the same cookies React Native's fetch stored.
+ */
 export async function upload<T>(
   path: string,
   file: UploadFile,
   method: 'POST' | 'PUT' = 'POST',
 ): Promise<T> {
-  const formData = new FormData();
+  const url = buildUrl(path);
 
-  if (file.file) {
-    formData.append('file', file.file, file.name);
-  } else {
-    formData.append('file', {
-      uri: file.uri,
-      name: file.name,
-      type: file.mimeType,
-    } as unknown as Blob);
-  }
+  const response =
+    Platform.OS === 'web'
+      ? await withDeadline(UPLOAD_TIMEOUT_MS, (signal) => {
+          const formData = new FormData();
+          if (file.file) formData.append('file', file.file, file.name);
+          return fetch(url, { method, credentials: 'include', body: formData, signal });
+        })
+      : await withDeadline(UPLOAD_TIMEOUT_MS, async (signal) => {
+          const result = await new File(file.uri).upload(url, {
+            httpMethod: method,
+            uploadType: UploadType.MULTIPART,
+            fieldName: 'file',
+            mimeType: file.mimeType,
+            headers: { ...originHeader },
+            sessionType: 'foreground',
+            signal,
+          });
+          // A 204 may not carry a body, even an empty string.
+          return new Response(result.status === 204 ? null : result.body, {
+            status: result.status,
+          });
+        });
 
-  const response = await send(
-    buildUrl(path),
-    {
-      method,
-      credentials: 'include',
-      headers: { ...originHeader },
-      body: formData,
-    },
-    true,
-    UPLOAD_TIMEOUT_MS,
-  );
-
-  return response.json() as Promise<T>;
+  return (await checked(response, true)).json() as Promise<T>;
 }

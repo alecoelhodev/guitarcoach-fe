@@ -251,6 +251,12 @@ src/types/      generated api.d.ts + per-resource re-exports
   (`useActiveSessionStore.persist.hasHydrated()` + `onFinishHydration`, body in a child
   component); `home-screen.tsx` shows the cheaper alternative of deriving the value each
   render. Both have a regression test that fails if the gate is removed.
+- **Native file uploads go through `expo-file-system`'s `File.upload`, not `FormData`.** React
+  Native's `{ uri, name, type }` part never reached the API from an iPhone in Expo Go: no native
+  recording or avatar upload ever appeared in the Cloud Run logs, and the app said "No
+  connection". `upload()` in `src/api/client.ts` branches on platform; web still sends the
+  picker's browser `File` through `fetch`. Both share `withDeadline` and `checked`, so timeouts,
+  401s and error bodies behave like every other call.
 - **Crash reporting is Sentry, in `src/lib/monitoring.ts` only.** It is inert in development and
   without `EXPO_PUBLIC_SENTRY_DSN`. Nothing beyond the opaque user id may reach it: the user is
   `{ id }` via `setMonitoringUser`, `sendDefaultPii` stays `false`, and the `beforeSend` /
