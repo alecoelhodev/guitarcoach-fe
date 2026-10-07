@@ -1,3 +1,7 @@
+// `client.ts` imports expo-file-system for native uploads; the real module reaches into React
+// Native, which `loadClient` stubs down to `Platform`. The upload suite re-points this per case.
+jest.mock('expo-file-system', () => ({ File: jest.fn(), UploadType: { MULTIPART: 1 } }));
+
 import { asShippedBuild } from '@/test/dev-flag';
 
 type Client = typeof import('@/api/client');
@@ -221,42 +225,112 @@ describe('upload', () => {
     jest.restoreAllMocks();
   });
 
-  it('sends the file as multipart FormData in the shape React Native expects', async () => {
+  const TAKE = { uri: 'file:///take-1.m4a', name: 'take-1.m4a', mimeType: 'audio/x-m4a' };
+
+  /** Native goes through expo-file-system's `File.upload`; the mock records what it was given. */
+  function nativeUpload(result: { status: number; body?: string } | Error) {
+    const uploadMock = jest.fn((_url: string, options: { signal?: AbortSignal }) =>
+      result instanceof Error
+        ? Promise.reject(result)
+        : result.status === 0
+          ? new Promise((_, reject) =>
+              options.signal?.addEventListener('abort', () => reject(new Error('aborted'))),
+            )
+          : Promise.resolve({ headers: {}, body: '', ...result }),
+    );
+    const FileMock = jest.fn(() => ({ upload: uploadMock }));
+    jest.doMock('expo-file-system', () => ({ File: FileMock, UploadType: { MULTIPART: 1 } }));
+    return { FileMock, uploadMock };
+  }
+
+  /**
+   * React Native's `FormData` `{ uri }` part never reached the API from an iPhone in Expo Go —
+   * no native upload ever appeared in the Cloud Run logs — so native uses expo-file-system.
+   */
+  it('uploads natively as multipart, with the method, field, MIME type and Origin', async () => {
+    const { FileMock, uploadMock } = nativeUpload({ status: 201, body: '{"id":"rec-1"}' });
     const { upload } = loadClient('ios');
-    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(201, { id: 'rec-1' }));
+    const fetchMock = jest.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    const result = await upload('/practice-sessions/s1/recordings', {
-      uri: 'file:///take-1.m4a',
-      name: 'take-1.m4a',
-      mimeType: 'audio/x-m4a',
-    });
+    const result = await upload('/users/me/avatar', TAKE, 'PUT');
 
     expect(result).toEqual({ id: 'rec-1' });
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toContain('/api/v1/practice-sessions/s1/recordings');
-    expect(init.method).toBe('POST');
-    expect(init.credentials).toBe('include');
-    expect(init.body).toBeInstanceOf(FormData);
-    // No Content-Type of our own: fetch has to set the multipart boundary itself.
-    expect(init.headers).not.toHaveProperty('Content-Type');
-    // The field is present but its value cannot be read back as an object here: production
-    // uses React Native's FormData, which accepts `{ uri, name, type }`, while this
-    // environment's FormData coerces any non-Blob value to a string. So only presence is
-    // asserted — the shape itself is what the `as unknown as Blob` cast in `client.ts` exists
-    // to express, and RN's own implementation is what honours it.
-    expect(init.body.has('file')).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(FileMock).toHaveBeenCalledWith('file:///take-1.m4a');
+    const [url, options] = uploadMock.mock.calls[0];
+    expect(url).toBe('http://localhost:3000/api/v1/users/me/avatar');
+    expect(options).toMatchObject({
+      httpMethod: 'PUT',
+      uploadType: 1,
+      fieldName: 'file',
+      mimeType: 'audio/x-m4a',
+      headers: { Origin: 'http://localhost:3000' },
+      sessionType: 'foreground',
+    });
+  });
+
+  it('defaults to POST, as the recordings route expects', async () => {
+    const { uploadMock } = nativeUpload({ status: 201, body: '{}' });
+    const { upload } = loadClient('ios');
+
+    await upload('/practice-sessions/s1/recordings', TAKE);
+
+    expect(uploadMock.mock.calls[0][1]).toMatchObject({ httpMethod: 'POST' });
+  });
+
+  it('turns a rejected native upload into an ApiError with the server message', async () => {
+    nativeUpload({ status: 413, body: '{"message":"File too large"}' });
+    const { upload } = loadClient('ios');
+
+    await expect(upload('/practice-sessions/s1/recordings', TAKE)).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 413,
+      message: 'File too large',
+    });
+  });
+
+  it('treats a 401 as an expired session, like any other API call', async () => {
+    nativeUpload({ status: 401, body: '{}' });
+    const { upload, setUnauthorizedHandler } = loadClient('ios');
+    const expired = jest.fn();
+    setUnauthorizedHandler(expired);
+
+    await expect(upload('/users/me/avatar', TAKE, 'PUT')).rejects.toMatchObject({ status: 401 });
+    expect(expired).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a native transport failure as no connection', async () => {
+    nativeUpload(new Error('The network connection was lost.'));
+    const { upload, OFFLINE_STATUS } = loadClient('ios');
+
+    await expect(upload('/users/me/avatar', TAKE, 'PUT')).rejects.toMatchObject({
+      status: OFFLINE_STATUS,
+    });
+  });
+
+  it('reports a native upload that outlives the deadline as a timeout', async () => {
+    jest.useFakeTimers();
+    try {
+      nativeUpload({ status: 0 });
+      const { upload, TIMEOUT_STATUS } = loadClient('ios');
+
+      const sending = upload('/users/me/avatar', TAKE, 'PUT');
+      const settled = expect(sending).rejects.toMatchObject({ status: TIMEOUT_STATUS });
+      await jest.advanceTimersByTimeAsync(180_000);
+      await settled;
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   /**
-   * QA-03. The assertion above can only check presence, and that is exactly how this shipped:
-   * the `{ uri, name, type }` object is a React Native idiom, and a browser's `FormData`
-   * coerces any non-Blob value to a string. The server therefore received the literal text
-   * "[object Object]" as the `file` field, answered 400, and the screen reported "That file
-   * can't be uploaded" for a perfectly valid WAV. On web the picker's own `File` is the only
-   * form that survives, so `upload` has to prefer it.
+   * QA-03. On web the `{ uri, name, type }` object is meaningless: a browser's `FormData`
+   * coerces it to the string "[object Object]", the server answered 400, and the screen said
+   * "That file can't be uploaded" for a valid WAV. The picker's own `File` is the only form
+   * that survives, so web sends it through fetch.
    */
-  it('sends the picker File itself when there is one, rather than a stringified object', async () => {
+  it('sends the picker File itself through fetch on web', async () => {
     const { upload } = loadClient('web');
     const fetchMock = jest.fn().mockResolvedValue(jsonResponse(201, { id: 'rec-1' }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -269,58 +343,14 @@ describe('upload', () => {
       file: picked,
     });
 
-    const sent = fetchMock.mock.calls[0][1].body.get('file');
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.method).toBe('POST');
+    expect(init.credentials).toBe('include');
+    // No Content-Type of our own: fetch has to set the multipart boundary itself.
+    expect(init.headers).toBeUndefined();
+    const sent = init.body.get('file');
     expect(sent).toBeInstanceOf(Blob);
     expect(sent).not.toBe('[object Object]');
-  });
-
-  it('keeps the React Native object form when the picker gave no File', async () => {
-    const { upload } = loadClient('ios');
-    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(201, { id: 'rec-1' }));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-    await upload('/practice-sessions/s1/recordings', {
-      uri: 'file:///take-1.m4a',
-      name: 'take-1.m4a',
-      mimeType: 'audio/x-m4a',
-    });
-
-    // Coerced to a string by *this* environment's FormData, which is the tell: React Native's
-    // own implementation reads the object and streams the file at `uri`.
-    expect(fetchMock.mock.calls[0][1].body.get('file')).toBe('[object Object]');
-  });
-
-  it('carries the Origin header on native, like every other request', async () => {
-    const { upload } = loadClient('ios');
-    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(201));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-    await upload('/practice-sessions/s1/recordings', {
-      uri: 'file:///a.m4a',
-      name: 'a.m4a',
-      mimeType: 'audio/x-m4a',
-    });
-
-    expect(fetchMock.mock.calls[0][1].headers).toMatchObject({
-      Origin: 'http://localhost:3000',
-    });
-  });
-
-  it('raises an ApiError when the upload is rejected', async () => {
-    const { upload, ApiError } = loadClient('ios');
-    globalThis.fetch = jest
-      .fn()
-      .mockResolvedValue(
-        jsonResponse(413, { message: 'File too large' }),
-      ) as unknown as typeof fetch;
-
-    await expect(
-      upload('/practice-sessions/s1/recordings', {
-        uri: 'file:///big.m4a',
-        name: 'big.m4a',
-        mimeType: 'audio/x-m4a',
-      }),
-    ).rejects.toBeInstanceOf(ApiError);
   });
 });
 

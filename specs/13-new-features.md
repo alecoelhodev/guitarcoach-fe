@@ -39,6 +39,12 @@ visible ("Preparing photo…", a 20 s resize bound, and a dev-only Metro trace p
 `[avatar]`); retry once with Metro open and report the last `[avatar]` line. The email's
 Gravatar is now the default photo when none is uploaded.
 
+The retry then failed with "No connection", and still no upload reached Cloud Run. In 30 days of
+logs the only recording upload came from desktop Chrome, so React Native's `FormData` `{ uri }`
+upload had never worked from iOS. Native uploads, both avatar and recordings, now use
+`expo-file-system`'s `File.upload` (FE #40). Verify on the iPhone: set a photo, and add a
+recording.
+
 **Not started:** 13.5 (email reminders), written 2026-10-06. It waits on the decisions listed in
 its own section.
 
