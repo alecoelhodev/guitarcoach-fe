@@ -6,3 +6,9 @@ import type { components } from '@/types/api';
 // `fields: { name: 'displayName' }` and MeResponseDto's comment on the
 // backend). Distinct from the admin-only UserResponseDto.
 export type User = components['schemas']['MeResponseDto'];
+
+/**
+ * `User.image` is the photo's storage object name, not something to render — it only says
+ * that a photo is set. The URL comes from `GET /users/me/avatar` and expires.
+ */
+export type AvatarUrl = components['schemas']['AvatarUrlResponseDto'];

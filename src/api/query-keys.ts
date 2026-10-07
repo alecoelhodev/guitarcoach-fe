@@ -10,6 +10,8 @@
 export const queryKeys = {
   authSession: ['auth', 'session'] as const,
   me: ['auth', 'me'] as const,
+  /** Keyed by the object name, so a new photo is a new entry rather than a stale URL. */
+  avatarUrl: (image: string) => ['auth', 'avatar', image] as const,
 
   tasksRoot: ['tasks'] as const,
   tasks: (query?: Record<string, unknown>) => ['tasks', 'list', query] as const,

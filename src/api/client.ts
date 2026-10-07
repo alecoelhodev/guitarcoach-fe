@@ -211,7 +211,11 @@ export type UploadFile = {
   file?: Blob;
 };
 
-export async function upload<T>(path: string, file: UploadFile): Promise<T> {
+export async function upload<T>(
+  path: string,
+  file: UploadFile,
+  method: 'POST' | 'PUT' = 'POST',
+): Promise<T> {
   const formData = new FormData();
 
   if (file.file) {
@@ -227,7 +231,7 @@ export async function upload<T>(path: string, file: UploadFile): Promise<T> {
   const response = await send(
     buildUrl(path),
     {
-      method: 'POST',
+      method,
       credentials: 'include',
       headers: { ...originHeader },
       body: formData,

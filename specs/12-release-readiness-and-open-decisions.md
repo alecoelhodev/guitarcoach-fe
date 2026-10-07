@@ -190,6 +190,8 @@ both. Claude then adds links to the profile screen via `ExternalLink`.
   - account email and name
   - routines, practice sessions and notes, stored on the backend
   - audio recordings in Google Cloud Storage
+  - an optional profile photo in Google Cloud Storage (**photos**: App Privacy "Photos or
+    Videos", Data safety "Photos"), picked from the library only
   - a local cache on the device
   - crash reports, if Sentry is enabled
 - Approve or replace the placeholder web copy in `src/app/+html.tsx` ("Progress Pick" / "Practice
