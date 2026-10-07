@@ -187,21 +187,53 @@ describe('submitting', () => {
     expect(screen.queryByText('Save Routine')).toBeNull();
   });
 
-  it('disables the submit button while any of the three mutations is in flight', async () => {
+  it('shows the generating card and locks the composer while a plan is drafted', async () => {
     const request = { ...mutationStub(DRAFT), isPending: true };
     stubs({ request });
     await render(<CoachScreen />);
 
-    await fireEvent.changeText(screen.getByPlaceholderText(PROMPT), 'anything');
-    await act(async () => {
-      await fireEvent.press(screen.getByText('Draft a plan'));
-    });
+    expect(screen.getByText('Drafting your plan…')).toBeTruthy();
+    expect(screen.getByText('Drafting…')).toBeTruthy();
+    expect(screen.queryByText('Draft a plan')).toBeNull();
+    expect(screen.getByPlaceholderText(PROMPT).props.editable).toBe(false);
 
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Drafting…'));
+    });
     expect(request.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('ignores the mode switch and suggestions while a request is in flight', async () => {
+    stubs({ request: { ...mutationStub(DRAFT), isPending: true } });
+    await render(<CoachScreen />);
+
+    await fireEvent.press(screen.getByText('Instant Create'));
+    await fireEvent.press(screen.getByText('Theory only'));
+
+    expect(screen.getByText('Drafting your plan…')).toBeTruthy();
+    expect(screen.getByPlaceholderText(PROMPT).props.value).toBe('');
+  });
+
+  it('shows no generating card at rest', async () => {
+    await render(<CoachScreen />);
+
+    expect(screen.queryByText('Drafting your plan…')).toBeNull();
   });
 });
 
 describe('instant create', () => {
+  it('says it is building the routine while the request is in flight', async () => {
+    const { instant } = stubs();
+    await render(<CoachScreen />);
+    await fireEvent.press(screen.getByText('Instant Create'));
+
+    stubs({ instant: { ...instant, isPending: true } });
+    await screen.rerender(<CoachScreen />);
+
+    expect(screen.getByText('Building your routine…')).toBeTruthy();
+    expect(screen.getByText('Creating…')).toBeTruthy();
+  });
+
   async function submitInstant(text: string) {
     await fireEvent.press(screen.getByText('Instant Create'));
     await fireEvent.changeText(screen.getByPlaceholderText(PROMPT), text);

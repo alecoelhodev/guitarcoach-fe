@@ -19,6 +19,7 @@ import { ErrorPanel } from '@/components/ui/error-panel';
 import { Input } from '@/components/ui/input';
 import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { Segmented } from '@/components/ui/segmented';
+import { Skeleton } from '@/components/ui/skeleton';
 import { PlanPreviewCard } from '@/features/coach/plan-preview-card';
 import { MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { DraftPlanResponse } from '@/types/coach';
@@ -43,16 +44,14 @@ export function CoachScreen() {
   const requestPlanMutation = useRequestPracticePlan();
   const resolvePlanMutation = useResolvePracticePlan();
   const instantCreateMutation = useInstantCreateRoutine();
-  const loading =
-    requestPlanMutation.isPending ||
-    resolvePlanMutation.isPending ||
-    instantCreateMutation.isPending;
+  const generating = requestPlanMutation.isPending || instantCreateMutation.isPending;
+  const loading = generating || resolvePlanMutation.isPending;
 
   /**
    * Every coach call goes through here.
    *
    * Nothing used to catch these. A rejected `mutateAsync` was an unhandled promise rejection
-   * and the screen showed *nothing at all* — no panel, no toast, the spinner simply stopped.
+   * and the screen showed *nothing at all* — no panel, no toast, the button simply re-enabled.
    * That is also what made the missing request timeout invisible rather than merely slow.
    */
   async function run(work: () => Promise<void>) {
@@ -123,6 +122,8 @@ export function CoachScreen() {
               ]}
               value={mode}
               onChange={(value) => {
+                // A reply landing after the switch would fill the other mode's screen.
+                if (loading) return;
                 setMode(value);
                 setDraft(undefined);
                 setMessage(undefined);
@@ -152,7 +153,11 @@ export function CoachScreen() {
               </ThemedText>
               <View style={styles.chips}>
                 {SUGGESTIONS[mode].map((suggestion) => (
-                  <Chip key={suggestion} label={suggestion} onPress={() => setInput(suggestion)} />
+                  <Chip
+                    key={suggestion}
+                    label={suggestion}
+                    onPress={loading ? undefined : () => setInput(suggestion)}
+                  />
                 ))}
               </View>
             </View>
@@ -166,11 +171,28 @@ export function CoachScreen() {
                 // The prompt goes to an LLM endpoint; unbounded free text is the caller's
                 // problem to bound. Comfortably above any real request.
                 maxLength={1000}
+                editable={!loading}
               />
-              <Button block loading={loading} onPress={handleSubmit}>
+              <Button
+                block
+                loading={loading}
+                loadingLabel={mode === 'draft' ? 'Drafting…' : 'Creating…'}
+                onPress={handleSubmit}
+              >
                 {mode === 'draft' ? 'Draft a plan' : 'Create routine'}
               </Button>
             </View>
+
+            {generating && (
+              <Card accessibilityLiveRegion="polite">
+                <ThemedText type="body" color="textMuted">
+                  {mode === 'draft' ? 'Drafting your plan…' : 'Building your routine…'}
+                </ThemedText>
+                <Skeleton width="72%" />
+                <Skeleton width="88%" />
+                <Skeleton width="54%" />
+              </Card>
+            )}
 
             {failure && (
               <ErrorPanel
