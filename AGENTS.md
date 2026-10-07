@@ -30,7 +30,7 @@ command-by-command flow: [`docs/api-contract-workflow.md`](docs/api-contract-wor
 npx tsc --noEmit      # no `typecheck` script exists; run the compiler directly
 npx expo lint
 npx biome ci .        # formatting + import order; `npm run format` fixes both
-npm test              # 62 suites; `npm run test:coverage` adds the coverage floor
+npm test              # 63 suites; `npm run test:coverage` adds the coverage floor
 ```
 
 All four should be **clean**. `expo lint` used to carry one known error in
@@ -314,8 +314,9 @@ Verified against the committed OpenAPI schema:
   endpoint; per-task minutes are optional, so every total is a client-side sum that must
   render correctly when minutes are absent.
 - **Tasks are read-only for ordinary users** — write routes are admin-gated. Admins get a
-  "New task" entry in the Library (`/library/new`), plus Edit (`/library/[id]/edit`) and Delete
-  on a task's detail. These are hidden unless the cached user's `role` is `admin`, but that
+  "New task" entry in the Library (`/library/new`), a **Generate** entry (`/library/generate`:
+  AI drafts from a prompt and a count, the admin ticks which to keep, `POST /tasks/bulk` creates
+  them all or none), plus Edit (`/library/[id]/edit`) and Delete on a task's detail. These are hidden unless the cached user's `role` is `admin`, but that
   check is cosmetic — the backend's `@Roles(['admin'])` enforces it. `UpdateTaskDto` takes no
   `null`, so an edit can clear the description (`""`) but not a saved link, category or
   difficulty; the form refuses rather than sending a 400. A delete is a 409 while any routine
@@ -333,6 +334,11 @@ Verified against the committed OpenAPI schema:
   upload it shows the email's **Gravatar** (`use-gravatar-url.ts`: SHA-256 via `expo-crypto`,
   `d=404` so a missing one falls back to initials). That sends an email hash to a third party
   on every avatar render — keep it in the privacy policy.
+- **Every AI endpoint is rate-limited per user per hour** (backend default 30). A 429 there means
+  "try again later", not "about a minute", so AI screens word it themselves rather than using
+  `describeError`'s generic 429 copy.
+- **Draft & Review's tasks are private to the user** (`Task.ownerId`). They show in that user's
+  routine but never in the Library list, and another user gets a 404 for them.
 - **The two AI modes are separate endpoints.** Draft & Review persists nothing until
   confirmed; Instant Create persists on success.
 - Auth is a better-auth httpOnly cookie. `src/stores/session-store.ts` only caches the

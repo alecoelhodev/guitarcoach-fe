@@ -273,6 +273,15 @@ describe('LibraryList', () => {
     await pressLinkTarget(screen.getByText('New task'));
   });
 
+  it('offers admins a pressable Generate link', async () => {
+    useSessionStore.setState({ status: 'authenticated', user: makeUser({ role: 'admin' }) });
+    mock.mockReturnValue(infinitePages([makePage([makeTask()])]));
+    await render(<LibraryList />);
+
+    expect(linkHrefs).toContain('/library/generate');
+    await pressLinkTarget(screen.getByText('Generate'));
+  });
+
   // The backend 403s a non-admin POST; a button that can only fail stays hidden.
   it.each([
     ['an ordinary user', makeUser({ role: 'user' })],
@@ -284,7 +293,9 @@ describe('LibraryList', () => {
     await render(<LibraryList />);
 
     expect(screen.queryByText('New task')).toBeNull();
+    expect(screen.queryByText('Generate')).toBeNull();
     expect(linkHrefs).not.toContain('/library/new');
+    expect(linkHrefs).not.toContain('/library/generate');
   });
 
   it('uses the catalog total, singular and plural', async () => {

@@ -38,3 +38,8 @@ export function updateTask(id: string, input: UpdateTaskInput) {
 export function deleteTask(id: string) {
   return request<void>(apiPath`/tasks/${id}`, { method: 'DELETE' });
 }
+
+/** Admin-only. 1–10 tasks, created together or not at all. */
+export function bulkCreateTasks(tasks: CreateTaskInput[]) {
+  return request<Task[]>('/tasks/bulk', { method: 'POST', body: { tasks } });
+}

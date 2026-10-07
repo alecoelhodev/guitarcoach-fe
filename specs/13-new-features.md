@@ -1,7 +1,7 @@
 # 13 — New features (post-MVP)
 
 **Status:** 13.1, 13.2 and 13.4 merged, awaiting device verification · 13.3 blocked · 13.5
-not started · 13.6 in progress ·
+not started · 13.6 merged, awaiting device verification ·
 **Written:** 2026-10-04
 
 ## Progress — 2026-10-06 (resume here)
@@ -314,8 +314,12 @@ Data safety if the provider counts as a third party that receives data.
 
 ## 13.6 AI task generator
 
-**Size:** M–L · **Depends on:** nothing · **Backend first:** yes · **Status:** in progress
-(written 2026-10-07)
+**Size:** M–L · **Depends on:** nothing · **Backend first:** yes · **Status:** merged
+2026-10-07, awaiting device verification. Backend
+[#32](https://github.com/alecoelhodev/guitarcoach/pull/32) (private planner tasks),
+[#33](https://github.com/alecoelhodev/guitarcoach/pull/33) (AI rate limit),
+[#34](https://github.com/alecoelhodev/guitarcoach/pull/34) (generator and bulk create), and the
+frontend Generate screen.
 
 An admin describes what to practise and how many tasks they want, the AI drafts them, and the
 admin picks which ones to add to the library. For example:

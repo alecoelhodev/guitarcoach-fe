@@ -7,7 +7,14 @@ import {
 } from '@tanstack/react-query';
 
 import { queryKeys } from '@/api/query-keys';
-import { createTask, deleteTask, getTask, listTasks, updateTask } from '@/api/tasks';
+import {
+  bulkCreateTasks,
+  createTask,
+  deleteTask,
+  getTask,
+  listTasks,
+  updateTask,
+} from '@/api/tasks';
 import type { CreateTaskInput, TaskCategory, TaskDifficulty, UpdateTaskInput } from '@/types/task';
 
 type TaskFilters = {
@@ -48,6 +55,15 @@ export function useCreateTask() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateTaskInput) => createTask(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.tasksRoot }),
+  });
+}
+
+/** Like `useCreateTask`, for the AI generator's chosen drafts. */
+export function useBulkCreateTasks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (tasks: CreateTaskInput[]) => bulkCreateTasks(tasks),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.tasksRoot }),
   });
 }

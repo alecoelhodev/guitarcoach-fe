@@ -1,7 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { instantCreateRoutine, requestPracticePlan, resolvePracticePlan } from '@/api/coach';
+import {
+  generateTaskDrafts,
+  instantCreateRoutine,
+  requestPracticePlan,
+  resolvePracticePlan,
+} from '@/api/coach';
 import { queryKeys } from '@/api/query-keys';
+import type { TaskGeneratorInput } from '@/types/task';
 
 export function useRequestPracticePlan() {
   return useMutation({ mutationFn: (prompt: string) => requestPracticePlan(prompt) });
@@ -35,4 +41,9 @@ export function useInstantCreateRoutine() {
       queryClient.invalidateQueries({ queryKey: queryKeys.routinesRoot });
     },
   });
+}
+
+/** Nothing to cache or invalidate: the drafts live on the screen until they are created. */
+export function useGenerateTaskDrafts() {
+  return useMutation({ mutationFn: (input: TaskGeneratorInput) => generateTaskDrafts(input) });
 }

@@ -1,5 +1,6 @@
 import { request } from '@/api/client';
 import type { DraftPlanResponse, InstantCreateResponse } from '@/types/coach';
+import type { TaskGeneratorInput, TaskGeneratorResponse } from '@/types/task';
 
 /**
  * Generation is an LLM round-trip, so the ceiling is generous — but it is a ceiling. Without
@@ -38,6 +39,15 @@ export function instantCreateRoutine(message: string) {
   return request<InstantCreateResponse>('/ai/routine-coach', {
     method: 'POST',
     body: { message },
+    timeoutMs: AI_TIMEOUT_MS,
+  });
+}
+
+/** Admin-only. Drafts library tasks and saves nothing; `bulkCreateTasks` saves the chosen ones. */
+export function generateTaskDrafts(input: TaskGeneratorInput) {
+  return request<TaskGeneratorResponse>('/ai/task-generator', {
+    method: 'POST',
+    body: input,
     timeoutMs: AI_TIMEOUT_MS,
   });
 }

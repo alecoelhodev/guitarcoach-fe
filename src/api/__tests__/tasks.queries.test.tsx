@@ -2,8 +2,16 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 
 import { ApiError } from '@/api/client';
 import { queryKeys } from '@/api/query-keys';
-import { createTask, deleteTask, getTask, listTasks, updateTask } from '@/api/tasks';
 import {
+  bulkCreateTasks,
+  createTask,
+  deleteTask,
+  getTask,
+  listTasks,
+  updateTask,
+} from '@/api/tasks';
+import {
+  useBulkCreateTasks,
   useCreateTask,
   useDeleteTask,
   useTask,
@@ -17,6 +25,7 @@ jest.mock('@/api/tasks', () => ({
   listTasks: jest.fn(),
   getTask: jest.fn(),
   createTask: jest.fn(),
+  bulkCreateTasks: jest.fn(),
   updateTask: jest.fn(),
   deleteTask: jest.fn(),
 }));
@@ -24,6 +33,7 @@ jest.mock('@/api/tasks', () => ({
 const listMock = listTasks as jest.MockedFunction<typeof listTasks>;
 const getMock = getTask as jest.MockedFunction<typeof getTask>;
 const createMock = createTask as jest.MockedFunction<typeof createTask>;
+const bulkMock = bulkCreateTasks as jest.MockedFunction<typeof bulkCreateTasks>;
 const updateMock = updateTask as jest.MockedFunction<typeof updateTask>;
 const deleteMock = deleteTask as jest.MockedFunction<typeof deleteTask>;
 
@@ -128,6 +138,20 @@ describe('useTask', () => {
     await renderHook(() => useTask('task-9'), { wrapper });
 
     expect(getMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useBulkCreateTasks', () => {
+  it('sends the chosen drafts and invalidates every task list', async () => {
+    bulkMock.mockResolvedValue([makeTask({ id: 'a' }), makeTask({ id: 'b' })]);
+    const { queryClient, wrapper } = withQueryClient();
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = await renderHook(() => useBulkCreateTasks(), { wrapper });
+    await result.current.mutateAsync([{ title: 'Riff A' }, { title: 'Riff B' }]);
+
+    expect(bulkMock).toHaveBeenCalledWith([{ title: 'Riff A' }, { title: 'Riff B' }]);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.tasksRoot });
   });
 });
 
