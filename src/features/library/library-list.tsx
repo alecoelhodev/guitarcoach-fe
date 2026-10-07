@@ -1,4 +1,5 @@
 import { Link } from 'expo-router';
+import X from 'lucide-react-native/icons/x';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,32 +17,51 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/input';
 import { QueryState } from '@/components/ui/query-state';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { TaskCard } from '@/features/library/task-card';
 import { categoryLabels, difficultyLabels } from '@/features/library/task-labels';
+import { useDebouncedValue } from '@/features/library/use-debounced-value';
 import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { usePaginatedList } from '@/hooks/use-paginated-list';
 import { useSessionStore } from '@/stores/session-store';
-import { Colors, MaxContentWidth, Radius, Spacing, TapSlop } from '@/theme/tokens';
+import {
+  Colors,
+  IconSize,
+  IconStroke,
+  MaxContentWidth,
+  Radius,
+  Spacing,
+  TapSlop,
+} from '@/theme/tokens';
 import type { TaskCategory, TaskDifficulty } from '@/types/task';
+
+const SEARCH_DEBOUNCE_MS = 300;
+const CLEAR_WIDTH = 44;
 
 export function LibraryList() {
   // Clears the tab bar and the home indicator under it.
   const bottomPad = useBottomInset() + Spacing[4];
   const [category, setCategory] = useState<TaskCategory>();
   const [difficulty, setDifficulty] = useState<TaskDifficulty>();
-  const query = useTasks({ category, difficulty });
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+  // Emptying the field applies at once; only typing waits for a pause.
+  const q = search.trim() === '' ? undefined : debouncedSearch || undefined;
+  const query = useTasks({ category, difficulty, q });
   // Hides a control that would only 403. The backend's admin gate is the enforcement.
   const isAdmin = useSessionStore((state) => state.user?.role === 'admin');
-  const filtered = Boolean(category || difficulty);
+  const filtered = Boolean(category || difficulty || q);
   const clearFilters = () => {
     setCategory(undefined);
     setDifficulty(undefined);
+    setSearch('');
   };
   const total = query.data?.pages[0]?.meta.total ?? 0;
   const count = [
     `${total} ${total === 1 ? 'task' : 'tasks'}`,
+    q && `'${q}'`,
     category && categoryLabels[category],
     difficulty && difficultyLabels[difficulty],
   ]
@@ -90,6 +110,30 @@ export function LibraryList() {
         </View>
 
         <View style={styles.filters}>
+          <View>
+            <Input
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search tasks"
+              accessibilityLabel="Search tasks"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+              maxLength={100}
+              style={styles.search}
+            />
+            {search !== '' && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+                onPress={() => setSearch('')}
+                hitSlop={TapSlop}
+                style={styles.searchClear}
+              >
+                <X color={Colors.neutral[600]} size={IconSize.md} strokeWidth={IconStroke} />
+              </Pressable>
+            )}
+          </View>
           <ThemedText type="label">Category</ThemedText>
           <View style={styles.chips}>
             {(Object.keys(categoryLabels) as TaskCategory[]).map((value) => (
@@ -136,7 +180,14 @@ export function LibraryList() {
           errorTitle="Couldn't load the library"
           isEmpty={tasks.length === 0}
           empty={
-            filtered ? (
+            q ? (
+              <EmptyState
+                title={`No tasks match '${q}'`}
+                message="Try another word, or clear the search and filters."
+                actionLabel="Clear"
+                onAction={clearFilters}
+              />
+            ) : filtered ? (
               <EmptyState
                 title="No tasks match these filters"
                 message="Try removing a difficulty."
@@ -187,6 +238,16 @@ const styles = StyleSheet.create({
   list: { padding: Spacing[4], gap: Spacing[3] },
   filters: { paddingHorizontal: Spacing[4], gap: Spacing[2], paddingBottom: Spacing[2] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },
+  search: { paddingRight: CLEAR_WIDTH + Spacing[1] },
+  searchClear: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: CLEAR_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   clear: {
     minHeight: 32,
     paddingHorizontal: Spacing[3],

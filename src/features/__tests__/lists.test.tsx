@@ -393,6 +393,101 @@ describe('LibraryList', () => {
     expect(useTasksMock).toHaveBeenLastCalledWith({ category: undefined, difficulty: undefined });
   });
 
+  describe('title search', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    const searchField = () => screen.getByLabelText('Search tasks');
+    const searchesSent = () =>
+      useTasksMock.mock.calls.map(([filters]) => filters?.q).filter((q) => q !== undefined);
+
+    async function type(text: string) {
+      await fireEvent.changeText(searchField(), text);
+    }
+
+    async function pause() {
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+    }
+
+    it('waits for a pause before searching, then sends one trimmed query', async () => {
+      mock.mockReturnValue(infinitePages([makePage([makeTask()], { total: 3 })]));
+      await render(<LibraryList />);
+
+      await type('p');
+      await type('pe');
+      await type(' penta ');
+      expect(searchesSent()).toEqual([]);
+
+      await pause();
+
+      expect(new Set(searchesSent())).toEqual(new Set(['penta']));
+      expect(screen.getByText("3 tasks · 'penta'")).toBeTruthy();
+    });
+
+    it('combines with the chips and names everything in the count', async () => {
+      mock.mockReturnValue(infinitePages([makePage([makeTask()], { total: 3 })]));
+      await render(<LibraryList />);
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Technique' }));
+      await type('pentatonic');
+      await pause();
+
+      expect(useTasksMock).toHaveBeenLastCalledWith({
+        category: 'technique',
+        difficulty: undefined,
+        q: 'pentatonic',
+      });
+      expect(screen.getByText("3 tasks · 'pentatonic' · Technique")).toBeTruthy();
+    });
+
+    it('never sends a blank search', async () => {
+      mock.mockReturnValue(infinitePages([makePage([makeTask()])]));
+      await render(<LibraryList />);
+
+      await type('   ');
+      await pause();
+
+      expect(searchesSent()).toEqual([]);
+    });
+
+    it('clears the search at once from the × button', async () => {
+      mock.mockReturnValue(infinitePages([makePage([makeTask()])]));
+      await render(<LibraryList />);
+      await type('blues');
+      await pause();
+
+      await fireEvent.press(screen.getByLabelText('Clear search'));
+
+      expect(searchField().props.value).toBe('');
+      expect(useTasksMock).toHaveBeenLastCalledWith({
+        category: undefined,
+        difficulty: undefined,
+        q: undefined,
+      });
+      expect(screen.queryByLabelText('Clear search')).toBeNull();
+    });
+
+    it("says what didn't match, and Clear resets the search and the chips", async () => {
+      mock.mockReturnValue(infinitePages([makePage([])]));
+      await render(<LibraryList />);
+      await fireEvent.press(screen.getByRole('button', { name: 'Hard' }));
+      await type('pentatonic');
+      await pause();
+
+      expect(screen.getByText("No tasks match 'pentatonic'")).toBeTruthy();
+      // The chip row's dashed Clear does the same; this is the empty state's own action.
+      const clears = screen.getAllByRole('button', { name: 'Clear' });
+      expect(clears).toHaveLength(2);
+      await fireEvent.press(clears[1]);
+
+      expect(searchField().props.value).toBe('');
+      expect(screen.getByRole('button', { name: 'Hard' })).not.toBeSelected();
+      expect(screen.getByText('No tasks yet')).toBeTruthy();
+    });
+  });
+
   it('distinguishes filtered emptiness and clears it', async () => {
     mock.mockReturnValue(infinitePages([makePage([])]));
     await render(<LibraryList />);
