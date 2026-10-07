@@ -7,6 +7,9 @@ jest.mock('@/api/routines.queries', () => ({
 }));
 jest.mock('@/hooks/use-is-wide', () => ({ useIsWide: jest.fn() }));
 // The avatar's photo is covered in avatar.test.tsx; here it only renders initials.
+jest.mock('@/features/profile/use-gravatar-url', () => ({
+  useGravatarUrl: jest.fn(() => ({ data: undefined })),
+}));
 jest.mock('@/api/avatar.queries', () => ({ useAvatarUrl: jest.fn(() => ({ data: undefined })) }));
 // Mocked for the same reason the query hooks are: `useStartPractice` needs a real
 // QueryClient, and its own suite covers the seed-and-navigate behaviour. Here the screen

@@ -3,6 +3,7 @@ import { Image, StyleSheet, View } from 'react-native';
 
 import { useAvatarUrl } from '@/api/avatar.queries';
 import { ThemedText } from '@/components/themed-text';
+import { useGravatarUrl } from '@/features/profile/use-gravatar-url';
 import { Colors, Radius } from '@/theme/tokens';
 import { FontFamily, Typography } from '@/theme/typography';
 import type { User } from '@/types/user';
@@ -29,14 +30,17 @@ const SIZES = {
 } as const;
 
 /**
- * The photo sits over the initials, so they show while it loads, when it fails (an expired
- * or unreachable URL) and when no photo is set.
+ * An uploaded photo wins; without one, the email's Gravatar. Either sits over the initials,
+ * so they show while it loads, when it fails (an expired URL, or no Gravatar) and when
+ * there is nothing to show.
  */
 export function Avatar({ user, size }: { user: User; size: keyof typeof SIZES }) {
   const { diameter, initials, text } = SIZES[size];
-  const { data } = useAvatarUrl(user.image);
+  const uploaded = useAvatarUrl(user.image);
+  const gravatar = useGravatarUrl(user.email, !user.image);
+  const photoUrl = user.image ? uploaded.data?.url : gravatar.data;
   const [failedUrl, setFailedUrl] = useState<string>();
-  const url = data?.url !== failedUrl ? data?.url : undefined;
+  const url = photoUrl !== failedUrl ? photoUrl : undefined;
 
   return (
     <View style={[styles.circle, { width: diameter, height: diameter }]}>

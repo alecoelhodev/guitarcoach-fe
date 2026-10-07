@@ -30,7 +30,7 @@ command-by-command flow: [`docs/api-contract-workflow.md`](docs/api-contract-wor
 npx tsc --noEmit      # no `typecheck` script exists; run the compiler directly
 npx expo lint
 npx biome ci .        # formatting + import order; `npm run format` fixes both
-npm test              # 61 suites; `npm run test:coverage` adds the coverage floor
+npm test              # 62 suites; `npm run test:coverage` adds the coverage floor
 ```
 
 All four should be **clean**. `expo lint` used to carry one known error in
@@ -323,7 +323,10 @@ Verified against the committed OpenAPI schema:
   that query is kept out of the persisted cache because it would be expired on the next launch.
   The upload (`PUT`, multipart) answers with the URL only, so `useUploadAvatar` re-reads the
   session to learn the new object name. `Avatar` (`features/profile/avatar.tsx`) draws the
-  photo over the initials, which are therefore also its loading and error state.
+  photo over the initials, which are therefore also its loading and error state. Without an
+  upload it shows the email's **Gravatar** (`use-gravatar-url.ts`: SHA-256 via `expo-crypto`,
+  `d=404` so a missing one falls back to initials). That sends an email hash to a third party
+  on every avatar render — keep it in the privacy policy.
 - **The two AI modes are separate endpoints.** Draft & Review persists nothing until
   confirmed; Instant Create persists on success.
 - Auth is a better-auth httpOnly cookie. `src/stores/session-store.ts` only caches the
