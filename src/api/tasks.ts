@@ -14,6 +14,7 @@ export function listTasks(
     limit?: number;
     category?: TaskCategory;
     difficulty?: TaskDifficulty;
+    q?: string;
   } = {},
 ) {
   return request<Paginated<Task>>('/tasks', { query });

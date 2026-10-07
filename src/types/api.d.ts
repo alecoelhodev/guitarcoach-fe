@@ -967,6 +967,7 @@ export interface operations {
         limit?: number;
         category?: 'technique' | 'theory' | 'repertoire';
         difficulty?: 'easy' | 'medium' | 'hard';
+        q?: string;
       };
       header?: never;
       path?: never;

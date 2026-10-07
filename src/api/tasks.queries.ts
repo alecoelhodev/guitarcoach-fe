@@ -10,7 +10,13 @@ import { queryKeys } from '@/api/query-keys';
 import { createTask, deleteTask, getTask, listTasks, updateTask } from '@/api/tasks';
 import type { CreateTaskInput, TaskCategory, TaskDifficulty, UpdateTaskInput } from '@/types/task';
 
-type TaskFilters = { category?: TaskCategory; difficulty?: TaskDifficulty; limit?: number };
+type TaskFilters = {
+  category?: TaskCategory;
+  difficulty?: TaskDifficulty;
+  /** Title search, already trimmed; omit rather than send `''`, which the API rejects. */
+  q?: string;
+  limit?: number;
+};
 
 /**
  * Task library is a shared read-only catalog — stays fresh longer than user data. A filter

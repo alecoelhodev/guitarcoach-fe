@@ -70,6 +70,18 @@ describe('useTasks pagination', () => {
 
     await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
   });
+
+  it('sends the search and caches each search on its own key, from page one', async () => {
+    listMock.mockResolvedValue(makePage([makeTask()], { page: 1, totalPages: 1 }));
+
+    const { wrapper } = withQueryClient();
+    await renderHook(() => useTasks({ q: 'blues' }), { wrapper });
+    await renderHook(() => useTasks({ q: 'jazz' }), { wrapper });
+
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
+    expect(listMock).toHaveBeenCalledWith({ q: 'blues', page: 1 });
+    expect(listMock).toHaveBeenCalledWith({ q: 'jazz', page: 1 });
+  });
 });
 
 describe('useTasks filter changes', () => {
