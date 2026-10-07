@@ -1,11 +1,12 @@
+import Eye from 'lucide-react-native/icons/eye';
+import EyeOff from 'lucide-react-native/icons/eye-off';
 import { forwardRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
 import { Input, type InputProps } from '@/components/ui/input';
-import { Colors, Spacing, TapSlop } from '@/theme/tokens';
+import { Colors, IconSize, IconStroke, Spacing, TapSlop } from '@/theme/tokens';
 
-/** Wireframe 01: the show/hide toggle is a 44px tap target sitting inside the field. */
+/** Wireframe 01 draws the word "Show"; an icon replaced it, as the word sat off the text line. */
 const TOGGLE_WIDTH = 44;
 
 export type PasswordInputProps = Omit<InputProps, 'secureTextEntry'>;
@@ -33,9 +34,11 @@ export const PasswordInput = forwardRef<TextInput, PasswordInputProps>(function 
         hitSlop={TapSlop}
         style={styles.toggle}
       >
-        <ThemedText type="label" style={{ color: Colors.accentRamp[700] }}>
-          {visible ? 'Hide' : 'Show'}
-        </ThemedText>
+        {visible ? (
+          <EyeOff color={Colors.accentRamp[700]} size={IconSize.md} strokeWidth={IconStroke} />
+        ) : (
+          <Eye color={Colors.accentRamp[700]} size={IconSize.md} strokeWidth={IconStroke} />
+        )}
       </Pressable>
     </View>
   );

@@ -7,6 +7,14 @@ import { Colors } from '@/theme/tokens';
 const TITLE = 'Progress Pick';
 const DESCRIPTION = 'Practice with a plan.';
 
+// Chrome and Safari paint autofilled inputs with their own background and text colour, which
+// no inline style can override; an inset shadow is the only way to keep the field's tokens.
+const AUTOFILL_RESET = `input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px ${Colors.surface} inset;
+  -webkit-text-fill-color: ${Colors.text};
+  caret-color: ${Colors.text};
+}`;
+
 /** Web-only root HTML for static rendering; runs in Node at build time, never on native. */
 export default function Root({ children }: PropsWithChildren) {
   // No <title> here: the renderer always prepends Helmet's <title> to <head>, and the first one
@@ -25,6 +33,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta property="og:description" content={DESCRIPTION} />
         <meta property="og:site_name" content={TITLE} />
         <ScrollViewStyleReset />
+        <style dangerouslySetInnerHTML={{ __html: AUTOFILL_RESET }} />
       </head>
       <body>{children}</body>
     </html>
