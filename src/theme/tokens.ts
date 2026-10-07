@@ -108,13 +108,10 @@ export const Shadow = {
 
 // Interaction states built into the primitives once. The canvas specifies no
 // hover/pressed tints, so these follow the dark-UI convention: hover lightens,
-// pressed darkens. The focus ring uses accent-700 for visibility on a dark ground.
+// pressed darkens.
 export const Interaction = {
   primaryHover: Colors.accentRamp[500],
   primaryPressed: Colors.accentRamp[400],
-  focusRingColor: Colors.accentRamp[700],
-  focusRingWidth: 2,
-  focusRingOffset: 2,
   disabledOpacity: 0.45,
 } as const;
 

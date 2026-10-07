@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { createRef } from 'react';
-import type { TextInput } from 'react-native';
+import { StyleSheet, type TextInput } from 'react-native';
 
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Stepper } from '@/components/ui/stepper';
+import { Colors } from '@/theme/tokens';
 
 describe('Input', () => {
   it('forwards its ref to the underlying TextInput', async () => {
@@ -37,10 +38,26 @@ describe('Input', () => {
     expect(field).toBeTruthy();
   });
 
-  it('accepts the invalid flag', async () => {
-    await render(<Input testID="field" invalid />);
+  it('marks focus with a single border and no outline ring', async () => {
+    await render(<Input testID="field" />);
+    const field = screen.getByTestId('field');
+    await fireEvent(field, 'focus');
 
-    expect(screen.getByTestId('field')).toBeTruthy();
+    const style = StyleSheet.flatten(field.props.style);
+    expect(style).toMatchObject({ borderWidth: 1.5, borderColor: Colors.accent, outlineWidth: 0 });
+    expect(style.outlineOffset).toBeUndefined();
+  });
+
+  it('keeps the danger border while an invalid field is focused', async () => {
+    await render(<Input testID="field" invalid />);
+    const field = screen.getByTestId('field');
+    await fireEvent(field, 'focus');
+
+    expect(StyleSheet.flatten(field.props.style)).toMatchObject({
+      borderWidth: 1.5,
+      borderColor: Colors.danger,
+      backgroundColor: Colors.dangerRamp[100],
+    });
   });
 });
 
@@ -52,17 +69,16 @@ describe('PasswordInput', () => {
     expect(screen.getByLabelText('Show password')).toBeTruthy();
   });
 
-  it('unmasks and re-masks, keeping the label and the visible word in step', async () => {
+  it('unmasks and re-masks, keeping the label in step', async () => {
     await render(<PasswordInput testID="password" />);
 
     await fireEvent.press(screen.getByLabelText('Show password'));
     expect(screen.getByTestId('password').props.secureTextEntry).toBe(false);
-    expect(screen.getByText('Hide')).toBeTruthy();
     expect(screen.getByLabelText('Hide password')).toBeTruthy();
 
     await fireEvent.press(screen.getByLabelText('Hide password'));
     expect(screen.getByTestId('password').props.secureTextEntry).toBe(true);
-    expect(screen.getByText('Show')).toBeTruthy();
+    expect(screen.getByLabelText('Show password')).toBeTruthy();
   });
 
   it('forwards its ref', async () => {

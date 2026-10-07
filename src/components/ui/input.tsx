@@ -1,7 +1,7 @@
 import { forwardRef, useState } from 'react';
 import { StyleSheet, TextInput, type TextInputProps } from 'react-native';
 
-import { Colors, Interaction, Radius, Spacing } from '@/theme/tokens';
+import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { Typography } from '@/theme/typography';
 
 export type InputProps = TextInputProps & {
@@ -43,11 +43,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.neutral[400],
     paddingHorizontal: Spacing[3],
     paddingVertical: Spacing[2],
+    // Canvas 01 marks focus with the border alone; this suppresses the browser's own ring on web.
+    outlineWidth: 0,
   },
   focused: {
-    outlineWidth: Interaction.focusRingWidth,
-    outlineColor: Interaction.focusRingColor,
-    outlineOffset: Interaction.focusRingOffset,
     borderWidth: 1.5,
     borderColor: Colors.accent,
     backgroundColor: Colors.neutral[100],
