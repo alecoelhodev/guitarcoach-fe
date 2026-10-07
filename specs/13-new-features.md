@@ -1,6 +1,36 @@
 # 13 — New features (post-MVP)
 
-**Status:** not started · **Owner:** unassigned · **Written:** 2026-10-04
+**Status:** 13.1, 13.2 and 13.4 merged, awaiting device verification · 13.3 blocked ·
+**Written:** 2026-10-04
+
+## Progress — 2026-10-06 (resume here)
+
+**Merged; not yet verified on a device:**
+
+| PR                                                               | What                                                                      |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [FE #32](https://github.com/alecoelhodev/guitarcoach-fe/pull/32) | 13.4: one border per input state, eye toggle, no autofill bleed on web    |
+| [FE #33](https://github.com/alecoelhodev/guitarcoach-fe/pull/33) | Ask AI "Drafting your plan…" card (canvas 10b); form locked while pending |
+| [BE #30](https://github.com/alecoelhodev/guitarcoach/pull/30)    | 13.2: `GET /tasks?q=`, LIKE wildcards escaped, `q` in the list cache key  |
+| [FE #34](https://github.com/alecoelhodev/guitarcoach-fe/pull/34) | 13.2: Library search field, 300 ms debounce, count and empty-state copy   |
+| [BE #31](https://github.com/alecoelhodev/guitarcoach/pull/31)    | 13.1: `PUT/GET/DELETE /users/me/avatar`, purge deletes the photo          |
+| [FE #35](https://github.com/alecoelhodev/guitarcoach-fe/pull/35) | 13.1: pick, crop, resize and upload; shared `Avatar` on Profile and Home  |
+
+**Device checklist** (Expo Go, `npm run dev:cloud`):
+
+- [ ] **Inputs.** Sign-in email at rest, focused, invalid and autofilled (iOS and web): one
+      border, no outer ring, no yellow autofill. The eye toggle is centred and swaps icons.
+- [ ] **Ask AI.** Draft a plan: the card with three pulsing lines shows while waiting, the
+      button reads "Drafting…", and the prompt, chips and mode switch are locked.
+- [ ] **Library search.** Type quickly: one request per pause. Combine with a chip, scroll to
+      page 2, then change the search: the list restarts. A no-match search shows its message.
+- [ ] **Profile photo.** Choose a photo, then reload the app: it persists on Profile and Home.
+      Remove brings the initials back. Delete an account that has a photo.
+
+**Deviations from the text below:** the photo uses React Native's `Image`, not `expo-image`
+(SDWebImage's pods and privacy manifest for one avatar), and tapping the avatar opens the
+picker directly, with **Remove photo** under it, rather than a sheet: the repo has no sheet
+primitive. Ask AI's loading state was reported on device and is not one of the four features.
 
 Four features requested after the first release work. None of them is started, and none blocks
 the first store submission (spec 12). Suggested order: **13.4 → 13.2 → 13.1 → 13.3**. Start with
