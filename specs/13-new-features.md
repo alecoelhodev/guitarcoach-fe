@@ -1,6 +1,7 @@
 # 13 — New features (post-MVP)
 
-**Status:** 13.1, 13.2 and 13.4 merged, awaiting device verification · 13.3 blocked ·
+**Status:** 13.1, 13.2 and 13.4 merged, awaiting device verification · 13.3 blocked · 13.5
+not started ·
 **Written:** 2026-10-04
 
 ## Progress — 2026-10-06 (resume here)
@@ -32,9 +33,13 @@
 picker directly, with **Remove photo** under it, rather than a sheet: the repo has no sheet
 primitive. Ask AI's loading state was reported on device and is not one of the four features.
 
-Four features requested after the first release work. None of them is started, and none blocks
-the first store submission (spec 12). Suggested order: **13.4 → 13.2 → 13.1 → 13.3**. Start with
-13.4, which is a quick win. 13.3 waits on a Spotify policy check and a product decision.
+**Not started:** 13.5 (email reminders), written 2026-10-06. It waits on the decisions listed in
+its own section.
+
+Five features requested after the first release work; none blocks the first store submission
+(spec 12). Suggested order: **13.4 → 13.2 → 13.1 → 13.3 → 13.5**. 13.3 waits on a Spotify policy
+check and a product decision. 13.5 is backend-heavy and waits on an email provider and its own
+product decisions.
 
 Every backend change here goes in first, because frontend CI reads the backend's `main`; see
 `docs/api-contract-workflow.md`.
@@ -216,3 +221,74 @@ Files: `src/features/auth/auth-form.tsx`, `src/components/ui/input.tsx`,
   target.
 - No autofill colour bleed on web.
 - Existing auth-form and input tests pass. Add a test for the focused and invalid styles.
+
+---
+
+## 13.5 Email reminders
+
+**Size:** L · **Depends on:** an email provider and the decisions below · **Backend first:** yes
+
+Email a user when they have gone quiet, and when a routine is left incomplete.
+
+### What exists today (verified 2026-10-06)
+
+- **No email is actually sent.** The backend's `src/auth/email.ts` only `console.log`s the
+  verification and password-reset links. A provider is a prerequisite, and wiring one also makes
+  those two auth emails real.
+- **The scheduling pattern exists.** `src/weekly-routine-cleanup/` is a standalone Cloud Run Job
+  (its own `main.ts` and `env.validation.ts`) triggered by Cloud Scheduler. The backend's
+  CLAUDE.md says to copy it rather than add an in-process timer.
+- **"Incomplete" has data behind it:** `PracticeSessionTask.completed` per task, and
+  `Routine.status` (`active` / `archived`).
+
+### Triggers
+
+- **Inactive.** No `PracticeSession` in the last _X_ days (default 7). At most one reminder per
+  inactive stretch; the next one only after new activity.
+- **Incomplete routine.** An active routine whose latest session left tasks with
+  `completed = false`, or an active routine not practised for _X_ days. Decision 3 picks one.
+
+### Backend
+
+- **Provider:** an `EmailSender` interface behind a DI token, as `AiProvider` is wired, with the
+  API key in Secret Manager. Point `auth/email.ts` at it too.
+- **Daily batch job**, copying `weekly-routine-cleanup`:
+  - Pages through candidates rather than loading every user.
+  - Idempotent: a `NotificationLog` table (`userId`, `kind`, `sentAt`, unique per stretch) stops
+    a retried run from sending twice.
+- **Preferences:** a `NotificationPreference` table (per-kind opt-in, inactivity days), with
+  `GET` / `PATCH /users/me/notifications`.
+- **Unsubscribe:** every email carries a signed one-click link and a `List-Unsubscribe` header,
+  and it works without signing in.
+- **Content:** the user's name, the routine title and a deep link. No session notes, no
+  recording links.
+- **Account deletion:** `UsersService.purge` deletes the preferences and the log.
+
+### Frontend
+
+- Profile gets a **Notifications** section: a toggle per kind and the inactivity days.
+- The email's deep link (scheme `guitarcoachfe`) opens the routine, or Home for the inactivity
+  email.
+
+### Store and privacy
+
+The account email is now also used for reminders. Update the privacy policy, and App Privacy and
+Data safety if the provider counts as a third party that receives data.
+
+### Decisions needed
+
+1. **Email provider**, e.g. Postmark, SendGrid or Resend. Compare pricing, and set up SPF and DKIM
+   on the sending domain.
+2. **Opt-in or opt-out by default.** Opt-in is the safer choice under app-store and anti-spam
+   rules.
+3. **What "incomplete routine" means:** the latest session had unfinished tasks, or the routine
+   hasn't been practised for _X_ days.
+4. **Is _X_ per user or one global setting?**
+
+### Acceptance
+
+- A run sends one email per inactive user per stretch; running it again sends nothing new.
+- An opted-out user receives nothing.
+- Unsubscribe works while signed out.
+- Deleting the account removes the preferences and the log.
+- e2e coverage with a fake `EmailSender`, as `FakeGcpStorageService` stands in for storage.
