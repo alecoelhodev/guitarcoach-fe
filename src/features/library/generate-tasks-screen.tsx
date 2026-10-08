@@ -8,7 +8,6 @@ import { ApiError } from '@/api/client';
 import { useGenerateTaskDrafts } from '@/api/coach.queries';
 import { describeError, type ErrorDescription } from '@/api/errors';
 import { useBulkCreateTasks } from '@/api/tasks.queries';
-import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,6 @@ import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { Skeleton } from '@/components/ui/skeleton';
 import { categoryLabels, difficultyLabels } from '@/features/library/task-labels';
 import { useBottomInset } from '@/hooks/use-bottom-inset';
-import { isWebUrl } from '@/lib/url';
 import { useToastStore } from '@/stores/toast-store';
 import { Colors, IconSize, IconStroke, MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { CreateTaskInput, TaskDraft } from '@/types/task';
@@ -43,7 +41,6 @@ function toCreateInput(draft: TaskDraft): CreateTaskInput {
     description: draft.description || undefined,
     category: draft.category,
     difficulty: draft.difficulty,
-    referenceLink: draft.referenceLink ?? undefined,
   };
 }
 
@@ -216,13 +213,6 @@ function DraftCard({
         {`${categoryLabels[draft.category]} · ${difficultyLabels[draft.difficulty]}`}
       </ThemedText>
       {draft.description ? <ThemedText type="body">{draft.description}</ThemedText> : null}
-      {draft.referenceLink && isWebUrl(draft.referenceLink) && (
-        <ExternalLink href={draft.referenceLink as `${string}:${string}`}>
-          <ThemedText type="body" style={styles.link}>
-            {new URL(draft.referenceLink).hostname} ↗
-          </ThemedText>
-        </ExternalLink>
-      )}
     </Card>
   );
 }
@@ -235,5 +225,4 @@ const styles = StyleSheet.create({
   heading: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },
   multiline: { minHeight: 96, textAlignVertical: 'top' },
-  link: { color: Colors.accentRamp[700] },
 });

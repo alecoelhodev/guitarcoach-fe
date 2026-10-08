@@ -6,10 +6,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { ApiError } from '@/api/client';
 import { useTask, useUpdateTask } from '@/api/tasks.queries';
 import { EditTaskScreen } from '@/features/library/edit-task-screen';
+import { categoryLabels, difficultyLabels } from '@/features/library/task-labels';
 import { useToastStore } from '@/stores/toast-store';
 import { mockRouter } from '@/test/expo-router';
 import { makeTask } from '@/test/fixtures';
 import { errorQuery, mutationStub, pendingQuery, successQuery } from '@/test/query-hooks';
+import type { TaskCategory, TaskDifficulty } from '@/types/task';
 
 type AnyHook = jest.MockedFunction<(...args: never[]) => unknown>;
 const taskHook = useTask as unknown as AnyHook;
@@ -98,24 +100,25 @@ describe('EditTaskScreen', () => {
   });
 
   // UpdateTaskDto has no null: an empty link would 400, and dropping it would lose the edit.
-  it('refuses to remove a saved link', async () => {
+  it('clears a saved link by sending null', async () => {
     await render(<EditTaskScreen taskId="t1" />);
 
     await fill('task-link', '');
     await fireEvent.press(screen.getByText('Save'));
 
-    expect(await screen.findByText('A saved link can be changed, not removed.')).toBeTruthy();
-    expect(update.mutateAsync).not.toHaveBeenCalled();
+    await waitFor(() => expect(update.mutateAsync).toHaveBeenCalledWith({ referenceLink: null }));
   });
 
-  it('keeps a saved category selected when it is pressed again', async () => {
+  it('clears a saved category or difficulty when it is pressed again', async () => {
     await render(<EditTaskScreen taskId="t1" />);
 
-    await fireEvent.press(screen.getByText('Theory'));
+    await fireEvent.press(screen.getByText(categoryLabels[TASK.category as TaskCategory]));
+    await fireEvent.press(screen.getByText(difficultyLabels[TASK.difficulty as TaskDifficulty]));
     await fireEvent.press(screen.getByText('Save'));
 
-    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
-    expect(update.mutateAsync).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(update.mutateAsync).toHaveBeenCalledWith({ category: null, difficulty: null }),
+    );
   });
 
   it('still lets an unset category be picked and cleared', async () => {
