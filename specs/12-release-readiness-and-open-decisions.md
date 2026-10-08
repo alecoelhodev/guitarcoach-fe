@@ -34,7 +34,7 @@ The section 2 device checklist is complete.
 5. Section 6: the preview build — the first place the real home-screen icon appears.
 
 **Claude-doable when you want:** the undecided rows in section 4, and the section 7 backlog
-(including nullable `UpdateTaskDto` fields).
+(nullable `UpdateTaskDto` fields are done: BE #35).
 
 ## 1. Security — do now
 
@@ -226,9 +226,8 @@ None of these blocks the first release.
   `practice-sessions.service.ts` removes the recording rows but not their GCS objects. Only the
   k6 load tests call it, so the leak is limited to test data. The fix is to reuse the
   delete-objects-after-commit pattern from `UsersService.purge`.
-- **Let an admin clear a task's link, category or difficulty.** `UpdateTaskDto` accepts no
-  `null`, so the edit form refuses to clear a saved value. Making those fields nullable is a
-  backend-first change, followed by an `api:types` regeneration.
+- ~~**Let an admin clear a task's link, category or difficulty.**~~ **Done** 2026-10-08
+  (BE #35): `null` clears them, and the Edit screen sends it.
 - **Unsaved-changes guard on New task.** Backing out of a half-filled form discards it silently,
   where the routine builder asks first. Low impact for an admin-only screen.
 - **Stale branches.** Neither repo has branches left over from Claude's work. Both repos still

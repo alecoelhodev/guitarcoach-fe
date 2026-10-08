@@ -23,14 +23,12 @@ const DRAFTS: TaskDraft[] = [
     description: 'Bars 1-8 at 70 bpm.',
     category: 'repertoire',
     difficulty: 'hard',
-    referenceLink: 'https://example.com/pull-me-under',
   },
   {
     title: 'Trivium: In Waves verse',
     description: 'Palm-muted gallops.',
     category: 'repertoire',
     difficulty: 'medium',
-    referenceLink: null,
   },
 ];
 
@@ -64,7 +62,6 @@ describe('GenerateTasksScreen', () => {
     });
     expect(screen.getByText('Pull Me Under: intro riff')).toBeTruthy();
     expect(screen.getByText('Repertoire · Hard')).toBeTruthy();
-    expect(screen.getByText('example.com ↗')).toBeTruthy();
     expect(screen.getByText('Create 2 tasks')).toBeTruthy();
   });
 
@@ -92,7 +89,6 @@ describe('GenerateTasksScreen', () => {
         description: 'Bars 1-8 at 70 bpm.',
         category: 'repertoire',
         difficulty: 'hard',
-        referenceLink: 'https://example.com/pull-me-under',
       },
     ]);
     expect(useToastStore.getState().toast).toMatchObject({

@@ -450,13 +450,13 @@ export interface components {
       meta: components['schemas']['PaginationMetaDto'];
     };
     UpdateTaskDto: {
-      title?: string;
-      /** @enum {string} */
-      category?: 'technique' | 'theory' | 'repertoire';
-      /** @enum {string} */
-      difficulty?: 'easy' | 'medium' | 'hard';
+      /** @enum {string|null} */
+      category?: 'technique' | 'theory' | 'repertoire' | null;
+      /** @enum {string|null} */
+      difficulty?: 'easy' | 'medium' | 'hard' | null;
       /** Format: uri */
-      referenceLink?: string;
+      referenceLink?: string | null;
+      title?: string;
       description?: string;
     };
     CreateRoutineDto: {
@@ -630,7 +630,6 @@ export interface components {
       category: 'technique' | 'theory' | 'repertoire';
       /** @enum {string} */
       difficulty: 'easy' | 'medium' | 'hard';
-      referenceLink: string | null;
       title: string;
       description: string;
     };

@@ -61,7 +61,6 @@ function EditTaskForm({ task }: { task: Task }) {
         category: task.category ?? undefined,
         difficulty: task.difficulty ?? undefined,
       }}
-      lockSaved
       pending={updateTask.isPending}
       failure={failure}
       onSubmit={submit}
@@ -75,11 +74,13 @@ function toPatch(values: TaskFormValues, task: Task): UpdateTaskInput {
   const title = values.title.trim();
   const description = values.description.trim();
   if (title !== task.title) patch.title = title;
-  if (values.category !== (task.category ?? undefined)) patch.category = values.category;
-  if (values.difficulty !== (task.difficulty ?? undefined)) patch.difficulty = values.difficulty;
+  // `null` clears a saved value; the form holds "unset" as undefined (chips) or '' (link).
+  if (values.category !== (task.category ?? undefined)) patch.category = values.category ?? null;
+  if (values.difficulty !== (task.difficulty ?? undefined))
+    patch.difficulty = values.difficulty ?? null;
   if (description !== (task.description ?? '')) patch.description = description;
   if (values.referenceLink !== (task.referenceLink ?? ''))
-    patch.referenceLink = values.referenceLink;
+    patch.referenceLink = values.referenceLink || null;
   return patch;
 }
 

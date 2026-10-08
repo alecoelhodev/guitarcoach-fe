@@ -22,61 +22,44 @@ import { isWebUrl } from '@/lib/url';
 import { Colors, IconSize, IconStroke, MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { TaskCategory, TaskDifficulty } from '@/types/task';
 
-/**
- * Mirrors `CreateTaskDto`: title 2–200, an optional http(s) `@IsUrl` link. `UpdateTaskDto`
- * accepts no `null`, so an edit can't clear a link that is already set — `keepLink` says so
- * here instead of letting the backend 400 on an empty string.
- */
-function taskSchema(keepLink: boolean) {
-  return z.object({
-    title: z
-      .string()
-      .trim()
-      .min(2, 'Give the task a title before saving.')
-      .max(200, 'Keep the title under 200 characters.'),
-    description: z.string().max(2000, 'Keep the description under 2000 characters.'),
-    referenceLink: z
-      .string()
-      .trim()
-      .refine((value) => value !== '' || !keepLink, 'A saved link can be changed, not removed.')
-      .refine((value) => value === '' || isWebUrl(value), 'Use a full http:// or https:// link.'),
-    category: z.custom<TaskCategory>().optional(),
-    difficulty: z.custom<TaskDifficulty>().optional(),
-  });
-}
+/** Mirrors `CreateTaskDto`: title 2–200, an optional http(s) `@IsUrl` link. */
+const taskSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(2, 'Give the task a title before saving.')
+    .max(200, 'Keep the title under 200 characters.'),
+  description: z.string().max(2000, 'Keep the description under 2000 characters.'),
+  referenceLink: z
+    .string()
+    .trim()
+    .refine((value) => value === '' || isWebUrl(value), 'Use a full http:// or https:// link.'),
+  category: z.custom<TaskCategory>().optional(),
+  difficulty: z.custom<TaskDifficulty>().optional(),
+});
 
-export type TaskFormValues = z.infer<ReturnType<typeof taskSchema>>;
+export type TaskFormValues = z.infer<typeof taskSchema>;
 
 type TaskFormProps = {
   heading: string;
   defaultValues: TaskFormValues;
-  /** Edit mode: a value that is already saved can be changed but not cleared. */
-  lockSaved?: boolean;
   pending: boolean;
   failure: ErrorDescription | null;
   onSubmit: (values: TaskFormValues) => Promise<void>;
 };
 
 /** The create and edit screens for a task. Admin-only; the backend 403s everyone else. */
-export function TaskForm({
-  heading,
-  defaultValues,
-  lockSaved = false,
-  pending,
-  failure,
-  onSubmit,
-}: TaskFormProps) {
+export function TaskForm({ heading, defaultValues, pending, failure, onSubmit }: TaskFormProps) {
   const router = useRouter();
   const bottomPad = useBottomInset() + Spacing[4];
 
   const { control, formState, handleSubmit } = useForm<TaskFormValues>({
-    resolver: zodResolver(taskSchema(lockSaved && defaultValues.referenceLink !== '')),
+    resolver: zodResolver(taskSchema),
     mode: 'onBlur',
     defaultValues,
   });
 
   const submit = handleSubmit(onSubmit);
-  const clearable = (name: 'category' | 'difficulty') => !lockSaved || !defaultValues[name];
 
   return (
     <ThemedView style={styles.container}>
@@ -137,11 +120,7 @@ export function TaskForm({
                         key={value}
                         label={categoryLabels[value]}
                         selected={field.value === value}
-                        onPress={() =>
-                          field.onChange(
-                            field.value === value && clearable('category') ? undefined : value,
-                          )
-                        }
+                        onPress={() => field.onChange(field.value === value ? undefined : value)}
                       />
                     ))}
                   </View>
@@ -161,11 +140,7 @@ export function TaskForm({
                         key={value}
                         label={difficultyLabels[value]}
                         selected={field.value === value}
-                        onPress={() =>
-                          field.onChange(
-                            field.value === value && clearable('difficulty') ? undefined : value,
-                          )
-                        }
+                        onPress={() => field.onChange(field.value === value ? undefined : value)}
                       />
                     ))}
                   </View>

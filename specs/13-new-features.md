@@ -352,10 +352,13 @@ admin picks which ones to add to the library. For example:
    with `Retry-After`, failing open when Redis is down. It covers all three AI endpoints.
 3. **Generator.** `POST /api/v1/ai/task-generator`, admin-only and rate-limited.
    - Input: `{ prompt (1–2000 chars), count (1–10) }`.
-   - Returns `count` drafts, each `{ title, description, category, difficulty, referenceLink? }`,
-     and persists nothing.
+   - Returns `count` drafts, each `{ title, description, category, difficulty }`, and persists
+     nothing.
    - The existing OpenAI provider runs it with web search and structured output, and is told the
-     library's existing titles so it avoids duplicates. A link that isn't http(s) is dropped.
+     library's existing titles so it avoids duplicates.
+   - **No reference links** (changed 2026-10-08, BE #35): on a device every link it produced was
+     broken, web search or not. The schema has no link field and the instructions forbid URLs.
+     An admin adds a real link afterwards on the Edit screen, which can now also clear one.
 4. **Bulk create.** `POST /api/v1/tasks/bulk`, admin-only: 1–10 tasks in one transaction, all or
    nothing.
 
@@ -365,7 +368,7 @@ admin picks which ones to add to the library. For example:
 - `/library/generate`:
   - Enter the prompt and pick a count (3 / 5 / 8 / 10).
   - **Generate** shows the generating card while the AI works.
-  - Each draft shows its title, category, difficulty, description and link, with a checkbox.
+  - Each draft shows its title, category, difficulty and description, with a checkbox.
   - **Create N tasks** adds the ticked ones.
 - Edits happen after creation, on the existing Edit screen. A 429 says "Too many AI requests, try
   again later".
@@ -373,7 +376,7 @@ admin picks which ones to add to the library. For example:
 ### Acceptance
 
 - An admin generates 5 drafts, unticks one and creates 4. All 4 appear in the library with a
-  category, difficulty and link.
+  category and difficulty, and no link.
 - A non-admin sees no Generate button, and the endpoint returns 403.
 - A non-admin's confirmed Draft & Review plan adds nothing to the shared library, and their
   routine still shows its tasks.

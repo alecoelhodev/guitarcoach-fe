@@ -317,9 +317,9 @@ Verified against the committed OpenAPI schema:
   "New task" entry in the Library (`/library/new`), a **Generate** entry (`/library/generate`:
   AI drafts from a prompt and a count, the admin ticks which to keep, `POST /tasks/bulk` creates
   them all or none), plus Edit (`/library/[id]/edit`) and Delete on a task's detail. These are hidden unless the cached user's `role` is `admin`, but that
-  check is cosmetic — the backend's `@Roles(['admin'])` enforces it. `UpdateTaskDto` takes no
-  `null`, so an edit can clear the description (`""`) but not a saved link, category or
-  difficulty; the form refuses rather than sending a 400. A delete is a 409 while any routine
+  check is cosmetic — the backend's `@Roles(['admin'])` enforces it. An edit clears a saved
+  link, category or difficulty by sending `null` (`UpdateTaskDto` is nullable for those three),
+  and the description with `""`; the title can't be cleared. A delete is a 409 while any routine
   or logged session uses the task, and nothing on the DTO predicts it.
 - **Account deletion is `DELETE /api/v1/users/me`, not better-auth's `/auth/delete-user`.** The
   backend purges routines, sessions and recordings (including the bucket objects) before the
