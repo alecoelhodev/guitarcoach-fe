@@ -174,9 +174,9 @@ defensive: `backend/**` (CI checks the backend repo out there), `package-lock.js
 src/app/        expo-router routes: (auth) and (app)/(main)/(tabs)
 src/api/        <resource>.ts = transport; <resource>.queries.ts = TanStack Query hooks
 src/features/   screen-level composition, one folder per feature
-src/components/ ui/ = 21 shared primitives (4 Gluestack-backed) + the provider; nav/ = chrome
+src/components/ ui/ = 22 shared primitives (4 Gluestack-backed) + the provider; nav/ = chrome
 src/stores/     app-wide Zustand state (session, toast)
-src/hooks/      cross-cutting hooks (use-is-wide — the 768px web breakpoint)
+src/hooks/      cross-cutting hooks (use-is-wide — the 768px web breakpoint; use-search-query)
 src/lib/        storage, date-grouping, duration, file-validation, routine-meta
 src/test/       shared test helpers (fixtures, query client, router mock, store reset)
 src/theme/      canvas design tokens (tokens.ts is RN-free; platform.ts holds Platform)
