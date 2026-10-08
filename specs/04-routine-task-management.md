@@ -29,7 +29,8 @@ web arrangement in canvas 2c keeps them always-visible on a single line):
 ### Add tasks
 
 - An **Add Tasks** button opening a task picker over the library
-  (`useTasks()` — the same paginated hook the Library screen uses).
+  (`useTasks()` — the same paginated hook the Library screen uses), with the Library's title
+  search (`SearchField` + `useSearchQuery`). The selection is kept across searches.
 - Each pick is one `POST /routines/{routineId}/tasks` with `{ taskId }`. **Omit `position`** and let
   the backend append at `max + 1`; supplying a taken position is a 409 for no benefit.
 - Adding several: issue them **sequentially**, not `Promise.all`. `@@unique([routineId, position])`

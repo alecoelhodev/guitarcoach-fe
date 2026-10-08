@@ -17,8 +17,10 @@ import { Card } from '@/components/ui/card';
 import { ChecklistRow } from '@/components/ui/checklist-row';
 import { EmptyState } from '@/components/ui/empty-state';
 import { QueryState } from '@/components/ui/query-state';
+import { SearchField } from '@/components/ui/search-field';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { usePaginatedList } from '@/hooks/use-paginated-list';
+import { useSearchQuery } from '@/hooks/use-search-query';
 import { useToastStore } from '@/stores/toast-store';
 import { Colors, MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { Task } from '@/types/task';
@@ -27,13 +29,16 @@ import type { Task } from '@/types/task';
  * The library, in pick mode. A routine's tasks are read through the same query the builder
  * uses, so tasks already in it are filtered out before they can be tapped — a duplicate is a
  * 409, and the cheapest way to handle an error is not to offer it. The 409 is still handled
- * below, because the list can go stale between render and tap.
+ * below, because the list can go stale between render and tap. The selection is a set of ids,
+ * so it survives a search: tasks ticked under one search are still added after the next.
  */
 export function AddTasksScreen({ routineId }: { routineId: string }) {
   const router = useRouter();
   const showToast = useToastStore((state) => state.show);
 
-  const tasksQuery = useTasks();
+  const [search, setSearch] = useState('');
+  const q = useSearchQuery(search);
+  const tasksQuery = useTasks({ q });
   const {
     listState,
     isRefreshing,
@@ -41,9 +46,13 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
     hasNextPage,
     isFetchingNextPage,
     isNextPageError,
-    loadMore,
+    loadMore: loadNextPage,
     retryNextPage,
   } = usePaginatedList(tasksQuery);
+  // Placeholder pages belong to the previous search; paging them would mix the two lists.
+  const loadMore = () => {
+    if (!tasksQuery.isPlaceholderData) loadNextPage();
+  };
   const routineTasksQuery = useRoutineTasks(routineId);
   const addRoutineTask = useAddRoutineTask(routineId);
   const invalidateRoutines = useInvalidateRoutines();
@@ -109,6 +118,8 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
           </Button>
         </View>
 
+        <SearchField value={search} onChangeText={setSearch} />
+
         {/* Without the routine's own tasks the filter above is a no-op, so the list offers
             tasks that are already in the routine and the first of them 409s mid-batch. The
             screen still works — the 409 is handled — but the user deserves to know why. */}
@@ -128,10 +139,19 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
           errorTitle="Couldn't load the library"
           isEmpty={available.length === 0}
           empty={
-            <EmptyState
-              title="Nothing left to add"
-              message="Every task in the library is already in this routine."
-            />
+            q ? (
+              <EmptyState
+                title={`No tasks match '${q}'`}
+                message="Try another word, or clear the search."
+                actionLabel="Clear"
+                onAction={() => setSearch('')}
+              />
+            ) : (
+              <EmptyState
+                title="Nothing left to add"
+                message="Every task in the library is already in this routine."
+              />
+            )
           }
         >
           {() => (
@@ -147,6 +167,7 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
               }
               keyExtractor={(task) => task.id}
               renderItem={({ item }) => <SelectableTask task={item} selection={selection} />}
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.list}
               ListFooterComponent={
                 isNextPageError ? (
