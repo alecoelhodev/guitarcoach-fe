@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { describeError, type ErrorDescription } from '@/api/errors';
+import { useUploadSessionClips } from '@/api/recordings.queries';
 import { useCreateSession } from '@/api/sessions.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -16,8 +17,15 @@ import { FieldLabel } from '@/components/ui/field-label';
 import { Input } from '@/components/ui/input';
 import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { Stepper } from '@/components/ui/stepper';
+import { ClipCapture } from '@/features/recordings/clip-capture';
+import { clipBlob, keepClipFile } from '@/features/recordings/pending-clip-files';
+import type { Clip } from '@/features/recordings/pick-recording';
 import { SessionExitDialog } from '@/features/session/session-exit-dialog';
-import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
+import {
+  type ActiveSessionTask,
+  type PendingClip,
+  useActiveSessionStore,
+} from '@/features/session/session-store';
 import { formatClock } from '@/lib/duration';
 import { succeeded } from '@/lib/haptics';
 import { useSessionStore } from '@/stores/session-store';
@@ -153,6 +161,10 @@ function ActiveSessionScreenBody() {
   const setTaskMinutes = useActiveSessionStore((state) => state.setTaskMinutes);
   const toggleTaskCompleted = useActiveSessionStore((state) => state.toggleTaskCompleted);
   const reset = useActiveSessionStore((state) => state.reset);
+  const clips = useActiveSessionStore((state) => state.clips);
+  const addClip = useActiveSessionStore((state) => state.addClip);
+  const removeClip = useActiveSessionStore((state) => state.removeClip);
+  const uploadClips = useUploadSessionClips();
   // Canvas 07: the clock is a local pacing aid; what gets saved is the per-task
   // minutes. "Planned" is the sum of the routine's target durations.
   const plannedMinutes = tasks.reduce((sum, task) => sum + (task.targetDurationMinutes ?? 0), 0);
@@ -161,6 +173,17 @@ function ActiveSessionScreenBody() {
   const createSessionMutation = useCreateSession();
   const showToast = useToastStore((state) => state.show);
   const [failure, setFailure] = useState<ErrorDescription | null>(null);
+  const finishing = createSessionMutation.isPending || uploadClips.isPending;
+
+  async function keepClip({ file, seconds }: Clip) {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    try {
+      const uri = await keepClipFile(id, file);
+      addClip({ id, name: file.name, mimeType: file.mimeType, uri, seconds });
+    } catch {
+      showToast("Couldn't keep that recording", 'error');
+    }
+  }
 
   async function handleFinish() {
     setFailure(null);
@@ -169,8 +192,9 @@ function ActiveSessionScreenBody() {
     const finalNotes = notesDraft.value.trim();
     titleDraft.flush();
     notesDraft.flush();
+    let sessionId: string;
     try {
-      await createSessionMutation.mutateAsync({
+      ({ id: sessionId } = await createSessionMutation.mutateAsync({
         routineId,
         // Both are optional and both reject the empty string — `title` is `@Length(1, 200)`,
         // and `forbidNonWhitelisted` means a stray '' is a 400 rather than an ignored field.
@@ -187,7 +211,7 @@ function ActiveSessionScreenBody() {
           ...(task.durationMinutes >= 1 ? { durationMinutes: task.durationMinutes } : {}),
           completed: task.completed,
         })),
-      });
+      }));
     } catch (error) {
       // Deliberately no `reset()` and no navigation: the minutes exist only here until this
       // write lands, so discarding them on a failed save loses the user's whole session. A
@@ -197,10 +221,21 @@ function ActiveSessionScreenBody() {
       return;
     }
 
+    const failedClips = clips.length
+      ? await uploadClips.mutateAsync({ sessionId, files: clips.map(toUploadFile) })
+      : 0;
+
     reset();
     leave();
     succeeded();
-    showToast('Session saved', 'success');
+    if (failedClips === 0) showToast('Session saved', 'success');
+    else
+      showToast(
+        failedClips === 1
+          ? "Session saved — 1 recording didn't upload. Add it from History."
+          : `Session saved — ${failedClips} recordings didn't upload. Add them from History.`,
+        'error',
+      );
   }
 
   function handleExit() {
@@ -295,6 +330,14 @@ function ActiveSessionScreenBody() {
             ))}
           </ScrollView>
 
+          <View style={styles.recordings}>
+            <FieldLabel>Recordings</FieldLabel>
+            {clips.map((clip) => (
+              <PendingClipRow key={clip.id} clip={clip} onRemove={() => removeClip(clip.id)} />
+            ))}
+            <ClipCapture onClip={(clip) => void keepClip(clip)} disabled={finishing} />
+          </View>
+
           {/* Canvas 2d splits what mobile draws as one "Session notes — optional" card into a
             label and a helper line. Same content, and the label primitive already exists. */}
           <View>
@@ -317,8 +360,8 @@ function ActiveSessionScreenBody() {
 
           <Button
             block
-            loading={createSessionMutation.isPending}
-            loadingLabel="Saving session…"
+            loading={finishing}
+            loadingLabel={uploadClips.isPending ? 'Uploading recordings…' : 'Saving session…'}
             onPress={() => void handleFinish()}
           >
             Finish Session
@@ -335,7 +378,7 @@ function ActiveSessionScreenBody() {
         // Read once, at render, rather than from a value that ticks: the dialog only needs
         // to say roughly how much practice is at stake.
         message={describeUnsaved(elapsedSecondsAt(startedAt, Date.now()), tasks)}
-        saving={createSessionMutation.isPending}
+        saving={finishing}
         onFinish={() => {
           setConfirmExit(false);
           void handleFinish();
@@ -409,6 +452,23 @@ function describeUnsaved(elapsedSeconds: number, tasks: ActiveSessionTask[]) {
   );
 }
 
+function toUploadFile(clip: PendingClip) {
+  return { uri: clip.uri, name: clip.name, mimeType: clip.mimeType, file: clipBlob(clip.id) };
+}
+
+function PendingClipRow({ clip, onRemove }: { clip: PendingClip; onRemove: () => void }) {
+  return (
+    <View style={styles.clipRow}>
+      <ThemedText type="body" numberOfLines={1} style={styles.clipName}>
+        {clip.seconds === undefined ? clip.name : `${clip.name} · ${formatClock(clip.seconds)}`}
+      </ThemedText>
+      <Button variant="icon" accessibilityLabel={`Remove ${clip.name}`} onPress={onRemove}>
+        <X color={Colors.textMuted} size={IconSize.md} strokeWidth={IconStroke} />
+      </Button>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, padding: Spacing[4], gap: Spacing[4] },
@@ -420,4 +480,7 @@ const styles = StyleSheet.create({
   notes: { minHeight: 108, paddingTop: Spacing[2], textAlignVertical: 'top' },
   taskList: { gap: Spacing[3] },
   taskCard: { gap: Spacing[3] },
+  recordings: { gap: Spacing[2] },
+  clipRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
+  clipName: { flex: 1 },
 });

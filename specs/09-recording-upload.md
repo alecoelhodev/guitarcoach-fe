@@ -49,11 +49,24 @@ and `src/api/client.ts`'s `upload()` is `fetch`-based. Either:
 
 Do **not** animate a fake percentage. Pick one, and say which in the PR.
 
+## Recording in-app (added 2026-10-08)
+
+A clip can now be **recorded** on the device as well as chosen from files, both on a saved
+session's detail and **during** a session (active / resumed). `ClipCapture`
+(`src/features/recordings/`) offers Record and Choose file to both screens.
+
+- **30-second cap, frontend only** (`clip-limit.ts`). The recorder stops itself at 30 s; a picked
+  file longer than that (rounded) is refused with its length. A file whose length can't be read
+  in 5 s is let through — the backend caps size, not length.
+- A recording is AAC in an `.m4a`, sent as `audio/mp4` (bare `audio/m4a` is not on the allow-list);
+  WebM on web.
+- **During a session there is no id yet**, so clips are copied into the document directory
+  (`pending-clip-files.ts`), listed in the session store, and uploaded one at a time right after
+  Finish. A clip that fails to upload does not fail Finish — the session already exists — and the
+  toast says to add it from History. Web clips are not persisted across a reload.
+
 ## Out of scope
 
-- **Recording audio in-app.** `expo-audio` can record, but no wireframe shows a recorder UI —
-  canvas 07's "Add Recording" button and canvas 09's "Upload recording" both attach an existing
-  file. Building a recorder is new functionality. See `11-blocked-and-out-of-scope.md`.
 - The web drag-and-drop **drop zone** (canvas 2e) — a genuinely web-only nicety, not MVP.
 
 ## Acceptance
