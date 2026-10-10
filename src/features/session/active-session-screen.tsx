@@ -226,14 +226,14 @@ function ActiveSessionScreenBody() {
       : 0;
 
     reset();
-    leave();
+    openSaved(sessionId);
     succeeded();
     if (failedClips === 0) showToast('Session saved', 'success');
     else
       showToast(
         failedClips === 1
-          ? "Session saved — 1 recording didn't upload. Add it from History."
-          : `Session saved — ${failedClips} recordings didn't upload. Add them from History.`,
+          ? "Session saved — 1 recording didn't upload. Add it again here."
+          : `Session saved — ${failedClips} recordings didn't upload. Add them again here.`,
         'error',
       );
   }
@@ -252,6 +252,15 @@ function ActiveSessionScreenBody() {
   function leave() {
     if (router.canGoBack()) router.back();
     else router.replace('/(app)/(main)/(tabs)');
+  }
+
+  /** Closes this modal and opens the saved session; `replace` covers the same no-history case. */
+  function openSaved(id: string) {
+    const href = { pathname: '/history/[id]', params: { id } } as const;
+    if (router.canGoBack()) {
+      router.back();
+      router.push(href);
+    } else router.replace(href);
   }
 
   // Derived, not latched at mount: the hydration gate above guarantees the store has settled
