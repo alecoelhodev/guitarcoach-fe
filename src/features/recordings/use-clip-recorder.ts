@@ -71,8 +71,9 @@ export function useClipRecorder(onClip: (clip: Clip) => void) {
     );
     try {
       await recorder.stop();
-      // iOS routes playback to the earpiece while recording is allowed.
-      await setAudioModeAsync({ allowsRecording: false });
+      // iOS routes playback to the earpiece while recording is allowed. It also takes the mode
+      // whole: without `playsInSilentMode` the silent switch mutes every clip played after this.
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
       if (!recorder.uri) throw new Error('The recorder produced no file');
       onClip(await toClip(recorder.uri, seconds));
       setStatus('idle');

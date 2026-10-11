@@ -62,7 +62,10 @@ it('records a clip and hands it over as audio/mp4 on Stop', async () => {
   });
 
   expect(recorder.stop).toHaveBeenCalledTimes(1);
-  expect(setAudioModeAsync).toHaveBeenLastCalledWith({ allowsRecording: false });
+  expect(setAudioModeAsync).toHaveBeenLastCalledWith({
+    allowsRecording: false,
+    playsInSilentMode: true,
+  });
   expect(onClip).toHaveBeenCalledWith({
     file: {
       uri: 'file:///cache/rec.m4a',
