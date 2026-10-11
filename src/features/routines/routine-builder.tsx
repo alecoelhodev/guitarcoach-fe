@@ -402,6 +402,11 @@ function EditRoutineBody({
           Add Tasks
         </Button>
       </Link>
+      <Link href={{ pathname: '/routines/[id]/new-task', params: { id: routineId } }} asChild>
+        <Button variant="secondary" block>
+          Create Task
+        </Button>
+      </Link>
 
       {/* The tasks are already loaded here, so they are passed rather than refetched. */}
       <Button
