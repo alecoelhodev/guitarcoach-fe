@@ -39,8 +39,28 @@ jest.mock('react-native-worklets', () => require('react-native-worklets/lib/modu
 // `expo-audio` ships no `mocks/` directory for jest-expo to find, and its ExpoAudio.ts
 // dereferences `AudioModule.AudioPlayer.prototype` at module scope — so merely importing
 // `src/features/history/recording-row.tsx` throws without this.
-// Override per suite with `jest.mocked(useAudioPlayerStatus).mockReturnValue(...)`.
+// Override per suite with `jest.mocked(useAudioPlayerStatus).mockReturnValue(...)`. The recorder
+// half resolves permission as granted and records nothing; `use-clip-recorder.test.ts` drives it.
 jest.mock('expo-audio', () => ({
+  RecordingPresets: { HIGH_QUALITY: {} },
+  requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  setAudioModeAsync: jest.fn(async () => undefined),
+  useAudioRecorder: jest.fn(() => ({
+    prepareToRecordAsync: jest.fn(async () => undefined),
+    record: jest.fn(),
+    stop: jest.fn(async () => undefined),
+    getStatus: jest.fn(() => ({ durationMillis: 0 })),
+    uri: null,
+  })),
+  useAudioRecorderState: jest.fn(() => ({ isRecording: false, durationMillis: 0 })),
+  // Reports a 10 s file one tick after subscribing, as a real player does once loaded.
+  createAudioPlayer: jest.fn(() => ({
+    addListener: jest.fn((_event: string, listener: (status: object) => void) => {
+      void Promise.resolve().then(() => listener({ isLoaded: true, duration: 10 }));
+      return { remove: jest.fn() };
+    }),
+    release: jest.fn(),
+  })),
   useAudioPlayer: jest.fn(() => ({
     play: jest.fn(),
     pause: jest.fn(),

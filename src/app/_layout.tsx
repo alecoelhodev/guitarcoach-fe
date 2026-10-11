@@ -5,6 +5,7 @@ import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import { Inter_800ExtraBold } from '@expo-google-fonts/inter/800ExtraBold';
 import * as Sentry from '@sentry/react-native';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { setAudioModeAsync } from 'expo-audio';
 import { useFonts } from 'expo-font';
 import { Stack, type Theme, ThemeProvider } from 'expo-router';
 import Head from 'expo-router/head';
@@ -27,6 +28,8 @@ import { Colors } from '@/theme/tokens';
 import '@/global.css';
 
 initMonitoring();
+// iOS defaults to a category the silent switch mutes; a practice clip should play regardless.
+void setAudioModeAsync({ playsInSilentMode: true });
 SplashScreen.preventAutoHideAsync();
 
 const navigationTheme: Theme = {

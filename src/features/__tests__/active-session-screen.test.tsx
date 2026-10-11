@@ -1,5 +1,12 @@
 jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
 jest.mock('@/api/sessions.queries', () => ({ useCreateSession: jest.fn() }));
+jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
+jest.mock('@/api/recordings.queries', () => ({ useUploadSessionClips: jest.fn() }));
+jest.mock('@/features/recordings/pending-clip-files', () => ({
+  keepClipFile: jest.fn(async (id: string) => `file:///doc/${id}.m4a`),
+  clipBlob: jest.fn(() => undefined),
+  discardClipFile: jest.fn(),
+}));
 // A render counter on a task row. The real component still renders — this only records that
 // it was asked to, which is the only way to prove the clock's tick stays out of the list.
 jest.mock('@/components/ui/checklist-row', () => {
@@ -10,8 +17,10 @@ jest.mock('@/components/ui/checklist-row', () => {
 });
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import * as DocumentPicker from 'expo-document-picker';
 
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
+import { useUploadSessionClips } from '@/api/recordings.queries';
 import { useCreateSession } from '@/api/sessions.queries';
 import { ChecklistRow } from '@/components/ui/checklist-row';
 import { ActiveSessionScreen } from '@/features/session/active-session-screen';
@@ -32,6 +41,9 @@ import { mutationStub } from '@/test/query-hooks';
  * Fake timers throughout too: `useStopwatch` ticks a `setInterval` every second, so on real
  * timers the clock advances mid-test and keeps running after teardown.
  */
+
+/** What `createSession` resolves to; Finish uploads pending clips to its `id`. */
+const SAVED = { id: 'session-new' };
 
 const useCreateSessionMock = useCreateSession as unknown as jest.MockedFunction<
   (...args: never[]) => unknown
@@ -63,7 +75,8 @@ beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
   useSessionStore.setState({ status: 'authenticated', user: SIGNED_IN });
-  useCreateSessionMock.mockReturnValue(mutationStub());
+  useCreateSessionMock.mockReturnValue(mutationStub(SAVED));
+  jest.mocked(useUploadSessionClips).mockReturnValue(mutationStub(0) as never);
 });
 
 afterEach(() => jest.useRealTimers());
@@ -269,7 +282,7 @@ describe('with an active session', () => {
   });
 
   it('writes the session once on finish, then clears local state and confirms', async () => {
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -297,7 +310,7 @@ describe('with an active session', () => {
   // was left on the session they had just saved, now empty, with Finish still enabled.
   it('replaces rather than popping when there is no history to go back to', async () => {
     mockRouter.canGoBack.mockReturnValue(false);
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -311,7 +324,7 @@ describe('with an active session', () => {
   });
 
   it('sends the edited minutes and completion, not the routine targets', async () => {
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -338,7 +351,7 @@ describe('with an active session', () => {
    * one must lose the key, the timed one must keep it.
    */
   it('omits minutes for a task that logged none, rather than sending a zero', async () => {
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
     startSession([
       { taskId: 't1', title: 'Untimed', targetDurationMinutes: undefined, durationMinutes: 0 },
@@ -366,7 +379,7 @@ describe('with an active session', () => {
    * rejection — that surfaces as a red screen rather than a message.
    */
   it('keeps the session and shows why when the write fails', async () => {
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     mutation.mutateAsync = jest.fn(async () => {
       throw new ApiError('boom', OFFLINE_STATUS);
     });
@@ -385,11 +398,11 @@ describe('with an active session', () => {
   });
 
   it('clears the failure when a retry succeeds', async () => {
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     mutation.mutateAsync = jest
       .fn<Promise<unknown>, []>()
       .mockRejectedValueOnce(new ApiError('boom', OFFLINE_STATUS))
-      .mockResolvedValueOnce(undefined);
+      .mockResolvedValueOnce(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -408,7 +421,7 @@ describe('with an active session', () => {
   });
 
   it('says it is saving and blocks a second finish while the write is in flight', async () => {
-    const mutation = { ...mutationStub(), isPending: true };
+    const mutation = { ...mutationStub(SAVED), isPending: true };
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -454,7 +467,7 @@ describe('with an active session', () => {
   });
 
   it('discards the session without writing anything', async () => {
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -470,7 +483,7 @@ describe('with an active session', () => {
   });
 
   it('saves from the exit prompt, which is the same write as Finish', async () => {
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -486,7 +499,7 @@ describe('with an active session', () => {
   });
 
   it('sends the notes typed during the session', async () => {
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -507,7 +520,7 @@ describe('with an active session', () => {
    * same trap class as `durationMinutes` being `@Min(1)`.
    */
   it('omits an untouched note and an emptied title rather than sending blanks', async () => {
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -524,7 +537,7 @@ describe('with an active session', () => {
   });
 
   it('renames the session, keeping the routine it follows', async () => {
-    const mutation = mutationStub();
+    const mutation = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
     startSession();
     await render(withGluestack(<ActiveSessionScreen />));
@@ -599,7 +612,7 @@ describe('with an active session', () => {
 
     // The debounce must never cost the last words typed before Finish.
     it('finishes with the latest text even inside the debounce window', async () => {
-      const mutation = mutationStub();
+      const mutation = mutationStub(SAVED);
       useCreateSessionMock.mockReturnValue(mutation);
       startSession();
       await render(withGluestack(<ActiveSessionScreen />));
@@ -617,7 +630,7 @@ describe('with an active session', () => {
     });
 
     it('keeps the latest text in the session when the save fails', async () => {
-      const mutation = mutationStub();
+      const mutation = mutationStub(SAVED);
       mutation.mutateAsync = jest.fn(async () => {
         throw new ApiError('boom', OFFLINE_STATUS);
       });
@@ -684,4 +697,99 @@ it('keeps controls tappable while the keyboard is up', async () => {
   await render(withGluestack(<ActiveSessionScreen />));
 
   expect(countHostProp(screen.root, 'keyboardShouldPersistTaps', 'handled')).toBeGreaterThan(0);
+});
+
+describe('recordings', () => {
+  const asset = {
+    uri: 'file:///cache/take.m4a',
+    name: 'take.m4a',
+    mimeType: 'audio/mp4',
+    size: 4096,
+    lastModified: 0,
+  };
+
+  beforeEach(() => {
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+      canceled: false,
+      assets: [asset],
+    });
+  });
+
+  async function attachFile() {
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Choose file'));
+    });
+  }
+
+  it('holds a chosen file on the device until finish, and can remove it', async () => {
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await attachFile();
+
+    // The jest.setup player reports a 10 s file.
+    expect(screen.getByText('take.m4a · 0:10')).toBeTruthy();
+    expect(useActiveSessionStore.getState().clips).toEqual([
+      expect.objectContaining({ name: 'take.m4a', mimeType: 'audio/mp4', seconds: 10 }),
+    ]);
+
+    await fireEvent.press(screen.getByLabelText('Remove take.m4a'));
+
+    expect(screen.queryByText('take.m4a · 0:10')).toBeNull();
+    expect(useActiveSessionStore.getState().clips).toEqual([]);
+  });
+
+  it('uploads the held clips to the session Finish just created', async () => {
+    const uploads = mutationStub(0);
+    jest.mocked(useUploadSessionClips).mockReturnValue(uploads as never);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+    await attachFile();
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(uploads.mutateAsync).toHaveBeenCalledWith({
+      sessionId: SAVED.id,
+      files: [expect.objectContaining({ name: 'take.m4a', mimeType: 'audio/mp4' })],
+    });
+    expect(useActiveSessionStore.getState().clips).toEqual([]);
+    expect(useToastStore.getState().toast).toMatchObject({ message: 'Session saved' });
+  });
+
+  // The session already exists by then, so a retried Finish would write it twice.
+  it('still finishes when a clip fails to upload, and says where to add it', async () => {
+    const create = mutationStub(SAVED);
+    useCreateSessionMock.mockReturnValue(create);
+    jest.mocked(useUploadSessionClips).mockReturnValue(mutationStub(1) as never);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+    await attachFile();
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(create.mutateAsync).toHaveBeenCalledTimes(1);
+    expect(mockRouter.back).toHaveBeenCalledTimes(1);
+    expect(useActiveSessionStore.getState().tasks).toEqual([]);
+    expect(useToastStore.getState().toast).toMatchObject({
+      message: "Session saved — 1 recording didn't upload. Add it from History.",
+      variant: 'error',
+    });
+  });
+
+  it('skips the upload step when nothing was recorded', async () => {
+    const uploads = mutationStub(0);
+    jest.mocked(useUploadSessionClips).mockReturnValue(uploads as never);
+    startSession();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(uploads.mutateAsync).not.toHaveBeenCalled();
+  });
 });

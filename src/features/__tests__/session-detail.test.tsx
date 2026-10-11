@@ -192,7 +192,7 @@ describe('recordings', () => {
     recordingsHook.mockReturnValue(errorQuery(new Error('unavailable')));
     await render(<SessionDetail sessionId={SESSION_ID} />);
     expect(screen.getByText("Couldn't load recordings")).toBeTruthy();
-    expect(screen.getByText('Upload recording')).toBeTruthy();
+    expect(screen.getByText('Choose file')).toBeTruthy();
   });
 
   it('counts one recording in the singular', async () => {

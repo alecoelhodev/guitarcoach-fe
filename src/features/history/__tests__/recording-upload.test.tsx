@@ -30,7 +30,7 @@ beforeEach(() => {
 
 it('uploads a validated file to this session and reports success', async () => {
   await render(<RecordingUpload sessionId="session-42" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
+  await fireEvent.press(screen.getByText('Choose file'));
   expect(pick).toHaveBeenCalledWith({
     type: 'audio/*',
     multiple: false,
@@ -46,7 +46,7 @@ it('uploads a validated file to this session and reports success', async () => {
     file: undefined,
   });
   expect(useToastStore.getState().toast?.message).toBe('Recording added');
-  expect(screen.getByText('MP3, WAV, M4A, OGG or WebM · up to 50 MB')).toBeTruthy();
+  expect(screen.getByText('MP3, WAV, M4A, OGG or WebM · up to 30 s')).toBeTruthy();
 });
 
 /**
@@ -62,7 +62,7 @@ it('forwards the browser File the picker attaches on web', async () => {
   });
 
   await render(<RecordingUpload sessionId="s1" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
+  await fireEvent.press(screen.getByText('Choose file'));
 
   expect(upload.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ file }));
 });
@@ -74,11 +74,11 @@ it.each([
 ])('rejects invalid metadata before any request: %j', async (overrides) => {
   pick.mockResolvedValue({ canceled: false, assets: [{ ...asset, ...overrides }] });
   await render(<RecordingUpload sessionId="s1" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
-  expect(screen.getByText("That file can't be uploaded")).toBeTruthy();
+  await fireEvent.press(screen.getByText('Choose file'));
+  expect(screen.getByText("That file can't be attached")).toBeTruthy();
   expect(upload.mutateAsync).not.toHaveBeenCalled();
   pick.mockResolvedValue({ canceled: false, assets: [asset] });
-  await fireEvent.press(screen.getByText('Choose another'));
+  await fireEvent.press(screen.getByText('Choose file'));
   expect(upload.mutateAsync).toHaveBeenCalledTimes(1);
 });
 
@@ -90,12 +90,12 @@ it('says which rule the file broke, not just that it broke one', async () => {
     assets: [{ ...asset, size: RECORDING_MAX_SIZE_BYTES + 1 }],
   });
   await render(<RecordingUpload sessionId="s1" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
+  await fireEvent.press(screen.getByText('Choose file'));
 
   expect(screen.getByText('File is larger than 50 MB.')).toBeTruthy();
 
   pick.mockResolvedValue({ canceled: false, assets: [{ ...asset, mimeType: 'image/png' }] });
-  await fireEvent.press(screen.getByText('Choose another'));
+  await fireEvent.press(screen.getByText('Choose file'));
 
   expect(screen.getByText('Unsupported file type. Use MP3, WAV, M4A, OGG, or WebM.')).toBeTruthy();
 });
@@ -108,7 +108,7 @@ it('accepts a type whose spelling differs from the allowlist', async () => {
     assets: [{ ...asset, mimeType: 'AUDIO/MPEG; codecs=mp3' }],
   });
   await render(<RecordingUpload sessionId="s1" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
+  await fireEvent.press(screen.getByText('Choose file'));
 
   expect(upload.mutateAsync).toHaveBeenCalledTimes(1);
 });
@@ -119,26 +119,26 @@ it('allows the exact size limit', async () => {
     assets: [{ ...asset, size: RECORDING_MAX_SIZE_BYTES }],
   });
   await render(<RecordingUpload sessionId="s1" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
+  await fireEvent.press(screen.getByText('Choose file'));
   expect(upload.mutateAsync).toHaveBeenCalledTimes(1);
 });
 
 it('does nothing when picking is cancelled', async () => {
   pick.mockResolvedValue({ canceled: true, assets: null });
   await render(<RecordingUpload sessionId="s1" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
+  await fireEvent.press(screen.getByText('Choose file'));
   expect(upload.mutateAsync).not.toHaveBeenCalled();
   expect(screen.queryByRole('alert')).toBeNull();
-  expect(screen.getByText('Upload recording')).toBeEnabled();
+  expect(screen.getByText('Choose file')).toBeEnabled();
 });
 
 it('handles an empty picker result and a picker failure', async () => {
   pick.mockResolvedValue({ canceled: false, assets: [] });
   await render(<RecordingUpload sessionId="s1" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
-  expect(screen.getByText("That file can't be uploaded")).toBeTruthy();
+  await fireEvent.press(screen.getByText('Choose file'));
+  expect(screen.getByText("That file can't be attached")).toBeTruthy();
   pick.mockRejectedValue(new Error('picker unavailable'));
-  await fireEvent.press(screen.getByText('Choose another'));
+  await fireEvent.press(screen.getByText('Choose file'));
   expect(screen.getByText("Couldn't open the file picker")).toBeTruthy();
   expect(upload.mutateAsync).not.toHaveBeenCalled();
 });
@@ -146,7 +146,7 @@ it('handles an empty picker result and a picker failure', async () => {
 it('retains the selected file for retry without re-opening the picker', async () => {
   upload.mutateAsync.mockRejectedValueOnce(new Error('offline'));
   await render(<RecordingUpload sessionId="s1" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
+  await fireEvent.press(screen.getByText('Choose file'));
   expect(screen.getByText("Upload didn't finish")).toBeTruthy();
   expect(useToastStore.getState().toast).toBeNull();
   await fireEvent.press(screen.getByText('Retry upload'));
@@ -159,9 +159,9 @@ it('retains the selected file for retry without re-opening the picker', async ()
 it.each([400, 413])('allows choosing another file after server rejection %s', async (status) => {
   upload.mutateAsync.mockRejectedValue(new ApiError('rejected', status));
   await render(<RecordingUpload sessionId="s1" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
+  await fireEvent.press(screen.getByText('Choose file'));
   expect(screen.getByText("That file can't be uploaded")).toBeTruthy();
-  expect(screen.getByText('Choose another')).toBeTruthy();
+  expect(screen.getByText('Choose file')).toBeTruthy();
 });
 
 it('shows indeterminate progress and prevents duplicate uploads while pending', async () => {
@@ -173,12 +173,12 @@ it('shows indeterminate progress and prevents duplicate uploads while pending', 
       }),
   );
   await render(<RecordingUpload sessionId="s1" />);
-  await fireEvent.press(screen.getByText('Upload recording'));
+  await fireEvent.press(screen.getByText('Choose file'));
   expect(screen.getByRole('progressbar', { name: 'Uploading recording' })).toBeTruthy();
   expect(screen.getByText('Uploading take.m4a…')).toBeTruthy();
   expect(screen.queryByText(/Cancel upload|\d+%/)).toBeNull();
-  expect(screen.getByText('Upload recording')).toBeDisabled();
-  await fireEvent.press(screen.getByText('Upload recording'));
+  expect(screen.getByText('Choose file')).toBeDisabled();
+  await fireEvent.press(screen.getByText('Choose file'));
   expect(upload.mutateAsync).toHaveBeenCalledTimes(1);
   await act(async () => {
     finish();
