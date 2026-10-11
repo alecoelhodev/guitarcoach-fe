@@ -21,6 +21,7 @@ import { KeyboardAwareScreen } from '@/components/ui/keyboard-aware-screen';
 import { Segmented } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlanPreviewCard } from '@/features/coach/plan-preview-card';
+import { useToastStore } from '@/stores/toast-store';
 import { MaxContentWidth, Spacing } from '@/theme/tokens';
 import type { DraftPlanResponse } from '@/types/coach';
 
@@ -44,6 +45,7 @@ export function CoachScreen() {
   const requestPlanMutation = useRequestPracticePlan();
   const resolvePlanMutation = useResolvePracticePlan();
   const instantCreateMutation = useInstantCreateRoutine();
+  const showToast = useToastStore((state) => state.show);
   const generating = requestPlanMutation.isPending || instantCreateMutation.isPending;
   const loading = generating || resolvePlanMutation.isPending;
 
@@ -63,6 +65,11 @@ export function CoachScreen() {
     }
   }
 
+  function openRoutine(id: string) {
+    showToast('Routine created', 'success');
+    router.replace({ pathname: '/routines/[id]', params: { id } });
+  }
+
   async function handleSubmit() {
     if (!input.trim()) return;
     setMessage(undefined);
@@ -73,8 +80,7 @@ export function CoachScreen() {
         if (response.status === 'awaiting_confirmation') {
           setDraft(response);
         } else if (response.status === 'created') {
-          setMessage(`Routine "${response.routine.title}" created.`);
-          setInput('');
+          openRoutine(response.routine.routineId);
         } else {
           // `cancelled` fell through and left the screen blank, which reads as nothing
           // having happened at all.
@@ -82,8 +88,9 @@ export function CoachScreen() {
         }
       } else {
         const response = await instantCreateMutation.mutateAsync(input.trim());
-        setMessage(response.message);
-        if (response.routineId) setInput('');
+        // No `routineId` means the coach answered without writing anything.
+        if (response.routineId) openRoutine(response.routineId);
+        else setMessage(response.message);
       }
     });
   }
@@ -98,8 +105,7 @@ export function CoachScreen() {
       });
       setDraft(undefined);
       if (response.status === 'created') {
-        setMessage(`Routine "${response.routine.title}" created.`);
-        setInput('');
+        openRoutine(response.routine.routineId);
       } else {
         setMessage('Plan declined.');
       }
@@ -211,17 +217,7 @@ export function CoachScreen() {
               />
             )}
 
-            {message && (
-              <View style={{ gap: Spacing[2] }}>
-                <ThemedText type="body">{message}</ThemedText>
-                <Button
-                  variant="secondary"
-                  onPress={() => router.push('/(app)/(main)/(tabs)/routines')}
-                >
-                  View routines
-                </Button>
-              </View>
-            )}
+            {message && <ThemedText type="body">{message}</ThemedText>}
           </ScrollView>
         </KeyboardAwareScreen>
       </SafeAreaView>

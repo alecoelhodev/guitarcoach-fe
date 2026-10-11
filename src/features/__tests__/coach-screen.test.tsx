@@ -14,6 +14,7 @@ import {
   useResolvePracticePlan,
 } from '@/api/coach.queries';
 import { CoachScreen } from '@/features/coach/coach-screen';
+import { useToastStore } from '@/stores/toast-store';
 import { mockRouter } from '@/test/expo-router';
 import { countHostProp } from '@/test/host-props';
 import { mutationStub } from '@/test/query-hooks';
@@ -174,17 +175,25 @@ describe('submitting', () => {
     expect(screen.getByText('Save Routine')).toBeTruthy();
   });
 
-  it('reports a routine the planner created outright, and clears the composer', async () => {
+  it('opens a routine the planner created outright', async () => {
     stubs({
-      request: mutationStub({ status: 'created', routine: { title: 'Blues warm-up' } }),
+      request: mutationStub({
+        status: 'created',
+        routine: { routineId: 'r1', title: 'Blues warm-up' },
+      }),
     });
     await render(<CoachScreen />);
 
     await submit('30-min blues routine');
 
-    expect(screen.getByText('Routine "Blues warm-up" created.')).toBeTruthy();
-    expect(screen.getByPlaceholderText(PROMPT).props.value).toBe('');
-    expect(screen.queryByText('Save Routine')).toBeNull();
+    expect(mockRouter.replace).toHaveBeenCalledWith({
+      pathname: '/routines/[id]',
+      params: { id: 'r1' },
+    });
+    expect(useToastStore.getState().toast).toMatchObject({
+      message: 'Routine created',
+      variant: 'success',
+    });
   });
 
   it('shows the generating card and locks the composer while a plan is drafted', async () => {
@@ -242,7 +251,7 @@ describe('instant create', () => {
     });
   }
 
-  it('goes to the other endpoint and reports the server message', async () => {
+  it('goes to the other endpoint and opens the routine it created', async () => {
     const { instant, request } = stubs({
       instant: mutationStub({ message: 'Created "Evening theory".', routineId: 'r1' }),
     });
@@ -252,7 +261,10 @@ describe('instant create', () => {
 
     expect(instant.mutateAsync).toHaveBeenCalledWith("what I've skipped lately");
     expect(request.mutateAsync).not.toHaveBeenCalled();
-    expect(screen.getByText('Created "Evening theory".')).toBeTruthy();
+    expect(mockRouter.replace).toHaveBeenCalledWith({
+      pathname: '/routines/[id]',
+      params: { id: 'r1' },
+    });
   });
 
   it('keeps the prompt when the coach declined to create anything', async () => {
@@ -264,15 +276,19 @@ describe('instant create', () => {
     await submitInstant('too vague');
 
     expect(screen.getByText("I couldn't find enough recent practice.")).toBeTruthy();
+    expect(mockRouter.replace).not.toHaveBeenCalled();
     // No `routineId`, so nothing was written and the prompt is left to be edited.
     expect(screen.getByPlaceholderText(PROMPT).props.value).toBe('too vague');
   });
 });
 
 describe('resolving a draft', () => {
-  it('saves a confirmed plan and offers a way to see it', async () => {
+  it('saves a confirmed plan and opens it', async () => {
     const { resolve } = stubs({
-      resolve: mutationStub({ status: 'created', routine: { title: 'Blues warm-up' } }),
+      resolve: mutationStub({
+        status: 'created',
+        routine: { routineId: 'r1', title: 'Blues warm-up' },
+      }),
     });
     await render(<CoachScreen />);
     await submit('30-min blues routine');
@@ -285,11 +301,10 @@ describe('resolving a draft', () => {
       previousResponseId: 'resp-1',
       confirmation: true,
     });
-    expect(screen.getByText('Routine "Blues warm-up" created.')).toBeTruthy();
-    expect(screen.queryByText('Not saved')).toBeNull();
-
-    await fireEvent.press(screen.getByText('View routines'));
-    expect(mockRouter.push).toHaveBeenCalledWith('/(app)/(main)/(tabs)/routines');
+    expect(mockRouter.replace).toHaveBeenCalledWith({
+      pathname: '/routines/[id]',
+      params: { id: 'r1' },
+    });
   });
 
   it('sends confirmation: false on discard and says the plan was declined', async () => {

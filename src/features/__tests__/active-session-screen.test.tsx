@@ -298,7 +298,12 @@ describe('with an active session', () => {
     });
     // Sessions are write-once, so finishing has to leave nothing behind locally.
     expect(useActiveSessionStore.getState().tasks).toEqual([]);
+    // Closes the session modal, then opens the session it just saved.
     expect(mockRouter.back).toHaveBeenCalledTimes(1);
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/history/[id]',
+      params: { id: SAVED.id },
+    });
     expect(useToastStore.getState().toast).toMatchObject({
       message: 'Session saved',
       variant: 'success',
@@ -308,7 +313,7 @@ describe('with an active session', () => {
   // QA-05: this route is always pushed, so `back()` is normally right — but a web reload or a
   // deep link onto it leaves nothing to pop, and `back()` then did nothing at all. The user
   // was left on the session they had just saved, now empty, with Finish still enabled.
-  it('replaces rather than popping when there is no history to go back to', async () => {
+  it('replaces with the saved session when there is no history to go back to', async () => {
     mockRouter.canGoBack.mockReturnValue(false);
     const mutation = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(mutation);
@@ -320,7 +325,10 @@ describe('with an active session', () => {
     });
 
     expect(mockRouter.back).not.toHaveBeenCalled();
-    expect(mockRouter.replace).toHaveBeenCalledWith('/(app)/(main)/(tabs)');
+    expect(mockRouter.replace).toHaveBeenCalledWith({
+      pathname: '/history/[id]',
+      params: { id: SAVED.id },
+    });
   });
 
   it('sends the edited minutes and completion, not the routine targets', async () => {
@@ -759,7 +767,7 @@ describe('recordings', () => {
   });
 
   // The session already exists by then, so a retried Finish would write it twice.
-  it('still finishes when a clip fails to upload, and says where to add it', async () => {
+  it('still finishes when a clip fails to upload, and opens the session to add it again', async () => {
     const create = mutationStub(SAVED);
     useCreateSessionMock.mockReturnValue(create);
     jest.mocked(useUploadSessionClips).mockReturnValue(mutationStub(1) as never);
@@ -772,10 +780,13 @@ describe('recordings', () => {
     });
 
     expect(create.mutateAsync).toHaveBeenCalledTimes(1);
-    expect(mockRouter.back).toHaveBeenCalledTimes(1);
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/history/[id]',
+      params: { id: SAVED.id },
+    });
     expect(useActiveSessionStore.getState().tasks).toEqual([]);
     expect(useToastStore.getState().toast).toMatchObject({
-      message: "Session saved — 1 recording didn't upload. Add it from History.",
+      message: "Session saved — 1 recording didn't upload. Add it again here.",
       variant: 'error',
     });
   });

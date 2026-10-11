@@ -77,12 +77,15 @@ export function GenerateTasksScreen() {
     if (selected.length === 0 || busy) return;
     setFailure(null);
     try {
-      await bulkCreate.mutateAsync(selected.map(toCreateInput));
+      const created = await bulkCreate.mutateAsync(selected.map(toCreateInput));
       showToast(
-        selected.length === 1 ? '1 task created' : `${selected.length} tasks created`,
+        created.length === 1 ? '1 task created' : `${created.length} tasks created`,
         'success',
       );
-      router.back();
+      // Several new tasks have no single page to open, so they land back in the Library.
+      if (created.length === 1)
+        router.replace({ pathname: '/library/[id]', params: { id: created[0].id } });
+      else router.back();
     } catch (error) {
       setFailure(describeGeneratorError(error, "Couldn't create these tasks"));
     }
