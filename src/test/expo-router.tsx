@@ -2,8 +2,8 @@ import { cloneElement, isValidElement, type ReactElement, type ReactNode } from 
 import { Text } from 'react-native';
 
 /**
- * The shared `expo-router` mock. Screens only ever reach for `useRouter`, `Link` and
- * `usePathname`, so that is the whole surface — mounting a real router would need `ExpoRoot`,
+ * The shared `expo-router` mock. Screens only ever reach for `useRouter`, `Link`,
+ * `usePathname` and `useLocalSearchParams`, so that is the whole surface — mounting a real router would need `ExpoRoot`,
  * and `expo-router/testing-library` is unusable here (it was built against RNTL 13's
  * synchronous `render`; awaiting RNTL 14's async one drops the `getPathname` helpers it bolts
  * on with `Object.assign`).
@@ -45,9 +45,14 @@ export const mockNavigation = {
 export const linkHrefs: unknown[] = [];
 
 let pathname = '/';
+let searchParams: Record<string, string> = {};
 
 export function setMockPathname(next: string) {
   pathname = next;
+}
+
+export function setMockSearchParams(next: Record<string, string>) {
+  searchParams = next;
 }
 
 type LinkProps = {
@@ -104,6 +109,7 @@ export function expoRouterMock() {
     useRouter: () => mockRouter,
     useNavigation: () => mockNavigation,
     usePathname: () => pathname,
+    useLocalSearchParams: () => searchParams,
     Link: MockLink,
   };
 }
@@ -113,6 +119,7 @@ export function expoRouterMock() {
 beforeEach(() => {
   linkHrefs.length = 0;
   pathname = '/';
+  searchParams = {};
   for (const fn of Object.values(mockRouter)) fn.mockClear();
   for (const fn of Object.values(mockNavigation)) fn.mockClear();
   // `mockClear` forgets the calls but keeps the implementation, so a suite that pins

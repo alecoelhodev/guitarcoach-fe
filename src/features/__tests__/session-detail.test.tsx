@@ -6,14 +6,21 @@ jest.mock('@/api/recordings.queries', () => ({
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 jest.mock('@/api/sessions.queries', () => ({ useSession: jest.fn() }));
 jest.mock('@/api/recordings', () => ({ getRecordingDownloadUrl: jest.fn() }));
+jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
+jest.mock('@/features/session/use-resume-session', () => ({ useResumeSession: jest.fn() }));
 
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { useRecordings } from '@/api/recordings.queries';
 import { useSession } from '@/api/sessions.queries';
 import { SessionDetail } from '@/features/history/session-detail';
-import { makeRecording, makeSession, makeSessionTask } from '@/test/fixtures';
+import { useActiveSessionStore } from '@/features/session/session-store';
+import { useResumeSession } from '@/features/session/use-resume-session';
+import { useSessionStore } from '@/stores/session-store';
+import { mockRouter } from '@/test/expo-router';
+import { makeRecording, makeSession, makeSessionTask, makeUser } from '@/test/fixtures';
+import { withGluestack } from '@/test/gluestack';
 import { errorQuery, pendingQuery, successQuery } from '@/test/query-hooks';
 
 /**
@@ -28,9 +35,12 @@ const recordingsHook = useRecordings as unknown as AnyHook;
 
 const SESSION_ID = 's1';
 
+const resumeSession = jest.fn();
+
 beforeEach(() => {
   jest.clearAllMocks();
   recordingsHook.mockReturnValue(successQuery([]));
+  jest.mocked(useResumeSession).mockReturnValue(resumeSession);
 });
 
 describe('loading and failure', () => {
@@ -226,5 +236,70 @@ describe('recordings', () => {
 
     expect(screen.getByText('Blues in A')).toBeTruthy();
     expect(screen.getByText('Recordings')).toBeTruthy();
+  });
+});
+
+describe('Resume', () => {
+  const session = makeSession({ id: SESSION_ID });
+
+  beforeEach(() => {
+    sessionHook.mockReturnValue(successQuery(session));
+    useSessionStore.setState({ status: 'authenticated', user: makeUser({ id: 'u1' }) });
+  });
+
+  function startUnsaved() {
+    useActiveSessionStore.getState().start({
+      userId: 'u1',
+      tasks: [{ taskId: 't1', title: 'Scales', durationMinutes: 5, completed: false }],
+    });
+  }
+
+  it('reopens the session straight away when nothing is in progress', async () => {
+    await render(withGluestack(<SessionDetail sessionId={SESSION_ID} />));
+
+    await fireEvent.press(screen.getByText('Resume'));
+
+    expect(resumeSession).toHaveBeenCalledWith(session);
+  });
+
+  it('asks before replacing a session in progress, and keeps it on cancel', async () => {
+    startUnsaved();
+    await render(withGluestack(<SessionDetail sessionId={SESSION_ID} />));
+
+    await fireEvent.press(screen.getByText('Resume'));
+    expect(screen.getByText('Replace the session in progress?')).toBeTruthy();
+    expect(resumeSession).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('Cancel'));
+    expect(resumeSession).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('Resume'));
+    await fireEvent.press(screen.getByText('Replace'));
+    expect(resumeSession).toHaveBeenCalledWith(session);
+  });
+
+  it('ignores a session in progress that belongs to another account', async () => {
+    startUnsaved();
+    useSessionStore.setState({ user: makeUser({ id: 'u2' }) });
+    await render(withGluestack(<SessionDetail sessionId={SESSION_ID} />));
+
+    await fireEvent.press(screen.getByText('Resume'));
+
+    expect(resumeSession).toHaveBeenCalledWith(session);
+  });
+
+  it('carries on with this session when it is already open on the device', async () => {
+    useActiveSessionStore
+      .getState()
+      .resume({ userId: 'u1', sessionId: SESSION_ID, tasks: [], elapsedSeconds: 30 });
+    await render(withGluestack(<SessionDetail sessionId={SESSION_ID} />));
+
+    await fireEvent.press(screen.getByText('Resume'));
+
+    expect(resumeSession).not.toHaveBeenCalled();
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/session/active',
+      params: { from: 'history' },
+    });
   });
 });
