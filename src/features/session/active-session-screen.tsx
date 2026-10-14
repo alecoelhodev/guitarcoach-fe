@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import X from 'lucide-react-native/icons/x';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { describeError, type ErrorDescription } from '@/api/errors';
 import { useUploadSessionClips } from '@/api/recordings.queries';
-import { useCreateSession } from '@/api/sessions.queries';
+import { useCreateSession, useUpdateSession } from '@/api/sessions.queries';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Banner } from '@/components/ui/banner';
@@ -148,6 +148,8 @@ function ActiveSessionScreenBody() {
   // Sliced, not `useActiveSessionStore()`. Subscribing to the whole store object meant any
   // `set()` — a minute stepped, a box ticked — re-rendered everything below.
   const userId = useActiveSessionStore((state) => state.userId);
+  const savedSessionId = useActiveSessionStore((state) => state.sessionId);
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const routineId = useActiveSessionStore((state) => state.routineId);
   const routineTitle = useActiveSessionStore((state) => state.routineTitle);
   const title = useActiveSessionStore((state) => state.title);
@@ -171,9 +173,11 @@ function ActiveSessionScreenBody() {
   const [confirmExit, setConfirmExit] = useState(false);
   const signedInUserId = useSessionStore((state) => state.user?.id);
   const createSessionMutation = useCreateSession();
+  const updateSessionMutation = useUpdateSession();
   const showToast = useToastStore((state) => state.show);
   const [failure, setFailure] = useState<ErrorDescription | null>(null);
-  const finishing = createSessionMutation.isPending || uploadClips.isPending;
+  const finishing =
+    createSessionMutation.isPending || updateSessionMutation.isPending || uploadClips.isPending;
 
   async function keepClip({ file, seconds }: Clip) {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -192,26 +196,40 @@ function ActiveSessionScreenBody() {
     const finalNotes = notesDraft.value.trim();
     titleDraft.flush();
     notesDraft.flush();
+    const sessionTasks = tasks.map((task) => ({
+      taskId: task.taskId,
+      // 0 is the local "nothing logged" value — a routine task carries no target duration
+      // by default — but `CreatePracticeSessionTaskDto.durationMinutes` is `@Min(1)` and
+      // that bound does not survive into the generated `api.d.ts`. Sending the zero failed
+      // Finish with "tasks.0.durationMinutes must not be less than 1". Minutes are optional
+      // by design, so omit the key rather than zeroing it.
+      ...(task.durationMinutes >= 1 ? { durationMinutes: task.durationMinutes } : {}),
+      completed: task.completed,
+    }));
+    const durationSeconds = elapsedSecondsAt(startedAt, Date.now());
     let sessionId: string;
     try {
-      ({ id: sessionId } = await createSessionMutation.mutateAsync({
-        routineId,
-        // Both are optional and both reject the empty string — `title` is `@Length(1, 200)`,
-        // and `forbidNonWhitelisted` means a stray '' is a 400 rather than an ignored field.
-        // Omit, never blank.
-        ...(finalTitle ? { title: finalTitle } : {}),
-        ...(finalNotes ? { notes: finalNotes } : {}),
-        tasks: tasks.map((task) => ({
-          taskId: task.taskId,
-          // 0 is the local "nothing logged" value — a routine task carries no target duration
-          // by default — but `CreatePracticeSessionTaskDto.durationMinutes` is `@Min(1)` and
-          // that bound does not survive into the generated `api.d.ts`. Sending the zero failed
-          // Finish with "tasks.0.durationMinutes must not be less than 1". Minutes are optional
-          // by design, so omit the key rather than zeroing it.
-          ...(task.durationMinutes >= 1 ? { durationMinutes: task.durationMinutes } : {}),
-          completed: task.completed,
-        })),
-      }));
+      ({ id: sessionId } = savedSessionId
+        ? await updateSessionMutation.mutateAsync({
+            sessionId: savedSessionId,
+            // A PATCH leaves an omitted field as it was, so a blanked title or note is a `null`.
+            input: {
+              title: finalTitle || null,
+              notes: finalNotes || null,
+              durationSeconds,
+              tasks: sessionTasks,
+            },
+          })
+        : await createSessionMutation.mutateAsync({
+            routineId,
+            // Both are optional and both reject the empty string — `title` is `@Length(1, 200)`,
+            // and `forbidNonWhitelisted` means a stray '' is a 400 rather than an ignored field.
+            // Omit, never blank.
+            ...(finalTitle ? { title: finalTitle } : {}),
+            ...(finalNotes ? { notes: finalNotes } : {}),
+            durationSeconds,
+            tasks: sessionTasks,
+          }));
     } catch (error) {
       // Deliberately no `reset()` and no navigation: the minutes exist only here until this
       // write lands, so discarding them on a failed save loses the user's whole session. A
@@ -226,7 +244,9 @@ function ActiveSessionScreenBody() {
       : 0;
 
     reset();
-    openSaved(sessionId);
+    // Resumed from its History page, which is right underneath: going back there is enough.
+    if (from === 'history' && router.canGoBack()) router.back();
+    else openSaved(sessionId);
     succeeded();
     if (failedClips === 0) showToast('Session saved', 'success');
     else
@@ -295,10 +315,16 @@ function ActiveSessionScreenBody() {
           </View>
 
           <View>
-            {routineTitle && (
+            {savedSessionId ? (
               <ThemedText type="body" color="textMuted">
-                Following · {routineTitle}
+                Resumed · saves over the earlier session
               </ThemedText>
+            ) : (
+              routineTitle && (
+                <ThemedText type="body" color="textMuted">
+                  Following · {routineTitle}
+                </ThemedText>
+              )
             )}
             <SessionTitle
               title={titleDraft.value}

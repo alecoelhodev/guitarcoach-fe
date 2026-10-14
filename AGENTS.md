@@ -305,9 +305,12 @@ metro config at all. Babel needs `jsxImportSource: 'nativewind'`; metro needs
 
 Verified against the committed OpenAPI schema:
 
-- **Practice sessions are write-once.** `/practice-sessions/{sessionId}` is `GET` only —
-  no update endpoint. Starting practice creates nothing; the session is written once, on
-  Finish. Local in-progress state lives in `src/features/session/session-store.ts`.
+- **Practice sessions are written on Finish, and patched only by a resumed Finish.** Starting
+  practice creates nothing; Finish `POST`s the session with its `durationSeconds`. **Resume** on a
+  History page (`use-resume-session.ts`) loads it back into the local store with its `sessionId`
+  and the clock backdated by the saved time (or the task-minute sum for sessions saved before the
+  time was stored); that Finish `PATCH`es it, replacing the task list and sending `null` for a
+  blanked title or note. Local in-progress state lives in `src/features/session/session-store.ts`.
 - **That local session is persisted per device, not per account, so it carries a `userId`.**
   One AsyncStorage key serves everyone who signs in on the device, and a session left behind
   by a signed-out account was offered to the next one — routine, minutes and unsaved notes
@@ -315,9 +318,9 @@ Verified against the committed OpenAPI schema:
   every reader checks it, and `clearLocalSession()` (`src/stores/clear-local-session.ts`) is
   the single teardown shared by the deliberate sign-out and the 401 handler. Add anything
   account-scoped to that function rather than to one of its two callers.
-- **Session totals are client-derived.** There is no total-elapsed field and no analytics
-  endpoint; per-task minutes are optional, so every total is a client-side sum that must
-  render correctly when minutes are absent.
+- **Session totals are client-derived.** There is no analytics endpoint, and `durationSeconds`
+  is null on every session saved before it existed; per-task minutes are optional, so every
+  total is a client-side sum that must render correctly when minutes are absent.
 - **Anyone can create a task, but only from a routine** (`/routines/[id]/new-task`: create, then
   append). `POST /tasks` makes an admin's task shared and anyone else's private to them, like
   Draft & Review's; the add is retried alone if it fails, so a retry never creates twice.

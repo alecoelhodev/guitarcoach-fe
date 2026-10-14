@@ -6,3 +6,4 @@ export type PracticeSessionTaskSummary =
 export type PracticeSession = components['schemas']['PracticeSessionResponseDto'];
 
 export type CreateSessionInput = components['schemas']['CreatePracticeSessionDto'];
+export type UpdateSessionInput = components['schemas']['UpdatePracticeSessionDto'];
