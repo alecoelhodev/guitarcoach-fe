@@ -185,7 +185,7 @@ export function AddTasksScreen({ routineId }: { routineId: string }) {
                       {isFetchingNextPage ? 'Loading…' : 'Load more'}
                     </Button>
                   </View>
-                ) : null
+                ) : undefined
               }
             />
           )}

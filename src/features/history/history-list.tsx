@@ -84,7 +84,7 @@ export function HistoryList() {
                       {isFetchingNextPage ? 'Loading…' : 'Load older sessions'}
                     </Button>
                   </View>
-                ) : null
+                ) : undefined
               }
             />
           )}

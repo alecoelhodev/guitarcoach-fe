@@ -1,10 +1,10 @@
 # Progress Pick FE — agent guide
 
-Expo SDK 57 / React Native 0.86 / React 19.2 / Expo Router 57 / TypeScript 6.
+Expo SDK 58 / React Native 0.88 / React 19.3 / Expo Router 58 / TypeScript 6.
 
 ## Expo HAS CHANGED
 
-Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before writing any
+Read the exact versioned docs at https://docs.expo.dev/versions/v58.0.0/ before writing any
 code. Do not rely on training data for Expo, Expo Router, or React Native APIs — this stack
 is newer than most of it. Verify before you write, and say so when you couldn't verify.
 
@@ -84,8 +84,16 @@ regex, or pass an explicit locale.
 **`process.env.EXPO_OS` is inlined at build time, so a test cannot flip it.** Assigning it
 inside a test changes nothing — the comparison has already been baked to the preset's platform
 (`ios`). This is also why `eslint-plugin-expo` bans destructuring or dynamically indexing it.
-`external-link.tsx`'s web fall-through is therefore uncovered by design; it would need a
-second Jest project on `jest-expo/web`.
+`external-link.tsx`'s web fall-through is therefore uncovered by design; covering it means
+adding it to the `web` Jest project below.
+
+**Jest runs two projects.** `ios` (jest-expo) runs everything except `DOM_SUITES`; `web`
+(`jest-expo/web`, jsdom) runs only the gluestack provider's `.web` suites. They can't share one
+project: RN's preset setup redefines `window`, which jsdom 30 makes non-configurable. The `web`
+project loads no `jest.setup.ts` and overrides one `moduleNameMapper` entry, which is
+explained in `jest.config.js`. `jest.resolver.js` chains reanimated's Jest resolver in front
+of RN's. Without it, reanimated ≥4.6 throws ``setCSSEventHandler` is not available in
+JSReanimated`` the moment it's imported.
 
 **Shared test helpers live in `src/test/`** — `fixtures.ts` (builders for the generated DTOs),
 `query-client.tsx` (`makeTestQueryClient` / `withQueryClient`), `reset-stores.ts`,

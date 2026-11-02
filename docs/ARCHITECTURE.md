@@ -6,7 +6,7 @@ to draft or instantly create a practice routine.
 
 ## Tech stack
 
-- **Expo SDK 57.0.15**, React Native 0.86.2, React 19.2.3 — New Architecture is on by default
+- **Expo SDK 58.0.22**, React Native 0.88.1, React 19.3.0 — New Architecture is on by default
   at this SDK version, no opt-out.
 - **Expo Router** for file-based, typed routing (`.expo/types/router.d.ts` is generated from
   `src/app/`).

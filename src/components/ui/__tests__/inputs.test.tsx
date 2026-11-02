@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { createRef } from 'react';
-import { StyleSheet, type TextInput } from 'react-native';
+import { StyleSheet, type TextInputInstance } from 'react-native';
 
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -9,7 +9,7 @@ import { Colors } from '@/theme/tokens';
 
 describe('Input', () => {
   it('forwards its ref to the underlying TextInput', async () => {
-    const ref = createRef<TextInput>();
+    const ref = createRef<TextInputInstance>();
     await render(<Input ref={ref} testID="field" />);
 
     expect(ref.current).not.toBeNull();
@@ -82,7 +82,7 @@ describe('PasswordInput', () => {
   });
 
   it('forwards its ref', async () => {
-    const ref = createRef<TextInput>();
+    const ref = createRef<TextInputInstance>();
     await render(<PasswordInput ref={ref} testID="password" />);
 
     expect(ref.current).not.toBeNull();

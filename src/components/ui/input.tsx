@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { StyleSheet, TextInput, type TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, type TextInputInstance, type TextInputProps } from 'react-native';
 
 import { Colors, Radius, Spacing } from '@/theme/tokens';
 import { Typography } from '@/theme/typography';
@@ -8,7 +8,7 @@ export type InputProps = TextInputProps & {
   invalid?: boolean;
 };
 
-export const Input = forwardRef<TextInput, InputProps>(function Input(
+export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
   { style, invalid = false, onFocus, onBlur, ...rest },
   ref,
 ) {

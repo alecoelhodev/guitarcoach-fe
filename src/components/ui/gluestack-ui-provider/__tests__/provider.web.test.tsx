@@ -1,22 +1,10 @@
-/**
- * @jest-environment jsdom
- */
-
-// See `script.web.test.ts` for why these two globals have to be installed by hand under jsdom.
-Object.assign(globalThis, {
-  TextEncoder: require('node:util').TextEncoder,
-  TextDecoder: require('node:util').TextDecoder,
-});
-
-import { render, screen } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { render } from '@testing-library/react-native';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider/index.web';
 
 /**
- * The web provider is imported by explicit path — the jest-expo preset is iOS-only, so
- * `@/components/ui/gluestack-ui-provider` always resolves to the native file. Same approach as
- * `rail.web.test.tsx`.
+ * Runs in the `web` Jest project (jsdom); see `DOM_SUITES` in `jest.config.js`. The provider is
+ * still imported by explicit path, as in `rail.web.test.tsx`.
  *
  * It differs from the native provider in three ways worth pinning: it defaults to `light`
  * rather than `system`, it writes the mode onto `document.documentElement` in a layout effect,
@@ -49,13 +37,16 @@ beforeEach(() => {
 
 describe('GluestackUIProvider (web)', () => {
   it('renders its children', async () => {
+    // A component rather than `<Text>`: react-native-web renders Text as a `div` holding a
+    // string, which RNTL's renderer rejects.
+    const Child = jest.fn(() => null);
     await render(
       <GluestackUIProvider>
-        <Text>child</Text>
+        <Child />
       </GluestackUIProvider>,
     );
 
-    expect(screen.getByText('child')).toBeTruthy();
+    expect(Child).toHaveBeenCalled();
   });
 
   it('defaults to light and applies it to the document', async () => {
