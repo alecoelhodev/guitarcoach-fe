@@ -24,6 +24,16 @@ export type PendingClip = {
   seconds?: number;
 };
 
+type ResumeInput = {
+  userId?: string;
+  sessionId: string;
+  routineId?: string;
+  title?: string;
+  notes?: string;
+  tasks: ActiveSessionTask[];
+  elapsedSeconds: number;
+};
+
 type ActiveSessionState = {
   /**
    * Who started this session. The store is persisted under one device-wide key, so without an
@@ -32,6 +42,8 @@ type ActiveSessionState = {
    * `clearLocalSession` is the proactive half of the same guard.
    */
   userId?: string;
+  /** The saved session being resumed. Finish updates it rather than writing a new one. */
+  sessionId?: string;
   routineId?: string;
   /**
    * The routine being followed, kept separate from `title`. Canvas 07 shows both — "Following ·
@@ -56,6 +68,8 @@ type ActiveSessionState = {
     title?: string;
     tasks: ActiveSessionTask[];
   }) => void;
+  /** Reopens a saved session; the clock carries on from `elapsedSeconds`. */
+  resume: (input: ResumeInput) => void;
   setTitle: (title: string) => void;
   setNotes: (notes: string) => void;
   setTaskMinutes: (taskId: string, minutes: number) => void;
@@ -83,6 +97,7 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
       start: ({ userId, routineId, routineTitle, title, tasks }) =>
         set({
           userId,
+          sessionId: undefined,
           routineId,
           routineTitle,
           title,
@@ -91,6 +106,17 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
           notes: undefined,
           startedAt: Date.now(),
         }),
+
+      // The clock is derived from `startedAt`, so backdating it is all it takes to carry on.
+      resume: ({ elapsedSeconds, ...session }) => {
+        for (const clip of get().clips) discardClipFile(clip.id, clip.uri);
+        set({
+          ...session,
+          routineTitle: undefined,
+          clips: [],
+          startedAt: Date.now() - elapsedSeconds * 1000,
+        });
+      },
 
       setTitle: (title) => set({ title }),
 
@@ -124,6 +150,7 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
         for (const clip of get().clips) discardClipFile(clip.id, clip.uri);
         set({
           userId: undefined,
+          sessionId: undefined,
           routineId: undefined,
           routineTitle: undefined,
           title: undefined,

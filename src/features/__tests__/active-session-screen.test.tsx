@@ -1,5 +1,8 @@
 jest.mock('expo-router', () => require('@/test/expo-router').expoRouterMock());
-jest.mock('@/api/sessions.queries', () => ({ useCreateSession: jest.fn() }));
+jest.mock('@/api/sessions.queries', () => ({
+  useCreateSession: jest.fn(),
+  useUpdateSession: jest.fn(),
+}));
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 jest.mock('@/api/recordings.queries', () => ({ useUploadSessionClips: jest.fn() }));
 jest.mock('@/features/recordings/pending-clip-files', () => ({
@@ -21,14 +24,14 @@ import * as DocumentPicker from 'expo-document-picker';
 
 import { ApiError, OFFLINE_STATUS } from '@/api/client';
 import { useUploadSessionClips } from '@/api/recordings.queries';
-import { useCreateSession } from '@/api/sessions.queries';
+import { useCreateSession, useUpdateSession } from '@/api/sessions.queries';
 import { ChecklistRow } from '@/components/ui/checklist-row';
 import { ActiveSessionScreen } from '@/features/session/active-session-screen';
 import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
 import { storage } from '@/lib/storage';
 import { useSessionStore } from '@/stores/session-store';
 import { useToastStore } from '@/stores/toast-store';
-import { mockRouter } from '@/test/expo-router';
+import { mockRouter, setMockSearchParams } from '@/test/expo-router';
 import { makeUser } from '@/test/fixtures';
 import { withGluestack } from '@/test/gluestack';
 import { countHostProp } from '@/test/host-props';
@@ -76,6 +79,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   useSessionStore.setState({ status: 'authenticated', user: SIGNED_IN });
   useCreateSessionMock.mockReturnValue(mutationStub(SAVED));
+  (useUpdateSession as unknown as jest.Mock).mockReturnValue(mutationStub(SAVED));
   jest.mocked(useUploadSessionClips).mockReturnValue(mutationStub(0) as never);
 });
 
@@ -294,6 +298,7 @@ describe('with an active session', () => {
     expect(mutation.mutateAsync).toHaveBeenCalledWith({
       routineId: 'r1',
       title: 'Morning warm-up',
+      durationSeconds: 0,
       tasks: [{ taskId: 't1', durationMinutes: 10, completed: false }],
     });
     // Sessions are write-once, so finishing has to leave nothing behind locally.
@@ -802,5 +807,75 @@ describe('recordings', () => {
     });
 
     expect(uploads.mutateAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('a resumed session', () => {
+  function resumeSaved() {
+    useActiveSessionStore.getState().resume({
+      userId: SIGNED_IN.id,
+      sessionId: 'session-old',
+      routineId: 'r1',
+      title: 'Evening',
+      notes: 'Slow',
+      tasks: [{ taskId: 't1', title: 'Alternate picking', durationMinutes: 5, completed: false }],
+      elapsedSeconds: 90,
+    });
+  }
+
+  it('carries the clock on from the saved time', async () => {
+    resumeSaved();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    expect(screen.getByText('1:30')).toBeTruthy();
+    expect(screen.getByText('Resumed · saves over the earlier session')).toBeTruthy();
+  });
+
+  it('updates the saved session on Finish and goes back to its History page', async () => {
+    const update = mutationStub({ id: 'session-old' });
+    const create = mutationStub(SAVED);
+    (useUpdateSession as unknown as jest.Mock).mockReturnValue(update);
+    useCreateSessionMock.mockReturnValue(create);
+    setMockSearchParams({ from: 'history' });
+    resumeSaved();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await fireEvent.press(screen.getByLabelText('Alternate picking'));
+    await fireEvent.press(screen.getByLabelText('Rename session'));
+    await fireEvent.changeText(screen.getByTestId('session-title'), '');
+    await fireEvent.changeText(screen.getByTestId('session-notes'), ' ');
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(update.mutateAsync).toHaveBeenCalledWith({
+      sessionId: 'session-old',
+      input: {
+        title: null,
+        notes: null,
+        durationSeconds: 90,
+        tasks: [{ taskId: 't1', durationMinutes: 5, completed: true }],
+      },
+    });
+    expect(create.mutateAsync).not.toHaveBeenCalled();
+    // Its History page is underneath: back, without stacking a second copy of it.
+    expect(mockRouter.back).toHaveBeenCalledTimes(1);
+    expect(mockRouter.push).not.toHaveBeenCalled();
+    expect(useActiveSessionStore.getState().sessionId).toBeUndefined();
+  });
+
+  it('opens the History page when resumed from Home after a restart', async () => {
+    (useUpdateSession as unknown as jest.Mock).mockReturnValue(mutationStub({ id: 'session-old' }));
+    resumeSaved();
+    await render(withGluestack(<ActiveSessionScreen />));
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Finish Session'));
+    });
+
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/history/[id]',
+      params: { id: 'session-old' },
+    });
   });
 });

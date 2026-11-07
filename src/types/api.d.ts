@@ -273,7 +273,7 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations['PracticeSessionsController_update'];
     trace?: never;
   };
   '/api/v1/practice-sessions/{sessionId}/recordings': {
@@ -534,6 +534,7 @@ export interface components {
       notes?: string;
       /** Format: uuid */
       routineId?: string;
+      durationSeconds?: number;
       tasks?: components['schemas']['CreatePracticeSessionTaskDto'][];
     };
     PracticeSessionTaskSummaryResponseDto: {
@@ -555,6 +556,7 @@ export interface components {
       routineId?: string | null;
       title?: string | null;
       notes?: string | null;
+      durationSeconds?: number | null;
       sessionTasks: components['schemas']['PracticeSessionTaskResponseDto'][];
       id: string;
       userId: string;
@@ -569,6 +571,12 @@ export interface components {
     };
     DeleteResultResponseDto: {
       deletedCount: number;
+    };
+    UpdatePracticeSessionDto: {
+      title?: string | null;
+      notes?: string | null;
+      durationSeconds?: number;
+      tasks?: components['schemas']['CreatePracticeSessionTaskDto'][];
     };
     RecordingResponseDto: {
       id: string;
@@ -1524,6 +1532,31 @@ export interface operations {
       cookie?: never;
     };
     requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PracticeSessionResponseDto'];
+        };
+      };
+    };
+  };
+  PracticeSessionsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        sessionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdatePracticeSessionDto'];
+      };
+    };
     responses: {
       200: {
         headers: {

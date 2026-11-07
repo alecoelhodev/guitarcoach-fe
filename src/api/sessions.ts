@@ -1,18 +1,18 @@
 import { apiPath, request } from '@/api/client';
 import type { Paginated } from '@/types/pagination';
-import type { PracticeSession } from '@/types/session';
+import type { CreateSessionInput, PracticeSession, UpdateSessionInput } from '@/types/session';
 
-/**
- * Sessions are write-once — there is no update endpoint. Finish is the last
- * chance to correct numbers (see plan/SETUP-PLAN.md "API constraints").
- */
-export function createSession(input: {
-  title?: string;
-  notes?: string;
-  routineId?: string;
-  tasks?: { taskId: string; durationMinutes?: number; completed?: boolean }[];
-}) {
+/** Written on Finish. A resumed session's Finish goes through `updateSession` instead. */
+export function createSession(input: CreateSessionInput) {
   return request<PracticeSession>('/practice-sessions', { method: 'POST', body: input });
+}
+
+/** Overwrites the fields sent; `tasks` replaces the whole list, `null` clears title or notes. */
+export function updateSession(sessionId: string, input: UpdateSessionInput) {
+  return request<PracticeSession>(apiPath`/practice-sessions/${sessionId}`, {
+    method: 'PATCH',
+    body: input,
+  });
 }
 
 export function listSessions(query: { page?: number; limit?: number } = {}) {

@@ -1,7 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { queryKeys } from '@/api/query-keys';
-import { createSession, getSession, listSessions } from '@/api/sessions';
+import { createSession, getSession, listSessions, updateSession } from '@/api/sessions';
+import type { UpdateSessionInput } from '@/types/session';
 
 export function useSessions(filters: { limit?: number } = {}) {
   return useInfiniteQuery({
@@ -36,6 +37,18 @@ export function useCreateSession() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessionsRoot });
+    },
+  });
+}
+
+/** A resumed session's Finish. `sessionsRoot` covers the list, the summary and the detail. */
+export function useUpdateSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sessionId, input }: { sessionId: string; input: UpdateSessionInput }) =>
+      updateSession(sessionId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.sessionsRoot });
     },

@@ -37,6 +37,7 @@ import {
   deleteSessionsByTitle,
   getSession as getPracticeSession,
   listSessions,
+  updateSession,
 } from '@/api/sessions';
 import { createTask, getTask, listTasks } from '@/api/tasks';
 
@@ -256,13 +257,22 @@ describe('routines', () => {
   });
 });
 
-describe('practice sessions — write-once, so there is no update route to test', () => {
+describe('practice sessions — written on Finish, patched when a resumed one finishes', () => {
   it('createSession', () => {
     createSession({ routineId: 'r1', tasks: [{ taskId: 't1', durationMinutes: 10 }] });
 
     expect(requestMock).toHaveBeenCalledWith('/practice-sessions', {
       method: 'POST',
       body: { routineId: 'r1', tasks: [{ taskId: 't1', durationMinutes: 10 }] },
+    });
+  });
+
+  it('updateSession patches the session by id', () => {
+    updateSession('s1', { title: null, durationSeconds: 90 });
+
+    expect(requestMock).toHaveBeenCalledWith('/practice-sessions/s1', {
+      method: 'PATCH',
+      body: { title: null, durationSeconds: 90 },
     });
   });
 

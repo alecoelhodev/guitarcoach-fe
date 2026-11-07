@@ -1,18 +1,20 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 
 import { queryKeys } from '@/api/query-keys';
-import { createSession, getSession, listSessions } from '@/api/sessions';
+import { createSession, getSession, listSessions, updateSession } from '@/api/sessions';
 import {
   useCreateSession,
   useSession,
   useSessions,
   useSessionsSummary,
+  useUpdateSession,
 } from '@/api/sessions.queries';
 import { makePage, makeSession } from '@/test/fixtures';
 import { withQueryClient } from '@/test/query-client';
 
 jest.mock('@/api/sessions', () => ({
   createSession: jest.fn(),
+  updateSession: jest.fn(),
   listSessions: jest.fn(),
   getSession: jest.fn(),
 }));
@@ -157,5 +159,22 @@ describe('useSession', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(getMock).toHaveBeenCalledWith('session-9');
     expect(result.current.data?.title).toBe('Evening practice');
+  });
+});
+
+describe('useUpdateSession', () => {
+  it('patches the session, then refetches every session query', async () => {
+    jest.mocked(updateSession).mockResolvedValue(makeSession({ id: 's1' }));
+
+    const { queryClient, wrapper } = withQueryClient();
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+    const { result } = await renderHook(() => useUpdateSession(), { wrapper });
+
+    result.current.mutate({ sessionId: 's1', input: { durationSeconds: 90 } });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(updateSession).toHaveBeenCalledWith('s1', { durationSeconds: 90 });
+    // The root key covers the detail page the user lands back on.
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.sessionsRoot });
   });
 });

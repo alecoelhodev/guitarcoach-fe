@@ -63,6 +63,13 @@ Every backend change here goes in first, because frontend CI reads the backend's
 
 ---
 
+## 13.5 Resume a saved session
+
+A **Resume** button on a History session reopens it on the Active Session screen: the clock
+carries on from the stored `durationSeconds` (task-minute sum for older sessions), tasks can be
+ticked, and Finish `PATCH`es the same session (backend `PATCH /practice-sessions/:id`). Resuming
+over an unsaved session in progress asks first.
+
 ## 13.1 Profile image
 
 **Size:** M · **Depends on:** nothing · **Backend first:** yes

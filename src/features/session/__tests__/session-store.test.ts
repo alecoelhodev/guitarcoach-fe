@@ -329,3 +329,46 @@ describe('clips', () => {
     expect(discardClipFile).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('resume', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-10-14T10:00:00Z'));
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('backdates the clock by the saved time and remembers which session it is', () => {
+    useActiveSessionStore.getState().resume({
+      userId: 'u1',
+      sessionId: 's1',
+      title: 'Evening',
+      tasks: [task({ completed: true })],
+      elapsedSeconds: 90,
+    });
+
+    const state = useActiveSessionStore.getState();
+    expect(state.startedAt).toBe(Date.now() - 90_000);
+    expect(state).toMatchObject({ sessionId: 's1', userId: 'u1', title: 'Evening' });
+    expect(state.tasks).toEqual([task({ completed: true })]);
+  });
+
+  it('discards the clips of the session it replaces', () => {
+    useActiveSessionStore.getState().start({ tasks: [task()] });
+    useActiveSessionStore.getState().addClip(clip('c1'));
+
+    useActiveSessionStore.getState().resume({ sessionId: 's1', tasks: [], elapsedSeconds: 0 });
+
+    expect(discardClipFile).toHaveBeenCalledWith('c1', expect.any(String));
+    expect(useActiveSessionStore.getState().clips).toEqual([]);
+  });
+
+  it('forgets the session on reset and on a fresh start', () => {
+    useActiveSessionStore.getState().resume({ sessionId: 's1', tasks: [], elapsedSeconds: 0 });
+    useActiveSessionStore.getState().reset();
+    expect(useActiveSessionStore.getState().sessionId).toBeUndefined();
+
+    useActiveSessionStore.getState().resume({ sessionId: 's1', tasks: [], elapsedSeconds: 0 });
+    useActiveSessionStore.getState().start({ tasks: [task()] });
+    expect(useActiveSessionStore.getState().sessionId).toBeUndefined();
+  });
+});
