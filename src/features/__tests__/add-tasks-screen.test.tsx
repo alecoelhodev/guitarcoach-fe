@@ -218,3 +218,65 @@ it('says the list may be wrong when it could not read the routine', async () => 
   await fireEvent.press(screen.getByText('Try again'));
   expect(routineTasks.refetch).toHaveBeenCalled();
 });
+
+describe('search', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const lastFilters = () => tasksHook.mock.calls.at(-1)?.[0];
+
+  it('searches by title once typing pauses, and clears at once', async () => {
+    await render(screen_());
+    expect(lastFilters()).toEqual({ q: undefined });
+
+    await fireEvent.changeText(screen.getByLabelText('Search tasks'), '  barre ');
+    expect(lastFilters()).toEqual({ q: undefined });
+
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+    expect(lastFilters()).toEqual({ q: 'barre' });
+
+    await fireEvent.press(screen.getByLabelText('Clear search'));
+    expect(lastFilters()).toEqual({ q: undefined });
+  });
+
+  it('says when nothing matches the search', async () => {
+    await render(screen_());
+    tasksHook.mockReturnValue(infinitePages([makePage([])]));
+
+    await fireEvent.changeText(screen.getByLabelText('Search tasks'), 'sweep');
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(screen.getByText("No tasks match 'sweep'")).toBeTruthy();
+    expect(screen.queryByText('Nothing left to add')).toBeNull();
+  });
+
+  it('keeps tasks picked before a search', async () => {
+    const add = mutationStub();
+    addHook.mockReturnValue(add);
+    await render(screen_());
+
+    await fireEvent.press(screen.getByLabelText('Alternate picking'));
+    tasksHook.mockReturnValue(infinitePages([makePage([LIBRARY[2]])]));
+    await fireEvent.changeText(screen.getByLabelText('Search tasks'), 'modes');
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+    expect(screen.queryByText('Alternate picking')).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText('Modes'));
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Add 2 tasks'));
+    });
+
+    expect(add.mutateAsync).toHaveBeenNthCalledWith(1, { taskId: 't1' });
+    expect(add.mutateAsync).toHaveBeenNthCalledWith(2, { taskId: 't3' });
+  });
+});

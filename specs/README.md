@@ -7,7 +7,7 @@ Written 2026-09-13. Verified against the backend at `../guitar-coach` (`openapi.
 ## Where the app actually stands
 
 Better than a first look suggests. The foundation is complete and genuinely finished, not stubbed:
-routing, auth, the design system (21 primitives over `src/theme/tokens.ts`), the query layer,
+routing, auth, the design system (22 primitives over `src/theme/tokens.ts`), the query layer,
 offline handling, the web rail/bottom-bar fork, and 46 passing test suites at ~96% coverage. A
 repo-wide search for `TODO`, `FIXME`, "coming soon" and dead handlers returns **nothing**.
 
