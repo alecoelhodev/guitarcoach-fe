@@ -3,10 +3,13 @@ import { useState } from 'react';
 
 import { describeError, type ErrorDescription } from '@/api/errors';
 import { useCreateTask } from '@/api/tasks.queries';
-import { TaskForm, type TaskFormValues } from '@/features/library/task-form';
+import {
+  EMPTY_TASK,
+  TaskForm,
+  type TaskFormValues,
+  toCreateTaskInput,
+} from '@/features/library/task-form';
 import { useToastStore } from '@/stores/toast-store';
-
-const EMPTY: TaskFormValues = { title: '', description: '', referenceLink: '' };
 
 /** Admin-only: the Library shows the entry point to admins, and the backend 403s the rest. */
 export function NewTaskScreen() {
@@ -18,13 +21,7 @@ export function NewTaskScreen() {
   async function submit(values: TaskFormValues) {
     setFailure(null);
     try {
-      const task = await createTask.mutateAsync({
-        title: values.title.trim(),
-        category: values.category,
-        difficulty: values.difficulty,
-        description: values.description.trim() || undefined,
-        referenceLink: values.referenceLink || undefined,
-      });
+      const task = await createTask.mutateAsync(toCreateTaskInput(values));
       // `replace`: back from the new task should reach the Library, not an emptied form.
       router.replace({ pathname: '/library/[id]', params: { id: task.id } });
       showToast('Task created', 'success');
@@ -36,7 +33,7 @@ export function NewTaskScreen() {
   return (
     <TaskForm
       heading="New task"
-      defaultValues={EMPTY}
+      defaultValues={EMPTY_TASK}
       pending={createTask.isPending}
       failure={failure}
       onSubmit={submit}

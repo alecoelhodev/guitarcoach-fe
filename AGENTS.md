@@ -318,7 +318,10 @@ Verified against the committed OpenAPI schema:
 - **Session totals are client-derived.** There is no total-elapsed field and no analytics
   endpoint; per-task minutes are optional, so every total is a client-side sum that must
   render correctly when minutes are absent.
-- **Tasks are read-only for ordinary users** — write routes are admin-gated. Admins get a
+- **Anyone can create a task, but only from a routine** (`/routines/[id]/new-task`: create, then
+  append). `POST /tasks` makes an admin's task shared and anyone else's private to them, like
+  Draft & Review's; the add is retried alone if it fails, so a retry never creates twice.
+- **Otherwise tasks are read-only for ordinary users** — the other write routes are admin-gated. Admins get a
   "New task" entry in the Library (`/library/new`), a **Generate** entry (`/library/generate`:
   AI drafts from a prompt and a count, the admin ticks which to keep, `POST /tasks/bulk` creates
   them all or none), plus Edit (`/library/[id]/edit`) and Delete on a task's detail. These are hidden unless the cached user's `role` is `admin`, but that

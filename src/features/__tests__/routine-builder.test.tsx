@@ -544,6 +544,16 @@ describe('task duration and removal', () => {
       params: { id: ROUTINE_ID },
     });
   });
+
+  it('links to a new task for this routine', async () => {
+    await render(editing());
+
+    expect(screen.getByText('Create Task')).toBeTruthy();
+    expect(linkHrefs).toContainEqual({
+      pathname: '/routines/[id]/new-task',
+      params: { id: ROUTINE_ID },
+    });
+  });
 });
 
 /**

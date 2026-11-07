@@ -20,7 +20,7 @@ import { categoryLabels, difficultyLabels } from '@/features/library/task-labels
 import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { isWebUrl } from '@/lib/url';
 import { Colors, IconSize, IconStroke, MaxContentWidth, Spacing } from '@/theme/tokens';
-import type { TaskCategory, TaskDifficulty } from '@/types/task';
+import type { CreateTaskInput, TaskCategory, TaskDifficulty } from '@/types/task';
 
 /** Mirrors `CreateTaskDto`: title 2–200, an optional http(s) `@IsUrl` link. */
 const taskSchema = z.object({
@@ -40,16 +40,38 @@ const taskSchema = z.object({
 
 export type TaskFormValues = z.infer<typeof taskSchema>;
 
+export const EMPTY_TASK: TaskFormValues = { title: '', description: '', referenceLink: '' };
+
+/** A new task's body: blank optional fields are left out rather than sent empty. */
+export function toCreateTaskInput(values: TaskFormValues): CreateTaskInput {
+  return {
+    title: values.title.trim(),
+    category: values.category,
+    difficulty: values.difficulty,
+    description: values.description.trim() || undefined,
+    referenceLink: values.referenceLink || undefined,
+  };
+}
+
 type TaskFormProps = {
   heading: string;
+  /** A line under the heading, e.g. who will be able to see the task. */
+  note?: string;
   defaultValues: TaskFormValues;
   pending: boolean;
   failure: ErrorDescription | null;
   onSubmit: (values: TaskFormValues) => Promise<void>;
 };
 
-/** The create and edit screens for a task. Admin-only; the backend 403s everyone else. */
-export function TaskForm({ heading, defaultValues, pending, failure, onSubmit }: TaskFormProps) {
+/** The create and edit screens for a task. */
+export function TaskForm({
+  heading,
+  note,
+  defaultValues,
+  pending,
+  failure,
+  onSubmit,
+}: TaskFormProps) {
   const router = useRouter();
   const bottomPad = useBottomInset() + Spacing[4];
 
@@ -85,6 +107,11 @@ export function TaskForm({ heading, defaultValues, pending, failure, onSubmit }:
                 Save
               </Button>
             </View>
+            {note && (
+              <ThemedText type="body" color="textMuted">
+                {note}
+              </ThemedText>
+            )}
 
             <View>
               <FieldLabel>Title</FieldLabel>
