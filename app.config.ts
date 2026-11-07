@@ -75,10 +75,11 @@ const config: ExpoConfig = {
     [
       'expo-audio',
       {
-        // Playback only (recording-row); uploads go through DocumentPicker. The defaults add a
-        // mic prompt, RECORD_AUDIO and background-audio modes the app never uses.
-        microphonePermission: false,
-        recordAudioAndroid: false,
+        // Records practice clips (features/recordings) and plays them back. Background audio
+        // stays off. Expo Go asks with its own mic prompt; this text is for development builds.
+        microphonePermission:
+          'Allow Progress Pick to record your playing so you can attach it to a practice session.',
+        recordAudioAndroid: true,
         enableBackgroundPlayback: false,
       },
     ],

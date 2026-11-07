@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { discardClipFile } from '@/features/recordings/pending-clip-files';
 import { storage } from '@/lib/storage';
 
 export type ActiveSessionTask = {
@@ -9,6 +10,18 @@ export type ActiveSessionTask = {
   targetDurationMinutes?: number;
   durationMinutes: number;
   completed: boolean;
+};
+
+/**
+ * A recording made or picked during the session. There is no session id to upload it to until
+ * Finish, so it waits on the device (`pending-clip-files.ts`) and uploads right after the save.
+ */
+export type PendingClip = {
+  id: string;
+  name: string;
+  mimeType: string;
+  uri: string;
+  seconds?: number;
 };
 
 type ActiveSessionState = {
@@ -35,6 +48,7 @@ type ActiveSessionState = {
    */
   startedAt?: number;
   tasks: ActiveSessionTask[];
+  clips: PendingClip[];
   start: (input: {
     userId?: string;
     routineId?: string;
@@ -46,6 +60,10 @@ type ActiveSessionState = {
   setNotes: (notes: string) => void;
   setTaskMinutes: (taskId: string, minutes: number) => void;
   toggleTaskCompleted: (taskId: string) => void;
+  addClip: (clip: PendingClip) => void;
+  /** Also deletes the clip's file. */
+  removeClip: (id: string) => void;
+  /** Also deletes every pending clip's file — a reset session has nothing left to upload. */
   reset: () => void;
 };
 
@@ -58,8 +76,9 @@ type ActiveSessionState = {
  */
 export const useActiveSessionStore = create<ActiveSessionState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       tasks: [],
+      clips: [],
 
       start: ({ userId, routineId, routineTitle, title, tasks }) =>
         set({
@@ -68,6 +87,7 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
           routineTitle,
           title,
           tasks,
+          clips: [],
           notes: undefined,
           startedAt: Date.now(),
         }),
@@ -90,9 +110,18 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
           ),
         })),
 
+      addClip: (clip) => set((state) => ({ clips: [...state.clips, clip] })),
+
+      removeClip: (id) => {
+        const clip = get().clips.find((candidate) => candidate.id === id);
+        if (clip) discardClipFile(clip.id, clip.uri);
+        set((state) => ({ clips: state.clips.filter((candidate) => candidate.id !== id) }));
+      },
+
       // Every field clears to `undefined`, never to '' or 0: `JSON.stringify` drops undefined,
       // so a reset session persists as `{"tasks":[]}` and a killed app resumes nothing.
-      reset: () =>
+      reset: () => {
+        for (const clip of get().clips) discardClipFile(clip.id, clip.uri);
         set({
           userId: undefined,
           routineId: undefined,
@@ -101,15 +130,22 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
           notes: undefined,
           startedAt: undefined,
           tasks: [],
-        }),
+          clips: [],
+        });
+      },
     }),
     {
       name: 'active-session',
       storage: createJSONStorage(() => storage),
-      version: 1,
+      version: 2,
       // v0 predates `userId`, so a session stored then has no owner and cannot be proved to
-      // belong to whoever is signed in now. Dropped rather than adopted.
-      migrate: () => ({ tasks: [] }),
+      // belong to whoever is signed in now. Dropped rather than adopted. v1 only lacks `clips`,
+      // which the initial state supplies when the two merge.
+      migrate: (persisted, version) =>
+        (version >= 1 ? persisted : { tasks: [] }) as ActiveSessionState,
+      // A web clip is a `blob:` URL that dies with the tab, so persisting it would resume a
+      // session with clips that can no longer be read.
+      partialize: (state) => (process.env.EXPO_OS === 'web' ? { ...state, clips: [] } : state),
     },
   ),
 );

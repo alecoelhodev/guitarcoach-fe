@@ -3,7 +3,12 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { ApiError } from '@/api/client';
 import { queryKeys } from '@/api/query-keys';
 import { deleteRecording, listRecordings, uploadRecording } from '@/api/recordings';
-import { useDeleteRecording, useRecordings, useUploadRecording } from '@/api/recordings.queries';
+import {
+  useDeleteRecording,
+  useRecordings,
+  useUploadRecording,
+  useUploadSessionClips,
+} from '@/api/recordings.queries';
 import { makeRecording } from '@/test/fixtures';
 import { withQueryClient } from '@/test/query-client';
 
@@ -90,6 +95,28 @@ describe('useUploadRecording', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(isStale()).toBe(false);
+  });
+});
+
+describe('useUploadSessionClips', () => {
+  const SECOND = { ...FILE, uri: 'file:///take-2.m4a', name: 'take-2.m4a' };
+
+  it('uploads every clip in order and counts the ones that failed', async () => {
+    uploadMock
+      .mockRejectedValueOnce(new ApiError('No connection', 0))
+      .mockResolvedValueOnce(makeRecording({ id: 'r2' }));
+    const { wrapper, isStale } = seedRecordings('session-1');
+
+    const { result } = await renderHook(() => useUploadSessionClips(), { wrapper });
+    result.current.mutate({ sessionId: 'session-1', files: [FILE, SECOND] });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(uploadMock.mock.calls).toEqual([
+      ['session-1', FILE],
+      ['session-1', SECOND],
+    ]);
+    expect(result.current.data).toBe(1);
+    expect(isStale()).toBe(true);
   });
 });
 

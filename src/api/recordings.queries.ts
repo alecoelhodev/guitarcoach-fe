@@ -36,3 +36,28 @@ export function useDeleteRecording(sessionId: string) {
     },
   });
 }
+
+/**
+ * Uploads the clips held during a practice session, once Finish has given it an id. One at a
+ * time so a long session can't open a dozen 50 MB uploads at once. Resolves to how many failed:
+ * the session is already saved, so a failed clip must not fail — and invite a retry of — Finish.
+ */
+export function useUploadSessionClips() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sessionId, files }: { sessionId: string; files: UploadFile[] }) => {
+      let failed = 0;
+      for (const file of files) {
+        try {
+          await uploadRecording(sessionId, file);
+        } catch {
+          failed += 1;
+        }
+      }
+      return failed;
+    },
+    onSettled: (_failed, _error, { sessionId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.recordings(sessionId) });
+    },
+  });
+}

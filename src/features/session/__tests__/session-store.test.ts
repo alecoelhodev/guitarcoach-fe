@@ -1,6 +1,13 @@
+jest.mock('@/features/recordings/pending-clip-files', () => ({ discardClipFile: jest.fn() }));
+
 import { waitFor } from '@testing-library/react-native';
 
-import { type ActiveSessionTask, useActiveSessionStore } from '@/features/session/session-store';
+import { discardClipFile } from '@/features/recordings/pending-clip-files';
+import {
+  type ActiveSessionTask,
+  type PendingClip,
+  useActiveSessionStore,
+} from '@/features/session/session-store';
 import { storage } from '@/lib/storage';
 import { resetStores } from '@/test/reset-stores';
 
@@ -13,6 +20,16 @@ function task(overrides: Partial<ActiveSessionTask> = {}): ActiveSessionTask {
     durationMinutes: 0,
     completed: false,
     ...overrides,
+  };
+}
+
+function clip(id: string): PendingClip {
+  return {
+    id,
+    name: `${id}.m4a`,
+    mimeType: 'audio/mp4',
+    uri: `file:///doc/${id}.m4a`,
+    seconds: 12,
   };
 }
 
@@ -204,10 +221,11 @@ describe('persistence', () => {
     state().reset();
 
     // `routineId` and `title` are absent rather than null: JSON.stringify drops undefined
-    // values, so a reset session persists as `{"tasks":[]}`.
+    // values, so a reset session persists as `{"tasks":[],"clips":[]}`.
     await waitFor(async () =>
       expect(JSON.parse((await storage.getItem(PERSIST_KEY)) as string).state).toEqual({
         tasks: [],
+        clips: [],
       }),
     );
   });
@@ -230,6 +248,19 @@ describe('persistence', () => {
 
     expect(state()).toMatchObject({ userId: 'user-1', routineId: 'routine-9', title: 'Restored' });
     expect(state().tasks.map((t) => t.taskId)).toEqual(['z']);
+    // v1 predates clips; the upgrade keeps the session and starts it with none.
+    expect(state().clips).toEqual([]);
+  });
+
+  it('persists pending clips so a killed app still has them on resume', async () => {
+    state().start({ userId: 'user-1', tasks: [task()] });
+    state().addClip(clip('c1'));
+
+    await waitFor(async () =>
+      expect(JSON.parse((await storage.getItem(PERSIST_KEY)) as string).state.clips).toEqual([
+        clip('c1'),
+      ]),
+    );
   });
 
   // QA-01. A v0 payload predates `userId`, so nothing about it says which account left it
@@ -269,5 +300,32 @@ describe('ownership', () => {
     state().reset();
 
     expect(state().userId).toBeUndefined();
+  });
+});
+
+describe('clips', () => {
+  beforeEach(() => jest.mocked(discardClipFile).mockClear());
+
+  it('adds clips in order and removes one along with its file', () => {
+    state().start({ tasks: [task()] });
+    state().addClip(clip('c1'));
+    state().addClip(clip('c2'));
+
+    state().removeClip('c1');
+
+    expect(state().clips.map((c) => c.id)).toEqual(['c2']);
+    expect(discardClipFile).toHaveBeenCalledTimes(1);
+    expect(discardClipFile).toHaveBeenCalledWith('c1', 'file:///doc/c1.m4a');
+  });
+
+  it('deletes every pending file on reset', () => {
+    state().start({ tasks: [task()] });
+    state().addClip(clip('c1'));
+    state().addClip(clip('c2'));
+
+    state().reset();
+
+    expect(state().clips).toEqual([]);
+    expect(discardClipFile).toHaveBeenCalledTimes(2);
   });
 });
