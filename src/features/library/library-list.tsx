@@ -81,7 +81,7 @@ export function LibraryList() {
     <View style={styles.footer}>
       <ActivityIndicator color={Colors.accentRamp[700]} accessibilityLabel="Loading more tasks" />
     </View>
-  ) : null;
+  ) : undefined;
 
   return (
     <ThemedView style={styles.container}>

@@ -40,17 +40,11 @@ export function GluestackUIProvider({
     return () => media.removeListener(handleMediaQuery);
   }, [handleMediaQuery]);
 
+  // The pre-paint `script` tag lives in `src/app/+html.tsx`: rendered here, React warns that a
+  // client-rendered <script> never executes.
   return (
-    <>
-      <script
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{
-          __html: `(${script.toString()})('${mode}')`,
-        }}
-      />
-      <OverlayProvider>
-        <ToastProvider>{props.children}</ToastProvider>
-      </OverlayProvider>
-    </>
+    <OverlayProvider>
+      <ToastProvider>{props.children}</ToastProvider>
+    </OverlayProvider>
   );
 }

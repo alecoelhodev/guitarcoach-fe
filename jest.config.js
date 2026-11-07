@@ -21,17 +21,42 @@ const transformIgnorePatterns = expoPreset.transformIgnorePatterns.map((pattern)
 // own babel-jest entry — including its babel.config.js wiring — for `.mjs` too.
 const jsTransform = expoPreset.transform['\\.[jt]sx?$'];
 
-/** @type {import('jest').Config} */
-module.exports = {
-  // jest-expo's preset already maps the `@/*` tsconfig paths and react-native itself;
-  // overriding moduleNameMapper here would drop those.
-  preset: 'jest-expo',
+const shared = {
   // CI checks the backend repo out into `backend/`; without this Jest's default
   // rootDir crawl collects its ~30 `*.spec.ts` files. Mirrors tsconfig's exclude.
   roots: ['<rootDir>/src'],
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   transformIgnorePatterns,
   transform: { ...expoPreset.transform, '\\.mjs$': jsTransform },
+};
+
+// Suites that need a real DOM. React Native's preset setup redefines `window`, which jsdom 30
+// (Jest 30) makes non-configurable, so they cannot run under the iOS preset at all.
+const DOM_SUITES = '<rootDir>/src/components/ui/gluestack-ui-provider/__tests__/';
+
+/** @type {import('jest').Config} */
+module.exports = {
+  projects: [
+    {
+      ...shared,
+      displayName: 'ios',
+      // jest-expo's preset already maps the `@/*` tsconfig paths and react-native itself;
+      // overriding moduleNameMapper here would drop those.
+      preset: 'jest-expo',
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+      resolver: '<rootDir>/jest.resolver.js',
+      testPathIgnorePatterns: ['/node_modules/', DOM_SUITES],
+    },
+    {
+      ...shared,
+      displayName: 'web',
+      preset: 'jest-expo/web',
+      // jest-expo 58's web preset lists `^react-native($|/.*)` before `^react-native$`, so bare
+      // `react-native` resolves to the native package and dies on `__fbBatchedBridgeConfig`.
+      // A project's own mapper is ordered ahead of the preset's, which restores react-native-web.
+      moduleNameMapper: { '^react-native$': 'react-native-web' },
+      testMatch: [`${DOM_SUITES}*.web.test.{ts,tsx}`],
+    },
+  ],
   // Without this Jest only measures the files a test happens to import, which reported 84%
   // while the real figure across `src/` was 25%. Listing the sources explicitly makes the
   // number mean "of the app" rather than "of what we already test".

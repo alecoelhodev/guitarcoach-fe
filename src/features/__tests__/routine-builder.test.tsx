@@ -98,12 +98,12 @@ async function triggerLeave() {
   const [preventRemove, callback] = preventRemoveMock.mock.calls.at(-1) ?? [];
   expect(preventRemove).toBe(true);
   await act(async () => {
-    callback?.({ data: { action: BLOCKED_ACTION } });
+    callback?.({ data: { action: BLOCKED_ACTION }, repeat: jest.fn() });
   });
 }
 
 const BLOCKED_ACTION = { type: 'POP' } as Parameters<
-  Parameters<typeof usePreventRemove>[1]
+  NonNullable<Parameters<typeof usePreventRemove>[1]>
 >[0]['data']['action'];
 
 const editing = () => withGluestack(<RoutineBuilder routineId={ROUTINE_ID} />);

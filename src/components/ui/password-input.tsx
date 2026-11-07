@@ -1,7 +1,7 @@
 import Eye from 'lucide-react-native/icons/eye';
 import EyeOff from 'lucide-react-native/icons/eye-off';
 import { forwardRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { Input, type InputProps } from '@/components/ui/input';
 import { Colors, IconSize, IconStroke, Spacing, TapSlop } from '@/theme/tokens';
@@ -11,38 +11,37 @@ const TOGGLE_WIDTH = 44;
 
 export type PasswordInputProps = Omit<InputProps, 'secureTextEntry'>;
 
-export const PasswordInput = forwardRef<TextInput, PasswordInputProps>(function PasswordInput(
-  { style, ...rest },
-  ref,
-) {
-  const [visible, setVisible] = useState(false);
+export const PasswordInput = forwardRef<TextInputInstance, PasswordInputProps>(
+  function PasswordInput({ style, ...rest }, ref) {
+    const [visible, setVisible] = useState(false);
 
-  return (
-    <View>
-      <Input
-        ref={ref}
-        secureTextEntry={!visible}
-        autoCapitalize="none"
-        autoCorrect={false}
-        style={[styles.field, style]}
-        {...rest}
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={visible ? 'Hide password' : 'Show password'}
-        onPress={() => setVisible((current) => !current)}
-        hitSlop={TapSlop}
-        style={styles.toggle}
-      >
-        {visible ? (
-          <EyeOff color={Colors.accentRamp[700]} size={IconSize.md} strokeWidth={IconStroke} />
-        ) : (
-          <Eye color={Colors.accentRamp[700]} size={IconSize.md} strokeWidth={IconStroke} />
-        )}
-      </Pressable>
-    </View>
-  );
-});
+    return (
+      <View>
+        <Input
+          ref={ref}
+          secureTextEntry={!visible}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={[styles.field, style]}
+          {...rest}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+          onPress={() => setVisible((current) => !current)}
+          hitSlop={TapSlop}
+          style={styles.toggle}
+        >
+          {visible ? (
+            <EyeOff color={Colors.accentRamp[700]} size={IconSize.md} strokeWidth={IconStroke} />
+          ) : (
+            <Eye color={Colors.accentRamp[700]} size={IconSize.md} strokeWidth={IconStroke} />
+          )}
+        </Pressable>
+      </View>
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   field: {

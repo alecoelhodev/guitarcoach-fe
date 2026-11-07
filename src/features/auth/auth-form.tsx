@@ -2,7 +2,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { type Href, useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { Controller, type FieldErrors, useForm } from 'react-hook-form';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+} from 'react-native';
 import { z } from 'zod';
 
 import { requestPasswordReset, signIn, signUp } from '@/api/auth';
@@ -65,9 +72,9 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
   const [banner, setBanner] = useState<BannerProps | null>(null);
   const [resetting, setResetting] = useState(false);
 
-  const scrollRef = useRef<ScrollView>(null);
-  const emailRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
   const fieldTop = useRef<Partial<Record<keyof FormValues, number>>>({});
 
   // Read through a ref so the resolver stays stable while still validating against the
@@ -330,7 +337,7 @@ export function AuthForm({ initialMode = 'signin', next }: AuthFormProps) {
         block
         loading={busy}
         loadingLabel={mode === 'create' ? 'Creating account…' : 'Signing in…'}
-        onPress={submit}
+        onPress={() => submit()}
       >
         {mode === 'create' ? 'Create Account' : 'Sign In'}
       </Button>

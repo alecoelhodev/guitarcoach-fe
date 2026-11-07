@@ -59,7 +59,9 @@ const STATUS_SEGMENTS: SegmentedOption<RoutineStatus>[] = [
 ];
 
 /** The action `usePreventRemove` hands back, derived from the hook rather than a guessed export. */
-type BlockedAction = Parameters<Parameters<typeof usePreventRemove>[1]>[0]['data']['action'];
+type BlockedAction = Parameters<
+  NonNullable<Parameters<typeof usePreventRemove>[1]>
+>[0]['data']['action'];
 
 /**
  * Canvas 06: one screen creates, views and edits. Create mode fetches nothing, so the two

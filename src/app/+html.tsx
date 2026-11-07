@@ -1,6 +1,7 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
+import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
+import { script as colorModeScript } from '@/components/ui/gluestack-ui-provider/script';
 import { Colors } from '@/theme/tokens';
 
 // Placeholder copy pending approval of the store/web listing text.
@@ -17,10 +18,13 @@ const AUTOFILL_RESET = `input:-webkit-autofill, input:-webkit-autofill:hover, in
 
 /** Web-only root HTML for static rendering; runs in Node at build time, never on native. */
 export default function Root({ children }: PropsWithChildren) {
-  // No <title> here: the renderer always prepends Helmet's <title> to <head>, and the first one
-  // wins. The default title comes from `expo-router/head` in `src/app/_layout.tsx`.
+  // Since SDK 58 the renderer no longer splices the bundle into the HTML string: the script,
+  // CSS and bootstrap tags arrive here as nodes, and dropping them serves a page with no JS.
+  const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } = useServerDocumentContext();
+  // No <title> here: the default title comes from `expo-router/head` in `src/app/_layout.tsx`,
+  // which sets it once the app hydrates.
   return (
-    <html lang="en">
+    <html lang="en" {...htmlAttributes}>
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -34,8 +38,14 @@ export default function Root({ children }: PropsWithChildren) {
         <meta property="og:site_name" content={TITLE} />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: AUTOFILL_RESET }} />
+        {/* Sets the `dark` class before first paint; must match `mode` in `_layout.tsx`. */}
+        <script dangerouslySetInnerHTML={{ __html: `(${colorModeScript.toString()})('dark')` }} />
+        {headNodes}
       </head>
-      <body>{children}</body>
+      <body {...bodyAttributes}>
+        {children}
+        {bodyNodes}
+      </body>
     </html>
   );
 }
