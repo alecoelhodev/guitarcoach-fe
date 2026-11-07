@@ -14,6 +14,9 @@ const borderRadius = Object.fromEntries(
 export default {
   content: ['./src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // The gluestack provider owns the `dark` class on <html>. Under the default `media`, NativeWind
+  // throws on web as soon as it sees that class once SDK 58 streams the CSS in after its runtime.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {

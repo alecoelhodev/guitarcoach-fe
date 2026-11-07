@@ -69,7 +69,7 @@ describe('GluestackUIProvider (web)', () => {
   it('does not write a class of its own in system mode', async () => {
     await render(<GluestackUIProvider mode="system" />);
 
-    // In `system` the pre-hydration `<script>` owns the class; the effect only subscribes.
+    // In `system` the pre-paint script in `+html.tsx` owns the class; the effect only subscribes.
     expect(document.documentElement.classList.contains('light')).toBe(false);
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
