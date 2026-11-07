@@ -73,7 +73,8 @@ describe('GenerateTasksScreen', () => {
     expect(generate.mutateAsync).not.toHaveBeenCalled();
   });
 
-  it('creates only the ticked drafts, then goes back with a toast', async () => {
+  it('creates only the ticked drafts, then opens the one it created', async () => {
+    bulk.mutateAsync.mockResolvedValue([{ id: 'task-new' }]);
     await render(<GenerateTasksScreen />);
     await draftTasks();
 
@@ -95,7 +96,25 @@ describe('GenerateTasksScreen', () => {
       message: '1 task created',
       variant: 'success',
     });
+    expect(mockRouter.replace).toHaveBeenCalledWith({
+      pathname: '/library/[id]',
+      params: { id: 'task-new' },
+    });
+    expect(mockRouter.back).not.toHaveBeenCalled();
+  });
+
+  it('goes back to the Library after creating several', async () => {
+    bulk.mutateAsync.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+    await render(<GenerateTasksScreen />);
+    await draftTasks();
+
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Create 2 tasks'));
+    });
+
+    expect(useToastStore.getState().toast).toMatchObject({ message: '2 tasks created' });
     expect(mockRouter.back).toHaveBeenCalledTimes(1);
+    expect(mockRouter.replace).not.toHaveBeenCalled();
   });
 
   it('cannot create with every draft unticked', async () => {

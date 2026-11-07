@@ -63,7 +63,7 @@ session's detail and **during** a session (active / resumed). `ClipCapture`
 - **During a session there is no id yet**, so clips are copied into the document directory
   (`pending-clip-files.ts`), listed in the session store, and uploaded one at a time right after
   Finish. A clip that fails to upload does not fail Finish — the session already exists — and the
-  toast says to add it from History. Web clips are not persisted across a reload.
+  toast says to add it again; Finish opens the saved session's History page either way. Web clips are not persisted across a reload.
 
 ## Out of scope
 
